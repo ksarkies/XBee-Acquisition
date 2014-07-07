@@ -35,6 +35,7 @@ network.
 #include <QTcpSocket>
 #include <QTextStream>
 #include <QCloseEvent>
+#include <unistd.h>
 #include <cstdlib>
 #include <iostream>
 

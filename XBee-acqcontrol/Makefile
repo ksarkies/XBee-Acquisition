@@ -1,7 +1,10 @@
 PROJECT = xbee-acqcontrol
 
+LIBXBEE = ../auxiliary/libxbee-3.0.9
+
 CFLAGS  = -pipe -O2 -Wall -W -pedantic
-INCLUDE = -I . -I ../auxiliary/libxbee-v3/
+INCLUDE = -I. -I$(LIBXBEE)/
+LDFLAGS = -L$(LIBXBEE)/lib
 
 OBJECTS = $(PROJECT).o
 
@@ -11,7 +14,7 @@ all: $(PROJECT)
 		g++ -c $(CFLAGS) $(INCLUDE) $<
 
 $(PROJECT): $(OBJECTS)
-		g++ -Wl,-O1 -o $(PROJECT) $(OBJECTS) -L. -lxbee -lrt -lpthread
+		g++ -Wl,-O1 -o $(PROJECT) $(OBJECTS) $(LDFLAGS) -lxbee -lrt -lpthread
 
 clean:
 	rm *.o $(PROJECT)

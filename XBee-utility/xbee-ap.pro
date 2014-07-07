@@ -1,8 +1,7 @@
 PROJECT =       XBee AP Mode Tool
 TEMPLATE =      app
 TARGET          += 
-DEPENDPATH      += .
-INCLUDEPATH     += ../auxiliary/libxbee-v3/
+INCLUDEPATH     += ../auxiliary/libxbee-3.0.9/
 
 OBJECTS_DIR     = obj
 MOC_DIR         = moc
@@ -11,11 +10,10 @@ UI_SOURCES_DIR  = ui
 LANGUAGE        = C++
 CONFIG          += qt warn_on release
 
-LIBS            += -lxbeep -lxbee
+LIBS            += -L../auxiliary/libxbee-3.0.9/lib/ -lxbeep -lxbee
 
 # Input
 FORMS           += xbee-ap.ui
 HEADERS         += xbee-ap.h
-HEADERS         += ../auxiliary/libxbee-v3/xbeep.h
 SOURCES         += xbee-ap-main.cpp xbee-ap.cpp
 
