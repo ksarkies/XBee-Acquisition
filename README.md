@@ -19,11 +19,17 @@ on the same machine or separately. It therefore uses a TCP/IP sockets interface.
 Subdirectories:
 
 gEDA-XBee                   Schematic and PCB for remote unit
+
 XBee-acqcontrol             Control of XBee network for Linux hardware
+
 XBee-Arduino                Firmware for Arduino remote unit testbench
+
 XBee-bootloader             Bootloader for remote unit
+
 XBee-firmware               Firmware for remote unit
+
 XBee-GUI                    Linux PC based GUI for network control
+
 XBee-utility                Some tools for direct interaction with XBee
 
 K. Sarkies
