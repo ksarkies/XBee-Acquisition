@@ -1,0 +1,170 @@
+   1               		.file	"serial.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   9               		.text
+  10               	.Ltext0:
+ 105               	.global	uartInit
+ 107               	uartInit:
+ 108               		.stabd	46,0,0
+   1:serial.c      **** /*  Serial routines for the AVR/XBee bootloader */
+   2:serial.c      **** 
+   3:serial.c      **** /****************************************************************************
+   4:serial.c      ****  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+   5:serial.c      ****  *                                                                          *
+   6:serial.c      ****  *   This file is part of xbee-control                                      *
+   7:serial.c      ****  *                                                                          *
+   8:serial.c      ****  * Licensed under the Apache License, Version 2.0 (the "License");          *
+   9:serial.c      ****  * you may not use this file except in compliance with the License.         *
+  10:serial.c      ****  * You may obtain a copy of the License at                                  *
+  11:serial.c      ****  *                                                                          *
+  12:serial.c      ****  *     http://www.apache.org/licenses/LICENSE-2.0                           *
+  13:serial.c      ****  *                                                                          *
+  14:serial.c      ****  * Unless required by applicable law or agreed to in writing, software      *
+  15:serial.c      ****  * distributed under the License is distributed on an "AS IS" BASIS,        *
+  16:serial.c      ****  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *
+  17:serial.c      ****  * See the License for the specific language governing permissions and      *
+  18:serial.c      ****  * limitations under the License.                                           *
+  19:serial.c      ****  ***************************************************************************/
+  20:serial.c      **** 
+  21:serial.c      **** #include "defines.h"
+  22:serial.c      **** 
+  23:serial.c      **** /*-----------------------------------------------------------------------------*/
+  24:serial.c      **** /* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
+  25:serial.c      **** 
+  26:serial.c      **** Baud rate is derived from the header call to setbaud.h.
+  27:serial.c      **** */
+  28:serial.c      **** 
+  29:serial.c      **** void uartInit(void)
+  30:serial.c      **** {
+ 110               	.LM0:
+ 111               	.LFBB1:
+ 112               	/* prologue: function */
+ 113               	/* frame size = 0 */
+ 114               	/* stack size = 0 */
+ 115               	.L__stack_usage = 0
+  31:serial.c      ****     BAUD_RATE_LOW_REG = UBRRL_VALUE;
+ 117               	.LM1:
+ 118 0000 8CE0      		ldi r24,lo8(12)
+ 119 0002 8093 C400 		sts 196,r24
+  32:serial.c      ****     BAUD_RATE_HIGH_REG = UBRRH_VALUE;
+ 121               	.LM2:
+ 122 0006 1092 C500 		sts 197,__zero_reg__
+  33:serial.c      ****     UART_FORMAT_REG = (3 << FRAME_SIZE);                // Set 8 bit frames
+ 124               	.LM3:
+ 125 000a 86E0      		ldi r24,lo8(6)
+ 126 000c 8093 C200 		sts 194,r24
+  34:serial.c      ****     UART_CONTROL_REG |= _BV(ENABLE_RECEIVER_BIT) |
+ 128               	.LM4:
+ 129 0010 E1EC      		ldi r30,lo8(-63)
+ 130 0012 F0E0      		ldi r31,0
+ 131 0014 8081      		ld r24,Z
+ 132 0016 8861      		ori r24,lo8(24)
+ 133 0018 8083      		st Z,r24
+  35:serial.c      ****                         _BV(ENABLE_TRANSMITTER_BIT);    // enable receive and transmit 
+  36:serial.c      ****     cbi(UART_CTS_PORT_DIR,UART_CTS_PIN);                // Set flow control pins CTS input
+ 135               	.LM5:
+ 136 001a 5298      		cbi 0xa,2
+  37:serial.c      ****     sbi(UART_RTS_PORT_DIR,UART_RTS_PIN);                // RTS output
+ 138               	.LM6:
+ 139 001c 539A      		sbi 0xa,3
+  38:serial.c      ****     cbi(UART_RTS_PORT,UART_RTS_PIN);                    // RTS cleared to enable
+ 141               	.LM7:
+ 142 001e 5B98      		cbi 0xb,3
+ 143 0020 0895      		ret
+ 145               	.Lscope1:
+ 147               		.stabd	78,0,0
+ 150               	.global	sendch
+ 152               	sendch:
+ 153               		.stabd	46,0,0
+  39:serial.c      **** }
+  40:serial.c      **** 
+  41:serial.c      **** /*-----------------------------------------------------------------------------*/
+  42:serial.c      **** /* Send a character when the Tx is ready
+  43:serial.c      **** 
+  44:serial.c      **** */
+  45:serial.c      **** 
+  46:serial.c      **** void sendch(unsigned char c)
+  47:serial.c      **** {
+ 155               	.LM8:
+ 156               	.LFBB2:
+ 157               	/* prologue: function */
+ 158               	/* frame size = 0 */
+ 159               	/* stack size = 0 */
+ 160               	.L__stack_usage = 0
+ 161               	.L4:
+  48:serial.c      ****         while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     // wait for clear to send
+ 163               	.LM9:
+ 164 0022 4A99      		sbic 0x9,2
+ 165 0024 00C0      		rjmp .L4
+  49:serial.c      ****         UART_DATA_REG = c;                                  // send
+ 167               	.LM10:
+ 168 0026 8093 C600 		sts 198,r24
+ 169               	.L6:
+  50:serial.c      ****         while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    // wait till gone
+ 171               	.LM11:
+ 172 002a 8091 C000 		lds r24,192
+ 173 002e 86FF      		sbrs r24,6
+ 174 0030 00C0      		rjmp .L6
+  51:serial.c      ****         UART_STATUS_REG |= _BV(TRANSMIT_COMPLETE_BIT);      // reset TXCflag
+ 176               	.LM12:
+ 177 0032 8091 C000 		lds r24,192
+ 178 0036 8064      		ori r24,lo8(64)
+ 179 0038 8093 C000 		sts 192,r24
+ 180 003c 0895      		ret
+ 182               	.Lscope2:
+ 184               		.stabd	78,0,0
+ 186               	.global	getch
+ 188               	getch:
+ 189               		.stabd	46,0,0
+  52:serial.c      **** }
+  53:serial.c      **** 
+  54:serial.c      **** /*-----------------------------------------------------------------------------*/
+  55:serial.c      **** /* Get a character when the Rx is ready
+  56:serial.c      **** 
+  57:serial.c      **** */
+  58:serial.c      **** 
+  59:serial.c      **** unsigned char getch(void)
+  60:serial.c      **** {
+ 191               	.LM13:
+ 192               	.LFBB3:
+ 193               	/* prologue: function */
+ 194               	/* frame size = 0 */
+ 195               	/* stack size = 0 */
+ 196               	.L__stack_usage = 0
+  61:serial.c      ****     cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
+ 198               	.LM14:
+ 199 003e 5B98      		cbi 0xb,3
+ 200               	.L10:
+  62:serial.c      ****     while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
+ 202               	.LM15:
+ 203 0040 8091 C000 		lds r24,192
+ 204 0044 87FF      		sbrs r24,7
+ 205 0046 00C0      		rjmp .L10
+  63:serial.c      ****     sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
+ 207               	.LM16:
+ 208 0048 5B9A      		sbi 0xb,3
+  64:serial.c      ****     return UART_DATA_REG;
+ 210               	.LM17:
+ 211 004a 8091 C600 		lds r24,198
+  65:serial.c      **** }
+ 213               	.LM18:
+ 214 004e 0895      		ret
+ 216               	.Lscope3:
+ 218               		.stabd	78,0,0
+ 220               	.Letext0:
+ 221               		.ident	"GCC: (GNU) 4.8.2"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 serial.c
+     /tmp/ccYcmLZ8.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccYcmLZ8.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccYcmLZ8.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccYcmLZ8.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccYcmLZ8.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccYcmLZ8.s:107    .text:0000000000000000 uartInit
+     /tmp/ccYcmLZ8.s:152    .text:0000000000000022 sendch
+     /tmp/ccYcmLZ8.s:188    .text:000000000000003e getch
+
+NO UNDEFINED SYMBOLS
