@@ -2,7 +2,9 @@
 *.o
 *.bin
 *.hex
+*.eep
 *.list
+*.lst
 *.srec
 *.a
 *.elf

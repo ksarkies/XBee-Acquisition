@@ -1,5 +1,5 @@
 /**
-@mainpage XBee AVR Node Unit
+@mainpage XBee AVR Node Example
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 4 January 2013
@@ -10,7 +10,7 @@ using ZigBee stack, and a data acquisition unit making a variety of
 measurements for communication to a base controller.
 
 @note
-Software: AVR-GCC 4.5.3
+Software: AVR-GCC 4.8.2
 @note
 Target:   Any AVR with sufficient output ports and a timer
 @note
@@ -19,7 +19,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
- *   This file is part of xbee-control                                      *
+ *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
@@ -45,7 +45,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <util/delay.h>
 #include "serial.h"
 #include "timer.h"
-#include "xbee-avr.h"
+#include "xbee-node-example.h"
 
 /** Convenience macros (we don't use them all) */
 #define TRUE 1
@@ -268,7 +268,7 @@ void resetTimer(void)
 This ISR sends a dummy data record to the coordinator.
 */
 
-ISR(SIG_OVERFLOW0)
+ISR(TIM0_OVF_vect)
 {
     uint8_t data[7] = "DHello";
     time.timeValue++;

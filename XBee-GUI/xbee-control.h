@@ -5,7 +5,7 @@ Title:    XBee Control and Display GUI Tool
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
- *   This file is part of xbee-control                                      *
+ *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *

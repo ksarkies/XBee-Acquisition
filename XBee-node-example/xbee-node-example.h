@@ -1,19 +1,17 @@
-/*        XBee AVR Node Unit
-*       Ken Sarkies ksarkies@internode.on.net
-*
-* File              : xbee-avr.h
-* Compiler          : AVR-GCC/avr-libc(>= 1.2.5)
-* Revision          : $Revision: 0.0 $
-* Updated by        : $ author K. Sarkies 4/1/2013 $
-*
-* Target platform   : ATMega48
-*
-* 
+/*        XBee AVR Node Example
+       Ken Sarkies ksarkies@internode.on.net
+            4 January 2013
+
+version     0.0.0
+Software    AVR-GCC 4.8.2
+Target:     Any AVR with sufficient output ports and a timer
+Tested:     ATMega48 at 8MHz internal clock.
+
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
- *   This file is part of xbee-control                                      *
+ *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
@@ -28,8 +26,8 @@
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef _XBEE_AVR_H_
-#define _XBEE_AVR_H_
+#ifndef _XBEE_NODE_EXAMPLE_H_
+#define _XBEE_NODE_EXAMPLE_H_
 
 #include <inttypes.h>
 
@@ -121,4 +119,4 @@ void sendBaseFrame(txFrameType txMessage);
 void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
                         uint8_t radius, uint8_t options, uint8_t length, uint8_t data[]);
 
-#endif //_XBEE_AVR_H_
+#endif /*_XBEE_NODE_EXAMPLE_H_ */

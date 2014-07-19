@@ -18,7 +18,7 @@
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include	<avr/io.h>
+#include <avr/io.h>
 #include "defines.h"
 
 /* Convenience macros (we don't use them all) */

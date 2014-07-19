@@ -1,19 +1,14 @@
-/**
-@mainpage XBee AP Mode Command Tool
-@version 1.0
-@author Ken Sarkies (www.jiggerjuice.net)
-@date 16 December 2012
+/* AVR/XBee Defines
 
-A utility to assemble and send API commands to an XBee on a serial or
-USB-serial port.
+This file assigns registers, particular to an AVR type, to common constants.
 
-The responses are collected and interpreted.
+I/O pin values for controlling the boorloader operation are given at the end.
 
-@note
-Compiler: gcc (Ubuntu 4.4.1-4ubuntu9) 4.4.1
-@note
-Uses: Qt version 4.5.2
+Software: AVR-GCC 4.5.3
+Target:   Any AVR with sufficient output ports and a timer
+Tested:   ATMega168 at 8MHz internal clock.
 */
+
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
@@ -32,26 +27,31 @@ Uses: Qt version 4.5.2
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "xbee-ap.h"
-#include <QApplication>
-#include <QMessageBox>
+/* These are the defines for the selected device and bootloader system */
+#define F_CPU               8000000
+#define BAUD                38400
 
-//-----------------------------------------------------------------------------
-/** @brief XBee Tool Main Program
+// Simple serial I/O (must define cpu frequency and baudrate before this include) */
+#include <util/setbaud.h>
 
-*/
+/* definitions for UART control */
+#define	BAUD_RATE_HIGH_REG	    UBRR0H
+#define	BAUD_RATE_LOW_REG	    UBRR0L
+#define	UART_CONTROL_REG	    UCSR0B
+#define	UART_FORMAT_REG	        UCSR0C
+#define FRAME_SIZE              UCSZ00
+#define	ENABLE_TRANSMITTER_BIT	TXEN0
+#define	ENABLE_RECEIVER_BIT	    RXEN0
+#define	UART_STATUS_REG	        UCSR0A
+#define	TRANSMIT_COMPLETE_BIT	TXC0
+#define	RECEIVE_COMPLETE_BIT	RXC0
+#define	UART_DATA_REG	        UDR0
 
-int main(int argc,char ** argv)
-{
-    QApplication application(argc,argv);
-    XbeeApTool xbeeApTool;
-    if (xbeeApTool.success())
-    {
-        xbeeApTool.show();
-        return application.exec();
-    }
-    else
-        QMessageBox::critical(0,"Serial Port Problem",
-              QString("%1").arg(xbeeApTool.error()));
-    return false;
-}
+/* UART Flow control ports */
+#define UART_CTS_PORT           PIND
+#define UART_CTS_PORT_DIR       DDRD
+#define UART_CTS_PIN            2
+#define UART_RTS_PORT           PORTD
+#define UART_RTS_PORT_DIR       DDRD
+#define UART_RTS_PIN            3
+

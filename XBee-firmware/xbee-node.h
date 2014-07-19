@@ -1,18 +1,12 @@
-/**
-@mainpage XBee AP Mode Command Tool
-@version 1.0
-@author Ken Sarkies (www.jiggerjuice.net)
-@date 16 December 2012
+/*        XBee AVR Node Example
+       Ken Sarkies ksarkies@internode.on.net
+            4 January 2013
 
-A utility to assemble and send API commands to an XBee on a serial or
-USB-serial port.
+version     0.0
+Software    AVR-GCC 4.8.2
+Target:     Any AVR with sufficient output ports and a timer
+Tested:     ATMega48 at 8MHz internal clock.
 
-The responses are collected and interpreted.
-
-@note
-Compiler: gcc (Ubuntu 4.4.1-4ubuntu9) 4.4.1
-@note
-Uses: Qt version 4.5.2
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -32,26 +26,16 @@ Uses: Qt version 4.5.2
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "xbee-ap.h"
-#include <QApplication>
-#include <QMessageBox>
+#ifndef _XBEE_NODE_H_
+#define _XBEE_NODE_H_
 
-//-----------------------------------------------------------------------------
-/** @brief XBee Tool Main Program
+/* baud rate register value calculation */
+#ifndef F_CPU
+#define F_CPU           1000000
+#endif
+#define BAUD_RATE       9600
 
-*/
+#define ACTION_MINUTES  10
+#define ACTION_COUNT    (ACTION_MINUTES*75)/2
 
-int main(int argc,char ** argv)
-{
-    QApplication application(argc,argv);
-    XbeeApTool xbeeApTool;
-    if (xbeeApTool.success())
-    {
-        xbeeApTool.show();
-        return application.exec();
-    }
-    else
-        QMessageBox::critical(0,"Serial Port Problem",
-              QString("%1").arg(xbeeApTool.error()));
-    return false;
-}
+#endif /*_XBEE_NODE_H_ */

@@ -23,10 +23,8 @@
 #
 
 
-TEST ?= 1
-
 # MCU name
-MCU = attiny4313
+MCU = atmega168
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -37,7 +35,7 @@ OPT = 2
 
 
 # Target file name (without extension).
-TARGET = xbee-node
+TARGET = xbee-node-example
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c serial.c
