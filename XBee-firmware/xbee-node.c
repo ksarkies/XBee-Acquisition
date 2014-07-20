@@ -78,17 +78,17 @@ Tested:   ATTint4313 at 1MHz internal clock.
 #define  low(x) ((uint8_t) (x & 0xFF))
 
 /* Global variables */
-    uint8_t counter0;
+    uint8_t counter0;               /**< Counters for signal pulses */
     uint8_t counter1;
     uint8_t counter2;
     uint8_t counter3;
-    uint8_t wdtCounter;
+    uint8_t wdtCounter;             /**< Counter to extend WDT range */
 
 /** @name UART variables */
 /*@{*/
-    volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
-    volatile uint8_t lastError;    /**< Error code for transmission back */
-    volatile uint8_t checkSum;     /**< Checksum on message contents */
+    volatile uint16_t uartInput;    /**< Character and errorcode read from uart */
+    volatile uint8_t lastError;     /**< Error code for transmission back */
+    volatile uint8_t checkSum;      /**< Checksum on message contents */
 /*@}*/
 
     uint8_t messageState;           /**< Progress in message reception */
@@ -121,8 +121,8 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 
 /* Brownout detector must be disabled in fuses */
 
-/** Use Interrupt 1 with rising edge triggering in power down mode */
-    sbi(GIMSK,INT1);                /* Enable Interrupt 1 */
+/** Use Interrupt 0 with rising edge triggering in power down mode */
+    sbi(GIMSK,INT0);                /* Enable Interrupt 0 */
     outb(MCUCR,inb(MCUCR) | 0x03);  /* Rising edge trigger on interrupt 1 */
 
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
@@ -134,7 +134,7 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
     wdt_disable();     /* watchdog timer turn off ready for setup. */
     outb(WDTCR,0);
 /* Set the WDT with WDE clear, interrupts enabled, interrupt mode set, and
-maximum timeout 8 seconds to give continuous interrupt mode, */
+maximum timeout 8 seconds to give continuous interrupt mode. */
     sei();
     outb(WDTCR,_BV(WDIE)|0x09);
 
@@ -190,7 +190,7 @@ a cpse instruction used for the test, needing 6 cycles. If a cpi and breq is
 used, no register is involved and the time is reduced to 2 cycles, giving a
 time saving of 17%.
 */
-ISR(INT1_vect)
+ISR(INT0_vect)
 {
     counter0++;
     if (counter0 == 0)
@@ -211,7 +211,7 @@ ISR(INT1_vect)
 
 When the WDT timer overflows, 8 seconds will have elapsed which is too short to
 do anything useful, so we go back to sleep again until 75 such events have
-occurred (10 minutes). Here just reset the count and check in the main program
+occurred (10 minutes). Here just reset the count. Check in the main program
 if some action is needed.
 */
 ISR(WDT_OVERFLOW_vect )
