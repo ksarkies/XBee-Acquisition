@@ -1,9 +1,11 @@
 XBee Data Acquisition PCB
 -------------------------
 
-Final PCB for remote unit, including XBee with battery monitor and photodiode
+PCB for remote unit, including XBee with battery monitor and photodiode
 counter.
 
+This will not be developed further. See the Kicad-XBee directory.
+
 K. Sarkies
-7 July 2014
+24 July 2014
 

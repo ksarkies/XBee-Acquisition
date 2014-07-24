@@ -24,8 +24,8 @@
 *.sym
 *.csv
 *.lib
-Kicad/symbols/
-Kicad/footprints/
+Kicad-XBee/symbols/
+Kicad-XBee/footprints/
 auxiliary/
 moc_*
 ui_*
