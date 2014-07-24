@@ -177,8 +177,10 @@ address avoids knowing the actual address, but may cause an address discovery ev
             if (messageError > 0) sendch(messageError);
             else if (rxMessage.frameType == RX_REQUEST)
             {
+/* Toggle test port */
                 if (rxMessage.message.rxRequest.data[0] == 'L') cbi(PORTB,0);
                 if (rxMessage.message.rxRequest.data[0] == 'O') sbi(PORTB,0);
+/* Echo */
                 sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                                    rxMessage.message.rxRequest.sourceAddress16,
                                    0, 0, rxMessage.length-12, rxMessage.message.rxRequest.data);

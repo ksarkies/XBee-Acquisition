@@ -1,11 +1,11 @@
-/*        XBee AVR Node Example
+/*        XBee AVR Node Firmware
        Ken Sarkies ksarkies@internode.on.net
-            4 January 2013
+            21 July 2014
 
 version     0.0
 Software    AVR-GCC 4.8.2
 Target:     Any AVR with sufficient output ports and a timer
-Tested:     ATMega48 at 8MHz internal clock.
+Tested:     ATtint4313 at 1MHz internal clock.
 
 */
 /****************************************************************************
@@ -29,13 +29,87 @@ Tested:     ATMega48 at 8MHz internal clock.
 #ifndef _XBEE_NODE_H_
 #define _XBEE_NODE_H_
 
-/* baud rate register value calculation */
-#ifndef F_CPU
-#define F_CPU           1000000
-#endif
-#define BAUD_RATE       9600
-
 #define ACTION_MINUTES  10
 #define ACTION_COUNT    (ACTION_MINUTES*75)/2
+
+/* Xbee parameters */
+#define RF_PAYLOAD  63
+
+/**********************************************************/
+/** @name Error Definitions.
+From the UART:
+@{*/
+#define NO_DATA                 0x01
+#define BUFFER_OVERFLOW         0x02
+#define OVERRUN_ERROR           0x04
+#define FRAME_ERROR             0x08
+
+#define STATE_MACHINE           0x10
+#define CHECKSUM                0x11
+/*@}*/
+
+#define RX_REQUEST              0x90
+#define TX_REQUEST              0x10
+
+/* The rxFrameType can be expressed as an Rx Request or AT Command Response frame */
+typedef struct
+{
+    uint16_t length;
+    uint8_t checksum;
+    uint8_t frameType;
+    uint8_t frameId;
+    union
+    {
+        uint8_t array[RF_PAYLOAD+13];
+        struct
+        {
+            uint8_t sourceAddress64[8];
+            uint8_t sourceAddress16[2];
+            uint8_t options;
+            uint8_t data[RF_PAYLOAD];
+        } rxRequest;
+    } message;
+} rxFrameType;
+
+/* The txFrameType can be expressed as a Tx Request or AT Command frame */
+typedef struct
+{
+    uint16_t length;
+    uint8_t checksum;
+    uint8_t frameType;
+    union
+    {
+        uint8_t array[RF_PAYLOAD+15];
+        struct
+        {
+            uint8_t frameID;
+            uint8_t atCommand1;
+            uint8_t atCommand2;
+            uint8_t parameter;
+        } atCommand;
+        struct
+        {
+            uint8_t frameID;
+            uint8_t sourceAddress64[8];
+            uint8_t sourceAddress16[2];
+            uint8_t radius;
+            uint8_t options;
+            uint8_t data[RF_PAYLOAD];
+        } txRequest;
+    } message;
+} txFrameType;
+
+/* Prototypes */
+
+void hardwareInit(void);
+void wdtInit(void);
+
+void handleReceiveMessage(void);
+
+/* XBee related prototypes */
+
+void sendBaseFrame(txFrameType txMessage);
+void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
+                        uint8_t radius, uint8_t options, uint8_t length, uint8_t data[]);
 
 #endif /*_XBEE_NODE_H_ */

@@ -23,6 +23,9 @@
 *.lss
 *.sym
 *.csv
+*.lib
+Kicad/symbols/
+Kicad/footprints/
 auxiliary/
 moc_*
 ui_*

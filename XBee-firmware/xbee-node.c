@@ -19,13 +19,13 @@ and battery voltage to the XBee. The XBee is then woken again after a short
 interval to pass on any base station messages to the AVR.
 
 @note
-Fuses: Disable the "WDT Always On" fuse and the BOD fuse.
+Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.
 @note
 Software: AVR-GCC 4.8.2
 @note
 Target:   Any AVR with sufficient output ports and a timer
 @note
-Tested:   ATTint4313 at 1MHz internal clock.
+Tested:   ATTiny4313 at 1MHz internal clock.
 
 */
 /****************************************************************************
@@ -46,15 +46,16 @@ Tested:   ATTint4313 at 1MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
+#include "defines.h"
 #include <inttypes.h>
 #include <avr/sfr_defs.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-#include "serial.h"
-#include "defines.h"
+#include <util/delay.h>
 #include "xbee-node.h"
+#include "serial.h"
 
 // Definitions of microcontroller registers and other characteristics
 #define	_ATtiny4313
@@ -102,41 +103,11 @@ int main(void)
 {
 
 /*  Initialise hardware */
-/* Set PRR to disable all peripherals except USART.
-Set input ports to pullups and disable digital input buffers on AIN inputs. */
-
-    outb(PRR,0x0F);     /* power down timer/counters, USI, USART */
-    cbi(PRR,PRUSART);
-    outb(DDRA,0);       /* set as inputs */
-    outb(PORTA,0x07);   /* set pullups   */
-    outb(DDRB,0);       /* set as inputs */
-    outb(PORTB,0xFF);   /* set pullups   */
-    outb(DDRD,0);       /* set as inputs */
-    outb(PORTD,0x1F);   /* set pullups   */
-    sbi(ACSR,ACD);      /* turn off Analogue Comparator */
-    outb(DIDR,3);       /* turn off digital input buffers */
-
-/* Set ports to desired directions */
-    outb(DDRA,inb(TEST_PORT_DIR) | _BV(TEST_PIN));  /* test port as output */
-
-/* Brownout detector must be disabled in fuses */
-
-/** Use Interrupt 0 with rising edge triggering in power down mode */
-    sbi(GIMSK,INT0);                /* Enable Interrupt 0 */
-    outb(MCUCR,inb(MCUCR) | 0x03);  /* Rising edge trigger on interrupt 1 */
-
+    hardwareInit();
+    wdtInit();
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-
-/* Watchdog timer initialize to interrupt. */
-/* Important: Disable the "WDT Always On" fuse so that WDT can be turned off. */
-    wdt_disable();     /* watchdog timer turn off ready for setup. */
-    outb(WDTCR,0);
-/* Set the WDT with WDE clear, interrupts enabled, interrupt mode set, and
-maximum timeout 8 seconds to give continuous interrupt mode. */
-    sei();
-    outb(WDTCR,_BV(WDIE)|0x09);
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -163,16 +134,204 @@ event. */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
+//        if ((counter0 & 0x01) > 0) cbi(TEST_PORT,TEST_PIN);
+//        else sbi(TEST_PORT,TEST_PIN);
         if (wdtCounter == 0)
         {
+/* Wakeup the XBee and wait for a bit before sleeping it again. */
+            cbi(VBAT_PORT,VBAT_PIN);    /* Wakeup XBee */
+            _delay_ms(50);
+            sbi(VBAT_PORT,VBAT_PIN);    /* Request XBee Sleep */
+
 /* Toggle the test port to see if WDT interrupt working. */
-            if ((inb(TEST_PORT) & _BV(TEST_PIN)) > 0) cbi(TEST_PORT,TEST_PIN);
-            else sbi(TEST_PORT,TEST_PIN);
+//            if ((inb(TEST_PORT) & _BV(TEST_PIN)) > 0) cbi(TEST_PORT,TEST_PIN);
+//            else sbi(TEST_PORT,TEST_PIN);
         }
+//        handleReceiveMessage();
     }
 }
+
 /****************************************************************************/
-/** @brief Interrupt on INT1.
+
+void handleReceiveMessage(void)
+{
+/* Check for incoming messages */
+/* The Rx message variable is re-used and must be processed before the next
+arrives */
+            rxFrameType rxMessage;
+/* Wait for data to appear */
+            uint16_t inputChar = getch();
+            messageError = high(inputChar);
+            if (messageError != NO_DATA)
+            {
+/* Pull in the next character and look for message start */
+/* Read in the length (16 bits) and frametype then the rest to a buffer */
+                uint8_t inputValue = low(inputChar);
+                switch(messageState)
+                {
+/* Sync character */
+                    case 0:
+                        if (inputChar == 0x7E) messageState++;
+                        break;
+/* Two byte length */
+                    case 1:
+                        rxMessage.length = (inputChar << 8);
+                        messageState++;
+                        break;
+                    case 2:
+                        rxMessage.length += inputValue;
+                        messageState++;
+                        break;
+/* Frame type */
+                    case 3:
+                        rxMessage.frameType = inputValue;
+                        rxMessage.checksum = inputValue;
+                        messageState++;
+                        break;
+/* Rest of message, maybe include addresses or just data */
+                    default:
+                        if (messageState > rxMessage.length + 3)
+                            messageError = STATE_MACHINE;
+                        else if (rxMessage.length + 3 > messageState)
+                        {
+                            rxMessage.message.array[messageState-4] = inputValue;
+                            messageState++;
+                            rxMessage.checksum += inputValue;
+                        }
+                        else
+                        {
+                            messageReady = TRUE;
+                            messageState = 0;
+                            if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0)
+                                messageError = CHECKSUM;
+                        }
+                }
+            }
+/* Respond to received message */
+/* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
+            if (messageReady)
+            {
+                messageReady = FALSE;
+                if (messageError > 0) sendch(messageError);
+                else if (rxMessage.frameType == RX_REQUEST)
+                {
+/* Simply toggle test port for now */
+                    if (rxMessage.message.rxRequest.data[0] == 'L')
+                        cbi(TEST_PORT,TEST_PIN);
+                    if (rxMessage.message.rxRequest.data[0] == 'O')
+                        sbi(TEST_PORT,TEST_PIN);
+/* Echo */
+                    sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
+                                    rxMessage.message.rxRequest.sourceAddress16,
+                                    0, 0, rxMessage.length-12,
+                                    rxMessage.message.rxRequest.data);
+                }
+            }
+}
+
+/****************************************************************************/
+/** @brief Initialize the hardware for process measurement
+
+Set all ports to inputs and disable all unused peripherals.
+Set the process counter interrupt to INT0.
+*/
+void hardwareInit(void)
+{
+/* Set PRR to disable all peripherals except USART.
+Set input ports to pullups and disable digital input buffers on AIN inputs. */
+
+    outb(PRR,0x0F);     /* power down timer/counters, USI */
+    cbi(PRR,PRUSART);   /* power up USART */
+    outb(DDRA,0);       /* set as inputs */
+    outb(PORTA,0x07);   /* set pullups   */
+    outb(DDRB,0);       /* set as inputs */
+    outb(PORTB,0xFF);   /* set pullups   */
+    outb(DDRD,0);       /* set as inputs */
+    outb(PORTD,0x1F);   /* set pullups   */
+    sbi(ACSR,ACD);      /* turn off Analogue Comparator */
+    outb(DIDR,3);       /* turn off digital input buffers */
+
+/* Set ports to desired directions */
+
+//    outb(TEST_PORT_DIR,inb(TEST_PORT_DIR) | _BV(TEST_PIN)); /* Test port */
+    outb(VBAT_PORT_DIR,inb(VBAT_PORT_DIR) | _BV(VBAT_PIN));
+    sbi(VBAT_PORT,VBAT_PIN);        /* Default XBee Sleep */
+
+/** Counter: Use Interrupt 0 with rising edge triggering in power down mode */
+    sbi(GIMSK,INT0);                /* Enable Interrupt 0 */
+    outb(MCUCR,inb(MCUCR) | 0x03);  /* Rising edge trigger on interrupt 0 */
+}
+
+/****************************************************************************/
+/** @brief Initialize the watchdog timer to interrupt on maximum delay
+
+*/
+void wdtInit(void)
+{
+/* Initialize the Watchdog timer to interrupt. */
+/* IMPORTANT: Disable the "WDT Always On" fuse so that WDT can be turned off. */
+    wdt_disable();     /* watchdog timer turn off ready for setup. */
+    outb(WDTCR,0);
+/* Set the WDT with WDE clear, interrupts enabled, interrupt mode set, and
+maximum timeout 8 seconds to give continuous interrupt mode. */
+    sei();
+//    outb(WDTCR,_BV(WDIE)|_BV(WDP3)|_BV(WDP0));
+    outb(WDTCR,_BV(WDIE));  /* For test: 32 ms timeout */
+
+}
+
+/****************************************************************************/
+/** @brief Build and transmit a basic frame
+
+Send preamble, then data block, followed by computed checksum
+*/
+void sendBaseFrame(txFrameType txMessage)
+{
+    sendch(0x7E);
+    sendch(high(txMessage.length));
+    sendch(low(txMessage.length));
+    sendch(txMessage.frameType);
+    txMessage.checksum = txMessage.frameType;
+    for (uint8_t i=0; i < txMessage.length-1; i++)
+    {
+        uint8_t txData = txMessage.message.array[i];
+        sendch(txData);
+        txMessage.checksum += txData;
+    }
+    sendch(0xFF-txMessage.checksum);
+}
+
+/****************************************************************************/
+/** @brief Build and transmit a Tx Request frame
+
+*/
+void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
+                        uint8_t radius, uint8_t options, uint8_t dataLength,
+                        uint8_t data[])
+{
+    txFrameType txMessage;
+    txMessage.frameType = TX_REQUEST;
+    txMessage.message.txRequest.frameID = 0x02;
+    txMessage.length = dataLength+14;
+    for (uint8_t i=0; i < 8; i++)
+    {
+        txMessage.message.txRequest.sourceAddress64[i] = sourceAddress64[i];
+    }
+    for (uint8_t i=0; i < 2; i++)
+    {
+        txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
+    }
+    txMessage.message.txRequest.radius = 0;
+    txMessage.message.txRequest.options = 0;
+    for (uint8_t i=0; i < dataLength; i++)
+    {
+        txMessage.message.txRequest.data[i] = data[i];
+    }
+    sendBaseFrame(txMessage);
+}
+
+/****************************************************************************/
+/** @brief Interrupt on INT0.
 
 Increment a counter 32 bits.
 

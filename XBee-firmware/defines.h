@@ -4,9 +4,9 @@ This file assigns registers, particular to an AVR type, to common constants.
 
 I/O pin values for controlling the boorloader operation are given at the end.
 
-Software: AVR-GCC 4.5.3
+Software: AVR-GCC 4.8.2
 Target:   Any AVR with sufficient output ports and a timer
-Tested:   ATMega168 at 8MHz internal clock.
+Tested:   ATTiny4313 at 1MHz internal clock.
 */
 
 /****************************************************************************
@@ -27,11 +27,13 @@ Tested:   ATMega168 at 8MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-/* These are the defines for the selected device and bootloader system */
-#define F_CPU               1000000
-#define BAUD                9600
+/* baud rate register value calculation */
+#ifndef F_CPU
+#define F_CPU                   1000000
+#endif
+#define BAUD                    9600
 
-// Simple serial I/O (must define cpu frequency and baudrate before this include) */
+/* Simple serial I/O (must define cpu frequency and baudrate before this include) */
 #include <util/setbaud.h>
 
 /* definitions for UART control */
@@ -55,7 +57,13 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define UART_RTS_PORT_DIR       DDRA
 #define UART_RTS_PIN            0
 
-#define TEST_PORT_DIR           DDRA
-#define TEST_PORT               PORTA
+/* Battery Measurement Control */
+#define VBAT_PORT_DIR           DDRD
+#define VBAT_PORT               PORTD
+#define VBAT_PIN                5
+
+/* Test pin */
+#define TEST_PORT_DIR           DDRD
+#define TEST_PORT               PORTD
 #define TEST_PIN                3
 
