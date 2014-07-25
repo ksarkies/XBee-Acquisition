@@ -117,6 +117,6 @@ void resetTimer(void);
 
 void sendBaseFrame(txFrameType txMessage);
 void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                        uint8_t radius, uint8_t options, uint8_t length, uint8_t data[]);
+                        uint8_t radius, uint8_t length, uint8_t data[]);
 
 #endif /*_XBEE_NODE_EXAMPLE_H_ */

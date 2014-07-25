@@ -183,7 +183,7 @@ address avoids knowing the actual address, but may cause an address discovery ev
 /* Echo */
                 sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                                    rxMessage.message.rxRequest.sourceAddress16,
-                                   0, 0, rxMessage.length-12, rxMessage.message.rxRequest.data);
+                                   0, rxMessage.length-12, rxMessage.message.rxRequest.data);
             }
         }
     }
@@ -213,9 +213,16 @@ void sendBaseFrame(txFrameType txMessage)
 /****************************************************************************/
 /** @brief Build and transmit a Tx Request frame
 
+A data message for the XBee API is formed and transmitted.
+
+@param[in]:   uint8_t sourceAddress64[]. Address of parent or 0 for coordinator.
+@param[in]:   uint8_t sourceAddress16[].
+@param[in]:   uint8_t radius. Broadcast radius or 0 for maximum network value.
+@param[in]:   uint8_t dataLength. Length of data array.
+@param[in]:   uint8_t data[]. Define array size to be greater than length.
 */
 void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                         uint8_t radius, uint8_t options, uint8_t dataLength, uint8_t data[])
+                         uint8_t radius, uint8_t dataLength, uint8_t data[])
 {
     txFrameType txMessage;
     txMessage.frameType = TX_REQUEST;
@@ -229,7 +236,7 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
     {
         txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
     }
-    txMessage.message.txRequest.radius = 0;
+    txMessage.message.txRequest.radius = radius;
     txMessage.message.txRequest.options = 0;
     for (uint8_t i=0; i < dataLength; i++)
     {
@@ -270,14 +277,14 @@ void resetTimer(void)
 This ISR sends a dummy data record to the coordinator.
 */
 
-ISR(TIM0_OVF_vect)
+ISR(TIMER0_OVF_vect)
 {
     uint8_t data[7] = "DHello";
     time.timeValue++;
     counter--;
     if (counter == 0)
     {
-        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,0,6,data);
+        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,6,data);
     }
 }
 /****************************************************************************/
