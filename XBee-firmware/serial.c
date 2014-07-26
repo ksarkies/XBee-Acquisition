@@ -36,12 +36,19 @@
 /* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
 
 Baud rate is derived from the header call to setbaud.h.
+UBRRL_VALUE and UBRRH_VALUE and USE_2X are returned, the latter requires the
+U2X bit to be set in UCSRA to force a double baud rate clock.
 */
 
 void uartInit(void)
 {
     BAUD_RATE_LOW_REG = UBRRL_VALUE;
     BAUD_RATE_HIGH_REG = UBRRH_VALUE;
+#if USE_2X
+    sbi(UART_STATUS_REG,DOUBLE_RATE);
+#else
+    sbi(UART_STATUS_REG,DOUBLE_RATE);
+#endif
     UART_FORMAT_REG = (3 << FRAME_SIZE);                // Set 8 bit frames
     UART_CONTROL_REG |= _BV(ENABLE_RECEIVER_BIT) |
                         _BV(ENABLE_TRANSMITTER_BIT);    // enable receive and transmit 

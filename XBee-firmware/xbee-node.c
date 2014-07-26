@@ -57,14 +57,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include "xbee-node.h"
 #include "serial.h"
 
-// Definitions of microcontroller registers and other characteristics
-#define	_ATtiny4313
-#ifdef	__ICCAVR__
-#include "iotn4313.h"
-#elif	__GNUC__
-#include <avr/io.h>
-#endif
-
 #define TRUE 1
 #define FALSE 0
 /* Convenience macros (we don't use them all) */

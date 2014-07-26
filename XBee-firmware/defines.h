@@ -28,9 +28,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  ***************************************************************************/
 
 /* baud rate register value calculation */
-#ifndef F_CPU
 #define F_CPU                   1000000
-#endif
 #define BAUD                    9600
 
 /* Simple serial I/O (must define cpu frequency and baudrate before this include) */
@@ -48,6 +46,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define	TRANSMIT_COMPLETE_BIT	TXC
 #define	RECEIVE_COMPLETE_BIT	RXC
 #define	UART_DATA_REG	        UDR
+#define DOUBLE_RATE             U2X
 
 /* UART Flow control ports */
 #define UART_CTS_PORT           PINA

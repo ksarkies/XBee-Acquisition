@@ -46,6 +46,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define	TRANSMIT_COMPLETE_BIT	TXC0
 #define	RECEIVE_COMPLETE_BIT	RXC0
 #define	UART_DATA_REG	        UDR0
+#define DOUBLE_RATE             U2X0
 
 /* UART Flow control ports */
 #define UART_CTS_PORT           PIND
