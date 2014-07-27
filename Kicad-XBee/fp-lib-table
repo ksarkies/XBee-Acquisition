@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name KB1LQC)(type Legacy)(uri ${KIPRJMOD}/modules/KB1LQC.mod)(options "")(descr ""))
+  (lib (name imciner2)(type Legacy)(uri ${KIPRJMOD}/modules/imciner2.mod)(options "")(descr ""))
+)
