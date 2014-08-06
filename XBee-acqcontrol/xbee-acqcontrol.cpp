@@ -1072,19 +1072,19 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt
     struct tm *tmp;
     tmp = localtime(&now);
     strftime(outstr, sizeof(outstr),"%FT%H:%M:%S",tmp);
+    int writeLength = (*pkt)->dataLen;
+    if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
 #ifdef DEBUG
     if (row == numberNodes) printf("Node Unknown ");
     else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf("Data Packet: Time %s length %d, data ",outstr,(*pkt)->dataLen);
-    for (int i=0; i<(*pkt)->dataLen; i++) printf("%c", (*pkt)->data[i]);
+    printf("Data Packet: Time %s length %d, data ",outstr,writeLength);
+    for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
     printf("\n");
 #endif
-    int writeLength = (*pkt)->dataLen;
-    if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
     if ((*pkt)->data[0] == 'D')
     {
         if (row == numberNodes) fprintf(fp,"Node Unknown ");
-        else fprintf(fp,"Node %s", nodeInfo[row].nodeIdent);
+        else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
         fprintf(fp," %s ", outstr);
         fprintf(fp, "Data ");
         for (int i=0; i<writeLength; i++) buffer[i] = (*pkt)->data[i+1];
@@ -1095,8 +1095,9 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt
     else
     {
         dataResponseRcvd = true;
-        for (int i=0; i< min(SIZE,(*pkt)->dataLen); i++)
+        for (int i=0; i< min(SIZE,writeLength); i++)
             dataResponseData[i] = (*pkt)->data[i];
+        fprintf(fp, "\n");
     }
 /* If we are hearing from this then it is a valid node */
     if (row < numberNodes) nodeInfo[row].valid = TRUE;
@@ -1193,12 +1194,13 @@ write the next word field directly as the set of digitial ports. */
             index += 2;
         }
     }
+    fprintf(fp, "\n");
 /* Write to the disk now to ensure it is available */
     dataFileCheck();
 #ifdef DEBUG
     if (row == numberNodes) printf("Node Unknown ");
     else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf(" %s ", outstr);
+    printf("%s ", outstr);
     printf("I/O ");
 /* Compute the analogue data fields from the response */
     int jindex = 4;

@@ -61,6 +61,11 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define VBAT_PORT               PORTD
 #define VBAT_PIN                5
 
+/* Sleep request Control */
+#define SLEEP_RQ_PORT_DIR       DDRB
+#define SLEEP_RQ_PORT           PORTB
+#define SLEEP_RQ_PIN            3
+
 /* Test pin */
 #define TEST_PORT_DIR           DDRD
 #define TEST_PORT               PORTD

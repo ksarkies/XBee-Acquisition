@@ -128,11 +128,11 @@ event. */
         {
 /* Wakeup the XBee and wait for a bit. Send a message and sleep it again
 after a delay. */
-            cbi(VBAT_PORT,VBAT_PIN);    /* Wakeup XBee */
+            cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
+            _delay_ms(PIN_WAKE_PERIOD);
             uint8_t data[12] = "DNode End-3";
             sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,data);
-            _delay_ms(50);
-            sbi(VBAT_PORT,VBAT_PIN);    /* Request XBee Sleep */
+            sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
 
 /* Toggle the test port to see if WDT interrupt working. */
 //            if ((inb(TEST_PORT) & _BV(TEST_PIN)) > 0) cbi(TEST_PORT,TEST_PIN);
@@ -249,15 +249,17 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
     sbi(ACSR,ACD);      /* turn off Analogue Comparator */
     outb(DIDR,3);       /* turn off digital input buffers */
 
-/* Set ports to desired directions */
+/* Set output ports to desired directions and initial settings */
 
-    outb(TEST_PORT_DIR,inb(TEST_PORT_DIR) | _BV(TEST_PIN)); /* Test port */
-    outb(VBAT_PORT_DIR,inb(VBAT_PORT_DIR) | _BV(VBAT_PIN));
-    sbi(VBAT_PORT,VBAT_PIN);        /* Default XBee Sleep */
+    sbi(TEST_PORT_DIR,TEST_PIN);        /* Test port */
+    sbi(VBAT_PORT_DIR,VBAT_PIN);
+    cbi(VBAT_PORT,VBAT_PIN);            /* Battery Measure */
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);
+    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Default XBee Sleep */
 
 /** Counter: Use Interrupt 0 with rising edge triggering in power down mode */
-    sbi(GIMSK,INT0);                /* Enable Interrupt 0 */
-    outb(MCUCR,inb(MCUCR) | 0x03);  /* Rising edge trigger on interrupt 0 */
+    sbi(GIMSK,INT0);                    /* Enable Interrupt 0 */
+    outb(MCUCR,inb(MCUCR) | 0x03);      /* Rising edge trigger on interrupt 0 */
 }
 
 /****************************************************************************/

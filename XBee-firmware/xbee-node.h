@@ -34,6 +34,8 @@ Tested:     ATtint4313 at 1MHz internal clock.
 
 /* Xbee parameters */
 #define RF_PAYLOAD  63
+/* Time XBee waits before sleeping */
+#define PIN_WAKE_PERIOD 1
 
 /**********************************************************/
 /** @name Error Definitions.
