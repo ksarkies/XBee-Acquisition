@@ -31,6 +31,7 @@ LIBS:contrib
 LIBS:valves
 LIBS:RF_OEM_Parts
 LIBS:KB1LQC
+LIBS:xbee-node-attiny841-cache
 EELAYER 24 0
 EELAYER END
 $Descr A4 11693 8268
@@ -788,10 +789,18 @@ F 3 "" H 6850 5500 60  0000 C CNN
 	1    6850 5500
 	0    -1   -1   0   
 $EndComp
-NoConn ~ 7650 5600
-NoConn ~ 7650 5700
-NoConn ~ 7650 5800
+Text Label 7650 5600 0    60   ~ 0
+Reset
+Text Label 6850 5800 2    60   ~ 0
+On/Sleep
+Text Label 7650 5700 0    60   ~ 0
+Sleep-Rq
+Text Label 6850 5700 2    60   ~ 0
+Rx
+Text Label 7650 5800 0    60   ~ 0
+Tx
 NoConn ~ 7650 5900
-NoConn ~ 6850 5700
-NoConn ~ 6850 5800
+Connection ~ 4450 5600
+Connection ~ 3450 5500
+Connection ~ 9650 2000
 $EndSCHEMATC
