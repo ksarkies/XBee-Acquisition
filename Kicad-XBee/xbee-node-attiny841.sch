@@ -634,14 +634,24 @@ Wire Wire Line
 	1450 5900 1450 6600
 Connection ~ 9650 1400
 Wire Wire Line
-	4600 1550 6300 1550
+	4600 1550 5400 1550
+Wire Wire Line
+	5400 1550 5650 1550
+Wire Wire Line
+	5650 1550 5900 1550
+Wire Wire Line
+	5900 1550 6150 1550
+Wire Wire Line
+	6150 1550 6300 1550
 Wire Wire Line
 	2300 4800 2300 5500
 Connection ~ 2600 5500
 Wire Wire Line
 	2300 5900 2300 6400
 Wire Wire Line
-	2600 5300 2600 6200
+	2600 5300 2600 5500
+Wire Wire Line
+	2600 5500 2600 6200
 Wire Wire Line
 	3450 5500 3450 4850
 Wire Wire Line
@@ -653,26 +663,23 @@ Wire Wire Line
 Wire Wire Line
 	4450 5600 4450 4850
 Wire Wire Line
-	4450 5600 6850 5600
-Wire Wire Line
-	4800 3900 4800 5600
-Wire Wire Line
-	4450 3900 4800 3900
-Wire Wire Line
 	9350 4100 9350 2700
 Wire Wire Line
-	4950 4100 9350 4100
+	5100 4100 9350 4100
 Wire Wire Line
-	6900 1400 10050 1400
+	6900 1400 7300 1400
+Wire Wire Line
+	7300 1400 9650 1400
+Wire Wire Line
+	9650 1400 10050 1400
 Wire Wire Line
 	9650 1400 9650 2000
-Connection ~ 4800 5600
 Connection ~ 7300 1400
 Connection ~ 6150 1550
 Wire Wire Line
-	4950 4100 4950 3500
+	5100 4100 5100 3500
 Wire Wire Line
-	4950 3500 4450 3500
+	5100 3500 4450 3500
 $Comp
 L GND #PWR028
 U 1 1 53E22A19
@@ -802,5 +809,11 @@ Tx
 NoConn ~ 7650 5900
 Connection ~ 4450 5600
 Connection ~ 3450 5500
-Connection ~ 9650 2000
+Connection ~ 9650 2900
+Text Label 4450 3900 0    60   ~ 0
+Count
+Text Label 4450 5600 0    60   ~ 0
+Count
+Text Label 6850 5600 2    60   ~ 0
+Count
 $EndSCHEMATC
