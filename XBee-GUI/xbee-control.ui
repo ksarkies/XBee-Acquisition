@@ -251,6 +251,22 @@
     <string>XBee Address or ID</string>
    </property>
   </widget>
+  <widget class="QPushButton" name="refreshListButton_2">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>130</y>
+     <width>111</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>Launch an application control window.</string>
+   </property>
+   <property name="text">
+    <string>Application</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>
