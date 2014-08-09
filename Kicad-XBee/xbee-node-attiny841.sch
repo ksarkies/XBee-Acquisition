@@ -31,7 +31,6 @@ LIBS:contrib
 LIBS:valves
 LIBS:RF_OEM_Parts
 LIBS:KB1LQC
-LIBS:xbee-node-attiny841-cache
 EELAYER 24 0
 EELAYER END
 $Descr A4 11693 8268
@@ -459,7 +458,7 @@ Text Label 6850 4850 2    60   ~ 0
 On/Sleep
 Text Label 4450 2800 0    60   ~ 0
 On/Sleep
-Text Label 4450 3800 0    60   ~ 0
+Text Label 4450 3900 0    60   ~ 0
 Xbee-Reset
 Text Label 7650 4650 0    60   ~ 0
 Sleep-Rq
@@ -634,24 +633,14 @@ Wire Wire Line
 	1450 5900 1450 6600
 Connection ~ 9650 1400
 Wire Wire Line
-	4600 1550 5400 1550
-Wire Wire Line
-	5400 1550 5650 1550
-Wire Wire Line
-	5650 1550 5900 1550
-Wire Wire Line
-	5900 1550 6150 1550
-Wire Wire Line
-	6150 1550 6300 1550
+	4600 1550 6300 1550
 Wire Wire Line
 	2300 4800 2300 5500
 Connection ~ 2600 5500
 Wire Wire Line
 	2300 5900 2300 6400
 Wire Wire Line
-	2600 5300 2600 5500
-Wire Wire Line
-	2600 5500 2600 6200
+	2600 5300 2600 6200
 Wire Wire Line
 	3450 5500 3450 4850
 Wire Wire Line
@@ -667,11 +656,7 @@ Wire Wire Line
 Wire Wire Line
 	5100 4100 9350 4100
 Wire Wire Line
-	6900 1400 7300 1400
-Wire Wire Line
-	7300 1400 9650 1400
-Wire Wire Line
-	9650 1400 10050 1400
+	6900 1400 10050 1400
 Wire Wire Line
 	9650 1400 9650 2000
 Connection ~ 7300 1400
@@ -810,7 +795,7 @@ NoConn ~ 7650 5900
 Connection ~ 4450 5600
 Connection ~ 3450 5500
 Connection ~ 9650 2900
-Text Label 4450 3900 0    60   ~ 0
+Text Label 4450 3800 0    60   ~ 0
 Count
 Text Label 4450 5600 0    60   ~ 0
 Count
