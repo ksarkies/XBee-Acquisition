@@ -10,17 +10,17 @@ Due to space constraints the XBee is mounted on a separate board that sits at
 right angles to the PCB. The XBee connects to an external aerial through an RF
 cable. For measurement of battery voltage, a switched divider circuit is
 provided for the case that the batteries provide a higher voltage than the
-circuit power supply which is sourced via a voltage regulator). The LED is
+circuit power supply (which is sourced via a voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
-XBee and 5x2 connector symbol and footprint is taken from Ian McInerney:
+XBee footprint is taken from Ian McInerney's library:
 https://github.com/imciner2/KiCad-Libraries RF_OEM_PARTS.lib and footprints.mod
 
 TPS77033 symbol from Rochester Institute of technology:
-http://edge.rit.edu/edge/P13271/public/KiCad/Libraries KB1LQC.lib and KB1LQC.mod
+http://edge.rit.edu/edge/P13271/public/KiCad/Libraries KB1LQC.lib
 
-The latter is a legacy footprint. Place the file into the modules directory. In
+These are legacy footprints. Place the mod files into the modules directory. In
 CvPcb go to "Library Tables", then select the tab "Project Specific Libraries".
 Append a new entry, add the library path (including the name of the .mod file),
 choosing "Legacy" for the plugin type. The nickname will then appear in the main

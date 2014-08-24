@@ -1,0 +1,301 @@
+EESchema Schematic File Version 2
+LIBS:power
+LIBS:device
+LIBS:transistors
+LIBS:conn
+LIBS:linear
+LIBS:regul
+LIBS:74xx
+LIBS:cmos4000
+LIBS:adc-dac
+LIBS:memory
+LIBS:xilinx
+LIBS:special
+LIBS:microcontrollers
+LIBS:dsp
+LIBS:microchip
+LIBS:analog_switches
+LIBS:motorola
+LIBS:texas
+LIBS:intel
+LIBS:audio
+LIBS:interface
+LIBS:digital-audio
+LIBS:philips
+LIBS:display
+LIBS:cypress
+LIBS:siliconi
+LIBS:opto
+LIBS:atmel
+LIBS:contrib
+LIBS:valves
+LIBS:RF_OEM_Parts
+LIBS:Kicad-mounts-cache
+EELAYER 24 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L XBEE XB1
+U 1 1 53F67332
+P 4050 3850
+F 0 "XB1" H 4050 4650 60  0000 C CNN
+F 1 "XBEE" H 4050 4750 60  0000 C CNN
+F 2 "Imciner:XBee" H 4050 3850 60  0001 C CNN
+F 3 "" H 4050 3850 60  0000 C CNN
+	1    4050 3850
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_3 P4
+U 1 1 53F674B3
+P 5550 4750
+F 0 "P4" V 5500 4750 50  0000 C CNN
+F 1 "CONN_3" V 5600 4750 40  0000 C CNN
+F 2 "Photodiode:pin_header_2mm_1x3" H 5550 4750 60  0001 C CNN
+F 3 "" H 5550 4750 60  0000 C CNN
+	1    5550 4750
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_3 P5
+U 1 1 53F6753C
+P 5550 5250
+F 0 "P5" V 5500 5250 50  0000 C CNN
+F 1 "CONN_3" V 5600 5250 40  0000 C CNN
+F 2 "Photodiode:pin_header_2mm_1x3" H 5550 5250 60  0001 C CNN
+F 3 "" H 5550 5250 60  0000 C CNN
+	1    5550 5250
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_6X2 P3
+U 1 1 53F67592
+P 3850 5050
+F 0 "P3" H 3850 5400 60  0000 C CNN
+F 1 "CONN_6X2" V 3850 5050 60  0000 C CNN
+F 2 "Photodiode:pin_header_2mm_2x6" H 3850 5050 60  0001 C CNN
+F 3 "" H 3850 5050 60  0000 C CNN
+	1    3850 5050
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_10 P2
+U 1 1 53F675C9
+P 6350 3850
+F 0 "P2" V 6300 3850 60  0000 C CNN
+F 1 "CONN_10" V 6400 3850 60  0000 C CNN
+F 2 "Connect:SIL-10" H 6350 3850 60  0001 C CNN
+F 3 "" H 6350 3850 60  0000 C CNN
+	1    6350 3850
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_10 P1
+U 1 1 53F6774F
+P 1850 3850
+F 0 "P1" V 1800 3850 60  0000 C CNN
+F 1 "CONN_10" V 1900 3850 60  0000 C CNN
+F 2 "Connect:SIL-10" H 1850 3850 60  0001 C CNN
+F 3 "" H 1850 3850 60  0000 C CNN
+	1    1850 3850
+	-1   0    0    -1  
+$EndComp
+$Comp
+L CONN_3 P6
+U 1 1 53F679DA
+P 9100 5200
+F 0 "P6" V 9050 5200 50  0000 C CNN
+F 1 "CONN_3" V 9150 5200 40  0000 C CNN
+F 2 "Connect:SIL-3" H 9100 5200 60  0001 C CNN
+F 3 "" H 9100 5200 60  0000 C CNN
+	1    9100 5200
+	1    0    0    -1  
+$EndComp
+$Comp
+L LED D1
+U 1 1 53F67A70
+P 8050 5200
+F 0 "D1" H 8050 5300 50  0000 C CNN
+F 1 "LED" H 8050 5100 50  0000 C CNN
+F 2 "Photodiode:VSMY2850" H 8050 5200 60  0001 C CNN
+F 3 "" H 8050 5200 60  0000 C CNN
+	1    8050 5200
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	8750 5100 8750 5000
+Wire Wire Line
+	8750 5000 8050 5000
+Wire Wire Line
+	8750 5200 8750 5400
+Wire Wire Line
+	8750 5400 8050 5400
+Wire Wire Line
+	2200 3400 3000 3400
+Wire Wire Line
+	2200 3500 3000 3500
+Wire Wire Line
+	2200 3600 3000 3600
+Wire Wire Line
+	2200 3700 3000 3700
+Wire Wire Line
+	2200 3800 3000 3800
+Wire Wire Line
+	2200 3900 3000 3900
+Wire Wire Line
+	2200 4000 3000 4000
+Wire Wire Line
+	2200 4100 3000 4100
+Wire Wire Line
+	2200 4200 3000 4200
+Wire Wire Line
+	2200 4300 3000 4300
+Wire Wire Line
+	5100 3400 6000 3400
+Wire Wire Line
+	5100 3500 6000 3500
+Wire Wire Line
+	5100 3600 6000 3600
+Wire Wire Line
+	5100 3700 6000 3700
+Wire Wire Line
+	5100 3800 6000 3800
+Wire Wire Line
+	5100 3900 6000 3900
+Wire Wire Line
+	5100 4000 6000 4000
+Wire Wire Line
+	5100 4100 6000 4100
+Wire Wire Line
+	5100 4200 6000 4200
+Wire Wire Line
+	5100 4300 6000 4300
+Text Label 3450 4900 2    60   ~ 0
+Bootloader
+Text Label 4250 4900 0    60   ~ 0
+VBatt
+Text Label 3450 5000 2    60   ~ 0
+Reset
+Text Label 4250 5000 0    60   ~ 0
+XBee-Reset
+Text Label 3450 5100 2    60   ~ 0
+Rx
+Text Label 4250 5100 0    60   ~ 0
+Sleep_Rq
+Text Label 3450 5200 2    60   ~ 0
+On/Sleep
+Text Label 4250 5300 0    60   ~ 0
+Tx
+$Comp
+L GND #PWR01
+U 1 1 53F68519
+P 3450 5300
+F 0 "#PWR01" H 3450 5300 30  0001 C CNN
+F 1 "GND" H 3450 5230 30  0001 C CNN
+F 2 "" H 3450 5300 60  0000 C CNN
+F 3 "" H 3450 5300 60  0000 C CNN
+	1    3450 5300
+	0    1    1    0   
+$EndComp
+$Comp
+L VCC #PWR02
+U 1 1 53F6854B
+P 4250 4800
+F 0 "#PWR02" H 4250 4900 30  0001 C CNN
+F 1 "VCC" V 4250 4950 30  0000 C CNN
+F 2 "" H 4250 4800 60  0000 C CNN
+F 3 "" H 4250 4800 60  0000 C CNN
+	1    4250 4800
+	0    1    1    0   
+$EndComp
+Text Label 5200 4650 2    60   ~ 0
+Rx
+Text Label 5200 4750 2    60   ~ 0
+Reset
+Text Label 5200 4850 2    60   ~ 0
+On/Sleep
+Text Label 5200 5350 2    60   ~ 0
+Bootloader
+Text Label 3000 3800 2    60   ~ 0
+XBee-Reset
+Text Label 3000 4200 2    60   ~ 0
+Sleep_Rq
+$Comp
+L GND #PWR03
+U 1 1 53F689D6
+P 3000 4300
+F 0 "#PWR03" H 3000 4300 30  0001 C CNN
+F 1 "GND" H 3000 4230 30  0001 C CNN
+F 2 "" H 3000 4300 60  0000 C CNN
+F 3 "" H 3000 4300 60  0000 C CNN
+	1    3000 4300
+	1    0    0    -1  
+$EndComp
+$Comp
+L VCC #PWR04
+U 1 1 53F689F2
+P 3000 3400
+F 0 "#PWR04" H 3000 3500 30  0001 C CNN
+F 1 "VCC" H 3000 3500 30  0000 C CNN
+F 2 "" H 3000 3400 60  0000 C CNN
+F 3 "" H 3000 3400 60  0000 C CNN
+	1    3000 3400
+	1    0    0    -1  
+$EndComp
+Text Label 5100 4100 0    60   ~ 0
+On/Sleep
+Text Label 3000 3500 2    60   ~ 0
+Tx
+Text Label 3000 3600 2    60   ~ 0
+Rx
+Text Label 5200 5250 2    60   ~ 0
+CTS
+Text Label 5100 3800 0    60   ~ 0
+RTS
+Text Label 5100 4200 0    60   ~ 0
+CTS
+Text Label 3000 3700 2    60   ~ 0
+Reset
+Text Label 3000 4000 2    60   ~ 0
+Bootloader
+Text Label 5100 3500 0    60   ~ 0
+VBatt
+Connection ~ 8750 5300
+$Comp
+L PWR_FLAG #FLG05
+U 1 1 53F68599
+P 4250 4800
+F 0 "#FLG05" H 4250 4895 30  0001 C CNN
+F 1 "PWR_FLAG" H 4250 4980 30  0000 C CNN
+F 2 "" H 4250 4800 60  0000 C CNN
+F 3 "" H 4250 4800 60  0000 C CNN
+	1    4250 4800
+	1    0    0    -1  
+$EndComp
+$Comp
+L PWR_FLAG #FLG06
+U 1 1 53F685B5
+P 3450 5300
+F 0 "#FLG06" H 3450 5395 30  0001 C CNN
+F 1 "PWR_FLAG" H 3450 5480 30  0000 C CNN
+F 2 "" H 3450 5300 60  0000 C CNN
+F 3 "" H 3450 5300 60  0000 C CNN
+	1    3450 5300
+	-1   0    0    1   
+$EndComp
+NoConn ~ 3450 4800
+Text Label 4250 5200 0    60   ~ 0
+RTS
+NoConn ~ 5200 5150
+$EndSCHEMATC
