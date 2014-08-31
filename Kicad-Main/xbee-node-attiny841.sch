@@ -29,8 +29,6 @@ LIBS:opto
 LIBS:atmel
 LIBS:contrib
 LIBS:valves
-LIBS:RF_OEM_Parts
-LIBS:KB1LQC
 LIBS:xbee-node-attiny841-cache
 EELAYER 24 0
 EELAYER END
@@ -449,7 +447,7 @@ F 3 "" H 7250 4700 60  0000 C CNN
 	1    7250 4700
 	1    0    0    -1  
 $EndComp
-Text Label 9650 2000 0    60   ~ 0
+Text Label 9650 2500 0    60   ~ 0
 VBatt
 Text Label 7650 4550 0    60   ~ 0
 VBatt
@@ -578,7 +576,7 @@ U 1 1 53E1E41C
 P 3400 3400
 F 0 "U1" H 2550 4150 40  0000 C CNN
 F 1 "ATTINY84-S" H 4100 2650 40  0000 C CNN
-F 2 "SMD_Packages:SOIC-14_N" H 3400 3200 35  0000 C CIN
+F 2 "Photodiode:ATTINY841-SSU" H 3400 3200 35  0000 C CIN
 F 3 "" H 3400 3400 60  0000 C CNN
 	1    3400 3400
 	1    0    0    -1  
@@ -773,7 +771,6 @@ Text Label 8950 4650 2    60   ~ 0
 Reset
 Text Label 8950 5300 2    60   ~ 0
 Bootloader
-NoConn ~ 8950 5100
 NoConn ~ 8950 5200
 $Comp
 L CONN_1 P7
@@ -1015,5 +1012,16 @@ F 2 "" H 8500 2500 60  0000 C CNN
 F 3 "" H 8500 2500 60  0000 C CNN
 	1    8500 2500
 	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR?
+U 1 1 53FEF658
+P 8950 5100
+F 0 "#PWR?" H 8950 5100 30  0001 C CNN
+F 1 "GND" H 8950 5030 30  0001 C CNN
+F 2 "" H 8950 5100 60  0000 C CNN
+F 3 "" H 8950 5100 60  0000 C CNN
+	1    8950 5100
+	0    1    -1   0   
 $EndComp
 $EndSCHEMATC

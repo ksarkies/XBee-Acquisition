@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name Photodiode)(type KiCad)(uri ${KIPRJMOD}/modules/photodiode.pretty)(options "")(descr ""))
+  (lib (name Imciner)(type Legacy)(uri ${KIPRJMOD}/modules/imciner2.mod)(options "")(descr ""))
+)
