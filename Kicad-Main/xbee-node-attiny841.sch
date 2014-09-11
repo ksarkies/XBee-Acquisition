@@ -29,7 +29,12 @@ LIBS:opto
 LIBS:atmel
 LIBS:contrib
 LIBS:valves
-LIBS:xbee-node-attiny841-cache
+LIBS:DataStorage
+LIBS:RF_OEM_Parts
+LIBS:KB1LQC
+LIBS:MiscellaneousDevices
+LIBS:TransistorParts
+LIBS:Sensors
 EELAYER 24 0
 EELAYER END
 $Descr A4 11693 8268
@@ -45,14 +50,14 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L CONN_2 P4
+L CONN_01X02 P4
 U 1 1 53D32A7E
-P 10400 1500
-F 0 "P4" V 10350 1500 40  0000 C CNN
-F 1 "Battery" V 10450 1500 40  0000 C CNN
-F 2 "Connect:SIL-2" H 10400 1500 60  0001 C CNN
-F 3 "" H 10400 1500 60  0000 C CNN
-	1    10400 1500
+P 10250 1450
+F 0 "P4" V 10200 1450 40  0000 C CNN
+F 1 "Battery" V 10300 1450 40  0000 C CNN
+F 2 "Connect:SIL-2" H 10250 1450 60  0001 C CNN
+F 3 "" H 10250 1450 60  0000 C CNN
+	1    10250 1450
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -245,12 +250,12 @@ $EndComp
 $Comp
 L VDD #PWR011
 U 1 1 53D35928
-P 7650 4450
-F 0 "#PWR011" H 7650 4550 30  0001 C CNN
-F 1 "VDD" H 7650 4560 30  0000 C CNN
-F 2 "" H 7650 4450 60  0000 C CNN
-F 3 "" H 7650 4450 60  0000 C CNN
-	1    7650 4450
+P 7500 4450
+F 0 "#PWR011" H 7500 4550 30  0001 C CNN
+F 1 "VDD" H 7500 4560 30  0000 C CNN
+F 2 "" H 7500 4450 60  0000 C CNN
+F 3 "" H 7500 4450 60  0000 C CNN
+	1    7500 4450
 	0    1    1    0   
 $EndComp
 $Comp
@@ -418,7 +423,7 @@ F 3 "" H 1450 5050 30  0000 C CNN
 	1    1450 5050
 	1    0    0    -1  
 $EndComp
-Text Label 6850 4850 2    60   ~ 0
+Text Label 7000 4850 2    60   ~ 0
 On/Sleep
 Text Label 4450 2800 0    60   ~ 0
 On/Sleep
@@ -428,16 +433,16 @@ Text Label 4450 3100 0    60   ~ 0
 Sleep-Rq
 Text Label 4450 3700 0    60   ~ 0
 Bootloader
-Text Label 7650 4950 0    60   ~ 0
+Text Label 7500 4950 0    60   ~ 0
 Tx
-Text Label 6850 4750 2    60   ~ 0
+Text Label 7000 4750 2    60   ~ 0
 Rx
 Text Label 4450 3000 0    60   ~ 0
 Rx
 Text Label 4450 2900 0    60   ~ 0
 Tx
 $Comp
-L CONN_6X2 P2
+L CONN_02X06 P2
 U 1 1 53DDD3EB
 P 7250 4700
 F 0 "P2" H 7250 5050 60  0000 C CNN
@@ -449,11 +454,11 @@ F 3 "" H 7250 4700 60  0000 C CNN
 $EndComp
 Text Label 9650 2500 0    60   ~ 0
 VBatt
-Text Label 7650 4550 0    60   ~ 0
+Text Label 7500 4550 0    60   ~ 0
 VBatt
 Text Label 1450 3500 0    60   ~ 0
 Reset
-Text Label 6850 4650 2    60   ~ 0
+Text Label 7000 4650 2    60   ~ 0
 Reset
 $Comp
 L C C1
@@ -467,7 +472,7 @@ F 3 "" H 1450 3700 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L CONN_5X2 P3
+L CONN_02X05 P3
 U 1 1 53E0177A
 P 7250 5700
 F 0 "P3" H 7250 6000 60  0000 C CNN
@@ -480,15 +485,15 @@ $EndComp
 $Comp
 L GND #PWR019
 U 1 1 53E0741A
-P 6850 5900
-F 0 "#PWR019" H 6850 5900 30  0001 C CNN
-F 1 "GND" H 6850 5830 30  0001 C CNN
-F 2 "" H 6850 5900 60  0000 C CNN
-F 3 "" H 6850 5900 60  0000 C CNN
-	1    6850 5900
+P 7000 5900
+F 0 "#PWR019" H 7000 5900 30  0001 C CNN
+F 1 "GND" H 7000 5830 30  0001 C CNN
+F 2 "" H 7000 5900 60  0000 C CNN
+F 3 "" H 7000 5900 60  0000 C CNN
+	1    7000 5900
 	0    1    -1   0   
 $EndComp
-Text Label 7650 5500 0    60   ~ 0
+Text Label 7500 5500 0    60   ~ 0
 VBatt
 $Comp
 L VDD #PWR020
@@ -616,23 +621,23 @@ Connection ~ 6150 1550
 $Comp
 L GND #PWR026
 U 1 1 53E22A19
-P 6850 4950
-F 0 "#PWR026" H 6850 4950 30  0001 C CNN
-F 1 "GND" H 6850 4880 30  0001 C CNN
-F 2 "" H 6850 4950 60  0000 C CNN
-F 3 "" H 6850 4950 60  0000 C CNN
-	1    6850 4950
+P 7000 4950
+F 0 "#PWR026" H 7000 4950 30  0001 C CNN
+F 1 "GND" H 7000 4880 30  0001 C CNN
+F 2 "" H 7000 4950 60  0000 C CNN
+F 3 "" H 7000 4950 60  0000 C CNN
+	1    7000 4950
 	0    1    -1   0   
 $EndComp
 $Comp
 L GND #PWR027
 U 1 1 53E26458
-P 10050 1600
-F 0 "#PWR027" H 10050 1600 30  0001 C CNN
-F 1 "GND" H 10050 1530 30  0001 C CNN
-F 2 "" H 10050 1600 60  0000 C CNN
-F 3 "" H 10050 1600 60  0000 C CNN
-	1    10050 1600
+P 10050 1500
+F 0 "#PWR027" H 10050 1500 30  0001 C CNN
+F 1 "GND" H 10050 1430 30  0001 C CNN
+F 2 "" H 10050 1500 60  0000 C CNN
+F 3 "" H 10050 1500 60  0000 C CNN
+	1    10050 1500
 	0    1    1    0   
 $EndComp
 $Comp
@@ -663,14 +668,14 @@ Text Label 4450 3300 0    60   ~ 0
 MISO
 Text Label 4450 3400 0    60   ~ 0
 MOSI
-Text Label 7650 5700 0    60   ~ 0
+Text Label 7500 5700 0    60   ~ 0
 SCK
-Text Label 6850 5700 2    60   ~ 0
+Text Label 7000 5700 2    60   ~ 0
 MISO
-Text Label 6850 5600 2    60   ~ 0
+Text Label 7000 5600 2    60   ~ 0
 MOSI
-NoConn ~ 6850 4450
-NoConn ~ 7650 4850
+NoConn ~ 7000 4450
+NoConn ~ 7500 4850
 $Comp
 L C C6
 U 1 1 53E234F0
@@ -718,11 +723,11 @@ $EndComp
 Connection ~ 5900 1550
 Connection ~ 5650 1550
 Connection ~ 5400 1550
-Text Label 7650 5600 0    60   ~ 0
+Text Label 7500 5600 0    60   ~ 0
 Reset
-Text Label 6850 5800 2    60   ~ 0
+Text Label 7000 5800 2    60   ~ 0
 Rx
-Text Label 7650 5800 0    60   ~ 0
+Text Label 7500 5800 0    60   ~ 0
 Tx
 Connection ~ 4450 5600
 Connection ~ 3450 5500
@@ -731,36 +736,36 @@ Text Label 4450 3800 0    60   ~ 0
 Count
 Text Label 4450 5600 0    60   ~ 0
 Count
-Text Label 6850 5500 2    60   ~ 0
+Text Label 7000 5500 2    60   ~ 0
 Count
-Text Label 7650 4650 0    60   ~ 0
+Text Label 7500 4650 0    60   ~ 0
 Xbee-Reset
-Text Label 7650 4750 0    60   ~ 0
+Text Label 7500 4750 0    60   ~ 0
 Sleep-Rq
-Text Label 6850 4550 2    60   ~ 0
+Text Label 7000 4550 2    60   ~ 0
 Bootloader
-Text Label 7650 5900 0    60   ~ 0
+Text Label 7500 5900 0    60   ~ 0
 On/Sleep
 $Comp
-L CONN_3 P5
+L CONN_01X03 P5
 U 1 1 53F2B594
-P 9300 4650
-F 0 "P5" H 9300 4850 50  0000 C CNN
-F 1 "XBee-ext-1" V 9450 4650 40  0000 C CNN
-F 2 "Photodiode:pin_header_2mm_1x3" H 9300 4650 60  0001 C CNN
-F 3 "" H 9300 4650 60  0000 C CNN
-	1    9300 4650
+P 9150 4650
+F 0 "P5" H 9150 4850 50  0000 C CNN
+F 1 "XBee-ext-1" V 9300 4650 40  0000 C CNN
+F 2 "Photodiode:pin_header_2mm_1x3" H 9150 4650 60  0001 C CNN
+F 3 "" H 9150 4650 60  0000 C CNN
+	1    9150 4650
 	1    0    0    -1  
 $EndComp
 $Comp
-L CONN_3 P6
+L CONN_01X03 P6
 U 1 1 53F2B605
-P 9300 5200
-F 0 "P6" H 9300 5400 50  0000 C CNN
-F 1 "XBee-ext-2" V 9450 5200 40  0000 C CNN
-F 2 "Photodiode:pin_header_2mm_1x3" H 9300 5200 60  0001 C CNN
-F 3 "" H 9300 5200 60  0000 C CNN
-	1    9300 5200
+P 9150 5200
+F 0 "P6" H 9150 5400 50  0000 C CNN
+F 1 "XBee-ext-2" V 9300 5200 40  0000 C CNN
+F 2 "Photodiode:pin_header_2mm_1x3" H 9150 5200 60  0001 C CNN
+F 3 "" H 9150 5200 60  0000 C CNN
+	1    9150 5200
 	1    0    0    -1  
 $EndComp
 Text Label 8950 4750 2    60   ~ 0
@@ -773,7 +778,7 @@ Text Label 8950 5300 2    60   ~ 0
 Bootloader
 NoConn ~ 8950 5200
 $Comp
-L CONN_1 P7
+L CONN_01X01 P7
 U 1 1 53F2CFA4
 P 8700 1900
 F 0 "P7" H 8780 1900 40  0000 L CNN
@@ -784,7 +789,7 @@ F 3 "" H 8700 1900 60  0000 C CNN
 	0    1    1    0   
 $EndComp
 $Comp
-L CONN_1 P8
+L CONN_01X01 P8
 U 1 1 53F2D10A
 P 8600 1900
 F 0 "P8" H 8680 1900 40  0000 L CNN
@@ -795,7 +800,7 @@ F 3 "" H 8600 1900 60  0000 C CNN
 	0    1    1    0   
 $EndComp
 $Comp
-L CONN_1 P9
+L CONN_01X01 P9
 U 1 1 53F2D15D
 P 8500 1900
 F 0 "P9" H 8580 1900 40  0000 L CNN
@@ -806,7 +811,7 @@ F 3 "" H 8500 1900 60  0000 C CNN
 	0    1    1    0   
 $EndComp
 $Comp
-L CONN_1 P10
+L CONN_01X01 P10
 U 1 1 53F32A4A
 P 7900 1950
 F 0 "P10" H 7980 1950 40  0000 L CNN
@@ -817,7 +822,7 @@ F 3 "" H 7900 1950 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L CONN_1 P11
+L CONN_01X01 P11
 U 1 1 53F32AA5
 P 8050 1950
 F 0 "P11" H 8130 1950 40  0000 L CNN
@@ -860,7 +865,7 @@ PowerControl
 Text Label 9350 2700 2    60   ~ 0
 PowerControl
 $Comp
-L CONN_1 P12
+L CONN_01X01 P12
 U 1 1 53F2D7DC
 P 7550 2350
 F 0 "P12" H 7630 2350 40  0000 L CNN
@@ -871,7 +876,7 @@ F 3 "" H 7550 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L CONN_1 P13
+L CONN_01X01 P13
 U 1 1 53F2D842
 P 7700 2350
 F 0 "P13" H 7780 2350 40  0000 L CNN
@@ -882,7 +887,7 @@ F 3 "" H 7700 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L CONN_1 P14
+L CONN_01X01 P14
 U 1 1 53F2D878
 P 7850 2350
 F 0 "P14" H 7930 2350 40  0000 L CNN
@@ -893,7 +898,7 @@ F 3 "" H 7850 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L CONN_1 P15
+L CONN_01X01 P15
 U 1 1 53F2D8B3
 P 8000 2350
 F 0 "P15" H 8080 2350 40  0000 L CNN
@@ -948,7 +953,7 @@ F 3 "" H 8000 2500 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L CONN_1 P16
+L CONN_01X01 P16
 U 1 1 53F2DBA5
 P 8200 2350
 F 0 "P16" H 8280 2350 40  0000 L CNN
@@ -959,7 +964,7 @@ F 3 "" H 8200 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L CONN_1 P17
+L CONN_01X01 P17
 U 1 1 53F2DBF0
 P 8350 2350
 F 0 "P17" H 8430 2350 40  0000 L CNN
@@ -992,7 +997,7 @@ F 3 "" H 8350 2500 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L CONN_1 P18
+L CONN_01X01 P18
 U 1 1 53F2DF81
 P 8500 2350
 F 0 "P18" H 8580 2350 40  0000 L CNN
