@@ -36,7 +36,7 @@ This gives a 32ms overflow interrupt.*/
 #define RTC_SCALE           5
 
 /* Baudrate settings */
-#define UART_BAUD_RATE      34800
+#define UART_BAUD_RATE      38400
 
 #define BAUDRATE UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU)
 

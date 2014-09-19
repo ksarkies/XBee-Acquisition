@@ -97,6 +97,7 @@ uint8_t counter;
 
 int main(void)
 {
+    counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
@@ -122,7 +123,7 @@ address avoids knowing the actual address, but may cause an address discovery ev
         wdt_reset();
 
 /* Check for incoming messages */
-/* The Rx message variable is re-used and must be processed before the next arrives */
+/* The Rx message variable is re-used and must be processed before the next */
         rxFrameType rxMessage;
 /* Wait for data to appear */
         uint16_t inputChar = getch();
@@ -155,7 +156,8 @@ address avoids knowing the actual address, but may cause an address discovery ev
                     break;
 /* Rest of message, maybe include addresses or just data */
                 default:
-                    if (messageState > rxMessage.length + 3) messageError = STATE_MACHINE;
+                    if (messageState > rxMessage.length + 3)
+                        messageError = STATE_MACHINE;
                     else if (rxMessage.length + 3 > messageState)
                     {
                         rxMessage.message.array[messageState-4] = inputValue;
@@ -166,7 +168,8 @@ address avoids knowing the actual address, but may cause an address discovery ev
                     {
                         messageReady = TRUE;
                         messageState = 0;
-                        if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0) messageError = CHECKSUM;
+                        if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0)
+                            messageError = CHECKSUM;
                     }
             }
         }
@@ -183,7 +186,8 @@ address avoids knowing the actual address, but may cause an address discovery ev
 /* Echo */
                 sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                                    rxMessage.message.rxRequest.sourceAddress16,
-                                   0, rxMessage.length-12, rxMessage.message.rxRequest.data);
+                                   0, rxMessage.length-12,
+                                   rxMessage.message.rxRequest.data);
             }
         }
     }
@@ -264,7 +268,7 @@ void timerInit(void)
 }
 
 /****************************************************************************/
-/** @brief Initialise the timer
+/** @brief Reset the timer
 
 */
 void resetTimer(void)
@@ -279,7 +283,7 @@ This ISR sends a dummy data record to the coordinator.
 
 ISR(TIMER0_OVF_vect)
 {
-    uint8_t data[7] = "DHello";
+    uint8_t data[7] = "DHowdy";
     time.timeValue++;
     counter--;
     if (counter == 0)
