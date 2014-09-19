@@ -160,7 +160,11 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     rowGetCommand.append('I');
     rowGetCommand.append(char(row));
     sendCommand(rowGetCommand);
-    if (deviceType == 2)            // Coordinator and routers are never changed
+#ifdef DEBUG
+    qDebug() << "Device type" << (int)deviceType;
+#endif
+// Change sleep mode on end device only, coordinator and routers never change
+    if (deviceType == 2)
     {
 // Keep old value.
         oldSleepMode = replyBuffer[0];
@@ -216,6 +220,7 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     firmwareCommand.append('S');
     firmwareCommand.append(char(row));
 /* Clear all FLASH */
+    response = 0;
     firmwareCommand.append('X');
     errorCode = sendCommand(firmwareCommand);
 /* Ask for a confirmation or error code, loop until something received
@@ -288,9 +293,6 @@ or abort if nothing comes back in a reasonable time. */
                 }
             }
             while (timeout);                 // retry entire message if timed out
-#ifdef DEBUG
-            qDebug() << "Response" << response;
-#endif
         }
         progress += line.length();
         XbeeControlFormUi.uploadProgressBar->setValue(progress);
@@ -312,9 +314,9 @@ or abort if nothing comes back in a reasonable time. */
                          << errorCode << "Location" << failPoint;
 #endif
     if ((errorCode > 0) || (failPoint > 0)) popup(QString("Upload Failure: error code %1").arg(errorCode));
-    if (deviceType == 2)            // Coordinator and routers are never changed
+// Set the sleep mode back to original for end device only
+    if (deviceType == 2)
     {
-// Set the sleep mode back to original
         QByteArray sleepModeCommand;
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
@@ -664,7 +666,8 @@ void XbeeControlTool::readXbeeProcess()
 #ifdef DEBUG
     if (reply.size() == 0) qDebug() << "Main sendCommand Null Response";
 // Attempt to exclude responses representing nothing happening
-    else if (!(((command == 'r') || (command == 'l') || (command == 's')) && (reply.size() == 3)))
+    else if (!(((command == 'r') || (command == 'l') || (command == 's'))
+                && (reply.size() == 3)))
     {
         qDebug() << "Main sendCommand response received: length" << length
                  << "Status" << status << "Command" << command;
