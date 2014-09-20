@@ -27,6 +27,9 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
+/* Choose whether to use hardware flow control for serial comms. */
+//#define USE_HARDWARE_FLOW
+
 /* baud rate register value calculation */
 #define F_CPU                   1000000
 #define BAUD                    9600

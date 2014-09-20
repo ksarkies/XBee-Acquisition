@@ -27,6 +27,9 @@ Tested:   ATMega168 at 8MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
+/* Choose whether to use hardware flow control for serial comms. */
+//#define USE_HARDWARE_FLOW
+
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               8000000
 #define BAUD                38400

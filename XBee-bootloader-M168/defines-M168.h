@@ -34,6 +34,10 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define	_ATMEGA168
 #include	<avr/io.h>
 
+/* Choose whether to use hardware flow control for serial comms.
+Needed for the bootloader as the upload is extensive. */
+#define USE_HARDWARE_FLOW
+
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               8000000
 #define BAUD                38400
