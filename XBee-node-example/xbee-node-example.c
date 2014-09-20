@@ -283,7 +283,7 @@ This ISR sends a dummy data record to the coordinator.
 
 ISR(TIMER0_OVF_vect)
 {
-    uint8_t data[7] = "DHowdy";
+    uint8_t data[7] = "DHello";
     time.timeValue++;
     counter--;
     if (counter == 0)

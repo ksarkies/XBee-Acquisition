@@ -26,7 +26,7 @@
 BASEADDR = 0x3800
 
 # MCU name
-MCU = atmega168
+MCU ?= atmega168
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex

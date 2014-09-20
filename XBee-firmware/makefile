@@ -26,7 +26,7 @@
 TEST ?= 1
 
 # MCU name
-MCU = attiny4313
+MCU ?= attiny4313
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex

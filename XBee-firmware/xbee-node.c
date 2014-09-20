@@ -46,7 +46,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "defines.h"
 #include <inttypes.h>
 #include <avr/sfr_defs.h>
 #include <avr/io.h>
@@ -54,6 +53,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
+#include "defines-attiny4313.h"
 #include "xbee-node.h"
 #include "serial.h"
 

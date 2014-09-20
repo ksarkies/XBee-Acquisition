@@ -19,7 +19,7 @@
  ***************************************************************************/
 
 #include <avr/io.h>
-#include "defines.h"
+#include "defines-attiny4313.h"
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))
@@ -47,7 +47,7 @@ void uartInit(void)
 #if USE_2X
     sbi(UART_STATUS_REG,DOUBLE_RATE);
 #else
-    sbi(UART_STATUS_REG,DOUBLE_RATE);
+    cbi(UART_STATUS_REG,DOUBLE_RATE);
 #endif
     UART_FORMAT_REG = (3 << FRAME_SIZE);                // Set 8 bit frames
     UART_CONTROL_REG |= _BV(ENABLE_RECEIVER_BIT) |

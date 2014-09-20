@@ -1,4 +1,4 @@
-/* Header File for AVR UART simple usage
+/* Header file for AVR UART simple usage
 
 */
 
@@ -22,6 +22,8 @@
 
 #ifndef SERIAL_H
 #define SERIAL_H
+
+//#define USE_HARDWARE_FLOW
 
 void uartInit(void);
 void sendch(unsigned char c);
