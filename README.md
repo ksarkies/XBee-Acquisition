@@ -20,18 +20,24 @@ Subdirectories:
 
 &bull; gEDA-XBee                   Schematic and PCB for remote unit
 
+&bull; Kicad-Main                  Schematic and PCB for watermeter unit
+
+&bull; Kicad-Mounts                Schematic and PCB for watermeter mounts
+
 &bull; XBee-acqcontrol             Control of XBee network for Linux hardware
 
-&bull; XBee-Arduino                Firmware for Arduino remote unit testbench
+&bull; XBee-bootloader-M168        Bootloader for remote unit ATMega168
 
-&bull; XBee-bootloader             Bootloader for remote unit
+&bull; XBee-bootloader-T4313       Bootloader for remote unit ATTiny4313
 
-&bull; XBee-firmware               Firmware for remote unit
+&bull; XBee-firmware-T4313         Firmware for remote unit ATTiny4313
 
 &bull; XBee-GUI                    Linux PC based GUI for network control
+
+&bull; XBee-node-example-M168      Example to send dummy message ATMega168
 
 &bull; XBee-utility                Some tools for direct interaction with XBee
 
 K. Sarkies
-7 July 2014
+20 September 2014
 

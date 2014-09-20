@@ -19,7 +19,7 @@
  ***************************************************************************/
 
 #include <avr/io.h>
-#include "defines-atmega168.h"
+#include "defines-M168.h"
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))

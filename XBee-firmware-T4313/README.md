@@ -2,7 +2,7 @@ XBee Data Acquisition Remote Firmware
 -------------------------------------
 
 This is the firmware for the remote unit. Written in C under avr-gcc.
-The node hardware is based on the ATTiny4313 as given in
+The node hardware is based on the ATTiny4313 and is defined in
 gEDA-XBee/xbee-node-attiny4313.sch
 
 Tasks are:
@@ -13,6 +13,9 @@ Tasks are:
 4. Request any pending configuration instructions from the master.
 5. Sleep.
 
+defines.h and makefile need to be changed to reflect differences in the
+different microcontroller types.
+
 K. Sarkies
-24 July 2014
+20 September 2014
 

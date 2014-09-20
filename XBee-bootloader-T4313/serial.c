@@ -19,7 +19,7 @@
  ***************************************************************************/
 
 #include <avr/io.h>
-#include "defines-attiny4313.h"
+#include "defines-T4313.h"
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))

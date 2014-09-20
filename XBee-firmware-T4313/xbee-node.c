@@ -53,7 +53,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
-#include "defines-attiny4313.h"
+#include "defines-T4313.h"
 #include "xbee-node.h"
 #include "serial.h"
 

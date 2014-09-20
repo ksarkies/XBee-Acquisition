@@ -22,7 +22,7 @@
 #define BOOTLOADER_H
 
 #include <avr/sfr_defs.h>
-#include "defines-atmega168.h"
+#include "defines-T4313.h"
 
 #define TRUE 1
 #define FALSE 0
