@@ -223,6 +223,7 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     response = 0;
     firmwareCommand.append('X');
     errorCode = sendCommand(firmwareCommand);
+    if (errorCode > 0) failPoint = 4;
 /* Ask for a confirmation or error code, loop until something received
 or abort if nothing comes back in a reasonable time. */
     int count = 0;
@@ -240,63 +241,66 @@ or abort if nothing comes back in a reasonable time. */
         firmwareCommand.append(char(row));
         errorCode = sendCommand(firmwareCommand);
     }
-/* Open file stream, read each line, test and send off to target */
-    QTextStream stream(file);
-    bool verifyOK = true;
-    int progress = 0;
-    while (! stream.atEnd() && verifyOK && (failPoint == 0))
+    if (failPoint == 0)
     {
-        qApp->processEvents();
-        bool timeout = false;
-      	QString line = stream.readLine();
-        verifyOK = (line[0] == ':');
-        if (verifyOK)
+/* Open file stream, read each line, test and send off to target */
+        QTextStream stream(file);
+        bool verifyOK = true;
+        int progress = 0;
+        while (! stream.atEnd() && verifyOK && (failPoint == 0))
         {
-            int resendTimer = 0;
+            qApp->processEvents();
+            bool timeout = false;
+          	QString line = stream.readLine();
+            verifyOK = (line[0] == ':');
+            if (verifyOK)
+            {
+                int resendTimer = 0;
 // Send the line and wait for a response. If it times out, try resending the
 // line up to three times, then leave with an error.
-            do
-            {
+                do
+                {
 #ifdef DEBUG
-                qDebug() << "Firmware iHex sent:" << line;
+                    qDebug() << "Firmware iHex sent:" << line;
 #endif
 /* Send the line as a data communication */
-                firmwareCommand.clear();
-                firmwareCommand.append('S');
-                firmwareCommand.append(char(row));
-                firmwareCommand.append(line);
-                errorCode = sendCommand(firmwareCommand);
-                if (errorCode > 0)
-                {
-                    failPoint = 4;
-                    break;
-                }
-                response = 0;
-/* Ask for a confirmation or error code */
-                int count = 0;
-                while((response == 0) && (count++ < 5))
-                {
-                    millisleep(100);
                     firmwareCommand.clear();
-                    firmwareCommand.append('s');
+                    firmwareCommand.append('S');
                     firmwareCommand.append(char(row));
+                    firmwareCommand.append(line);
                     errorCode = sendCommand(firmwareCommand);
-                }
-                timeout = (count > 4);
+                    if (errorCode > 0)
+                    {
+                        failPoint = 6;
+                        break;
+                    }
+                    response = 0;
+/* Ask for a confirmation or error code */
+                    int count = 0;
+                    while((response == 0) && (count++ < 5))
+                    {
+                        millisleep(100);
+                        firmwareCommand.clear();
+                        firmwareCommand.append('s');
+                        firmwareCommand.append(char(row));
+                        errorCode = sendCommand(firmwareCommand);
+                    }
+                    timeout = (count > 4);
 #ifdef DEBUG
-                if (timeout) qDebug() << "Timed out. Retry.";
+                    if (timeout) qDebug() << "Timed out. Retry.";
 #endif
-                if (resendTimer++ > 3)
-                {
-                    failPoint = 6;
-                    break;
+                    if (resendTimer++ > 3)
+                    {
+                        failPoint = 7;
+                        break;
+                    }
                 }
+                while (timeout);                 // retry entire message if timed out
             }
-            while (timeout);                 // retry entire message if timed out
+            progress += line.length();
+            XbeeControlFormUi.uploadProgressBar->setValue(progress);
+            qApp->processEvents();
         }
-        progress += line.length();
-        XbeeControlFormUi.uploadProgressBar->setValue(progress);
-        qApp->processEvents();
     }
 /* Remove bootloader signal - node should enter application mode */
 /* Set the DIO11 port on the XBee (back to application) */
@@ -311,9 +315,10 @@ or abort if nothing comes back in a reasonable time. */
     XbeeControlFormUi.uploadProgressBar->setVisible(false);
 #ifdef DEBUG
     if ((errorCode > 0) || (failPoint > 0)) qDebug() << "Error in firmware: Code"
-                         << errorCode << "Location" << failPoint;
+                         << errorCode << "Failure Point" << failPoint;
 #endif
-    if ((errorCode > 0) || (failPoint > 0)) popup(QString("Upload Failure: error code %1").arg(errorCode));
+    if ((errorCode > 0) || (failPoint > 0))
+        popup(QString("Upload Failure: error code %1").arg(failPoint));
 // Set the sleep mode back to original for end device only
     if (deviceType == 2)
     {
