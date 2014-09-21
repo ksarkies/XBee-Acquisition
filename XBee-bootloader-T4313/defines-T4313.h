@@ -1,12 +1,13 @@
-/* AVR/XBee Bootloader
+/* AVR/XBee Bootloader Defines
+
+For AVR microcontrollers without bootloader section.
 
 This file assigns registers, particular to an AVR type, to common constants.
 
-I/O pin values for controlling the boorloader operation are given at the end.
+I/O pin values for controlling the bootloader operation are given at the end.
 
-Software: AVR-GCC 4.5.3
-Target:   Any AVR with sufficient output ports and a timer
-Tested:   ATMega168 at 8MHz internal clock.
+Software: AVR-GCC 4.8.2
+Tested:   ATTiny4313 at 1MHz internal clock.
 */
 
 /****************************************************************************
@@ -30,8 +31,8 @@ Tested:   ATMega168 at 8MHz internal clock.
 #ifndef	PPINC
 /* indicate that preprocessor result is included */
 #define	PPINC
-/* device select: _ATMEGAxxxx */
-#define	_ATMEGA168
+/* device select */
+#define	_ATTINY4313
 #include	<avr/io.h>
 
 /* Choose whether to use hardware flow control for serial comms.
@@ -42,16 +43,20 @@ Needed for the bootloader as the upload is extensive. */
 #define F_CPU               1000000
 #define BAUD                9600
 #define BOOTLOADER_SIZE     2048
+
 /* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered automatically */
+/* Use the defined input pin to decide if the application will be entered
+automatically */
 #define AUTO_ENTER_APP      1
-/* Use the defined output pin to force the XBee to stay awake while in the bootloader.
-This is valid for the XBee sleep mode 1 only. The application should move it to other modes
-if necessary. Note that using this may fail because the output pins may be forced
-to an undesired level during programming. */
+
+/* Use the defined output pin to force the XBee to stay awake while in the
+bootloader. This is valid for the XBee sleep mode 1 only. The application should
+move it to other modes if necessary. Note that using this may fail because the
+output pins may be forced to an undesired level during programming. */
 #define XBEE_STAY_AWAKE     1
 
-// Simple serial I/O (must define cpu frequency and baudrate before this include) */
+/* Simple serial I/O (must define cpu frequency and baudrate before this
+include) */
 #include <util/setbaud.h>
 
 /* Convenience macros (we don't use them all) */
@@ -95,7 +100,8 @@ to an undesired level during programming. */
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
-#define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
+#define	APP_START	            0x800
+#define	APP_END	                MEMORY_SIZE
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (MEMORY_SIZE / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)

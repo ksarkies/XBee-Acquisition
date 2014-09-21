@@ -2,8 +2,6 @@
 
 This file assigns registers, particular to an AVR type, to common constants.
 
-I/O pin values for controlling the boorloader operation are given at the end.
-
 Software: AVR-GCC 4.8.2
 Target:   Any AVR with sufficient output ports and a timer
 Tested:   ATTiny4313 at 1MHz internal clock.

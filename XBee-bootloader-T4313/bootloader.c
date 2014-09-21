@@ -7,10 +7,16 @@
 
 This code provides the firmware update loader for an AVR using an XBee version
 2 in API mode. Firmware is in iHex format, with the semicolon at the start of
-each line taken as a command to write the line. Pages are erased as needed before
-writing starts, with lockout bits being used to prevent them being erased
+each line taken as a command to write the line. Pages are erased as needed
+before writing starts, with lockout bits being used to prevent them being erased
 at later times. If the process needs to be restarted, the microcontroller must
 be reset.
+
+This bootloader is written for microcontrollers without a separate bootloader
+section, therefore it must be placed at the beginning of memory. The application
+starts at address 0x800 above the bootloader. If the bootloader pin is not
+active the bootloader will jump directly to the application code, and also after
+firmware has been uploaded.
 
 When each line has been programmed an acknowledgement is returned as 'Y'
 representing OK, or other responses (see below) representing errors. When an
@@ -166,7 +172,7 @@ application. If this is not used, the Q instruction will provide the jump.*/
 /* NOTE: address refers to Flash words, while the commands use byte addresses. */
 /* This can take up to 1 second to complete so send nothing else till done */
 /* NOTE code block common with a later erase */
-                for(uint16_t address = 0; address < APP_END; address += PAGESIZE)
+                for(uint16_t address = APP_START; address < APP_END; address += PAGESIZE)
                 {
                     uint8_t page = (address / PAGESIZE);
                     uint8_t pageBit = (1 << (page & 0x07));
@@ -220,8 +226,8 @@ max. */
                     uint8_t indx;
                     for (indx=4; indx<dataCount-1; indx+=2)
                     {
-/* If we hit the protected bootloader area, bomb out with a NAK */
-                        if(byteAddress >= APP_END)
+/* If we move outside the application area, bomb out with a NAK */
+                        if((byteAddress >= APP_END) || (byteAddress < APP_START))
                         {
                             response[0] = 'N';
                             break;

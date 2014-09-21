@@ -1,10 +1,10 @@
-/* AVR/XBee Bootloader
+/* AVR/XBee Bootloader Defines
 
 This file assigns registers, particular to an AVR type, to common constants.
 
-I/O pin values for controlling the boorloader operation are given at the end.
+I/O pin values for controlling the bootloader operation are given at the end.
 
-Software: AVR-GCC 4.5.3
+Software: AVR-GCC 4.8.2
 Target:   Any AVR with sufficient output ports and a timer
 Tested:   ATMega168 at 8MHz internal clock.
 */
@@ -42,6 +42,7 @@ Needed for the bootloader as the upload is extensive. */
 #define F_CPU               8000000
 #define BAUD                38400
 #define BOOTLOADER_SIZE     2048
+
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered automatically */
 #define AUTO_ENTER_APP      1
@@ -92,6 +93,7 @@ to an undesired level during programming. */
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
+#define	APP_START	            0x0000
 #define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (MEMORY_SIZE / PAGESIZE)

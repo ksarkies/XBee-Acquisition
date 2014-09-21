@@ -162,7 +162,7 @@ application. If this is not used, the Q instruction will provide the jump.*/
 /* NOTE: address refers to Flash words, while the commands use byte addresses. */
 /* This can take up to 1 second to complete so send nothing else till done */
 /* NOTE code block common with a later erase */
-                for(uint16_t address = 0; address < APP_END; address += PAGESIZE)
+                for(uint16_t address = APP_START; address < APP_END; address += PAGESIZE)
                 {
                     uint8_t page = (address / PAGESIZE);
                     uint8_t pageBit = (1 << (page & 0x07));
@@ -216,7 +216,7 @@ application. If this is not used, the Q instruction will provide the jump.*/
                     for (indx=4; indx<dataCount-1; indx+=2)
                     {
 /* If we hit the protected bootloader area, bomb out with a NAK */
-                        if(byteAddress >= APP_END)
+                        if ((byteAddress >= APP_END) || (byteAddress < APP_START))
                         {
                             response[0] = 'N';
                             break;
