@@ -1,5 +1,7 @@
 /* AVR/XBee Bootloader Defines
 
+For AVR microcontrollers with a bootloader section.
+
 This file assigns registers, particular to an AVR type, to common constants.
 
 I/O pin values for controlling the bootloader operation are given at the end.
@@ -30,8 +32,6 @@ Tested:   ATMega168 at 8MHz internal clock.
 #ifndef	PPINC
 /* indicate that preprocessor result is included */
 #define	PPINC
-/* device select: _ATMEGAxxxx */
-#define	_ATMEGA168
 #include	<avr/io.h>
 
 /* Choose whether to use hardware flow control for serial comms.

@@ -3,8 +3,9 @@
  Title  :   C  include file for the Timer Functions library
  Author:    Ken Sarkies
  File:      $Id: timer.h, v 0.1 25/4/2007 $
- Software:  AVR-GCC 3.4.5
+ Software:  AVR-GCC 3.8.2
  Target:    All AVR MCUs with timer functionality.
+ Tested:    ATMega168
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -31,10 +32,6 @@
 #define  _SFR_ASM_COMPAT     1
 #endif
 
-#ifndef F_CPU               /* CPU speed in Hz */
-#define F_CPU               8000000
-#endif
-
 /** Define this to allow code size to be reduced by removal of unwanted
 functions. Any or all may be used. */
 #ifndef TIMER_INTERRUPT_MODE    /* Interrupts are used */
@@ -42,9 +39,6 @@ functions. Any or all may be used. */
 #endif
 
 /****************************************************************************/
-extern void timer0Init(uint8_t mode,uint16_t timerClockScale);
-extern uint16_t timer0Read(void);
-
 /** Deal with ATMega*8 MCUs and others with 16 bit control registers */
 #if defined TCCR0
 #define TIMER_CONT_REG0 TCCR0
@@ -100,5 +94,8 @@ extern uint16_t timer0Read(void);
 #define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
 #define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+
+extern void timer0Init(uint8_t mode,uint16_t timerClockScale);
+extern uint16_t timer0Read(void);
 
 #endif

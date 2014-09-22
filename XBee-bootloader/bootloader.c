@@ -7,10 +7,16 @@
 
 This code provides the firmware update loader for an AVR using an XBee version
 2 in API mode. Firmware is in iHex format, with the semicolon at the start of
-each line taken as a command to write the line. Pages are erased as needed before
-writing starts, with lockout bits being used to prevent them being erased
+each line taken as a command to write the line. Pages are erased as needed
+before writing starts, with lockout bits being used to prevent them being erased
 at later times. If the process needs to be restarted, the microcontroller must
 be reset.
+
+This bootloader is written for microcontrollers without a separate bootloader
+section, therefore it must be placed at the beginning of memory. The application
+starts at address 0x06C0 just above the bootloader. If the bootloader pin is not
+active the bootloader will jump directly to the application code, and also after
+firmware has been uploaded.
 
 When each line has been programmed an acknowledgement is returned as 'Y'
 representing OK, or other responses (see below) representing errors. When an
@@ -101,8 +107,14 @@ __attribute__ ((OS_main)) void main(void)   /* (This disables normal register sa
     uint8_t ch;
 
 /* Initialization */
-/* function pointer to app start (is this fiddle still needed!) */
+/* function pointer to app start. This is above the bootloader. */
+#if (MCU_TYPE==1)
     void (*jumpToApp)( void ) = 0x0000;
+#elif (MCU_TYPE==2)
+    void (*jumpToApp)( void ) = 0x06C0;
+#else
+#error "Processor not defined"
+#endif
 
 /* Reset the watchdog timer as required for the ATMega family */
     wdt_disable();
@@ -130,11 +142,13 @@ __attribute__ ((OS_main)) void main(void)   /* (This disables normal register sa
 /* ---- Message receive ----- */
             uint8_t messageState = 0;   /* Initialise state variable for message start */
 /* Wait for a data message which should carry the bootloader commands */
-/* Only transmit and modem status messages would be relevant but must ignore these */
+/* Only transmit and modem status messages would be relevant but must ignore
+these */
             do
             {
 /* Loop until all message characters received and Rx message built */
-/* If an error occurs the state will be set back to zero and the message discarded */
+/* If an error occurs the state will be set back to zero and the message
+discarded */
                 do
                 {
 /* Test for the selected bootloader pin pulled low, then jump directly to the
@@ -142,7 +156,9 @@ application. If this is not used, the Q instruction will provide the jump.*/
 #if AUTO_ENTER_APP == 1
                     if (loaderPinSet())
                     {
+#ifdef RWWSRE
                         boot_rww_enable_safe();
+#endif
                         jumpToApp();
                     }
 #endif
@@ -179,7 +195,8 @@ application. If this is not used, the Q instruction will provide the jump.*/
 
 /* ---- Page Programming ----- */
 /* iHex start of line. Parse the line into byte valued array. */
-/* Only allow 16 byte lines max. 12 bytes precede data field, then 43 characters max. */
+/* Only allow 16 byte lines max. 12 bytes precede data field, then 43 characters
+max. */
             else if ((command==':') && (rxMessage.length <= 55))
             {
 /* Convert hex to byte binary and place in a line buffer */
@@ -215,8 +232,8 @@ application. If this is not used, the Q instruction will provide the jump.*/
                     uint8_t indx;
                     for (indx=4; indx<dataCount-1; indx+=2)
                     {
-/* If we hit the protected bootloader area, bomb out with a NAK */
-                        if ((byteAddress >= APP_END) || (byteAddress < APP_START))
+/* If we move outside the application area, bomb out with a NAK */
+                        if((byteAddress >= APP_END) || (byteAddress < APP_START))
                         {
                             response[0] = 'N';
                             break;
@@ -238,7 +255,8 @@ Then erase */
                             pageByteAddress = (byteAddress & ~(PAGESIZE-1));
                             for (uint16_t i=pageByteAddress; i<byteAddress; i+=2)
                                 boot_page_fill(i, 0xFFFF);      /* Padding */
-/* Check if erase is needed and get on with it. Wait for all prior write/erase to complete */
+/* Check if erase is needed and get on with it. Wait for all prior write/erase
+to complete */
                             uint8_t page = (byteAddress / PAGESIZE);
                             uint8_t pageBit = (1 << (page & 0x07));
                             uint8_t addridx = (page / 8);
@@ -265,9 +283,9 @@ Also do this if we finish with the last line (record type in line[3] is 1) */
                     }
                     if (response[0] == 'Y')
                     {
-/* The line has been written to the page buffer, and possibly a page write completed.
-Check if we have a file end record type, and have not just started writing a page. Then
-we need to write the last part page. */
+/* The line has been written to the page buffer, and possibly a page write
+completed. Check if we have a file end record type, and have not just started
+writing a page. Then we need to write the last part page. */
                         if ((programState != pageStart) && (line[3] == 1))
                         {
                             boot_spm_busy_wait();
@@ -281,7 +299,9 @@ we need to write the last part page. */
                             response[0] = 'J';
                             sendDataMessage(response,1);
                             boot_spm_busy_wait();
+#ifdef RWWSRE
                             boot_rww_enable();
+#endif
                             jumpToApp();        /* Jump to Application Reset vector 0x0000 */
                         }
                     }
@@ -291,7 +311,9 @@ we need to write the last part page. */
 /* Exit bootloader */
             else if (command=='Q')
             {
+#ifdef RWWSRE
                 boot_rww_enable_safe();
+#endif
                 response[0] = 'J';
                 jumpToApp();                /* Jump to Application Reset vector 0x0000 */
             }
@@ -301,7 +323,9 @@ we need to write the last part page. */
                 uint16_t address = 0;
                 for (uint8_t i = 1; i <= 4; i++)
                     address = (address << 4) + hexToNybble(rxMessage.message.rxRequest.data[i]);
+#ifdef RWWSRE
                 boot_rww_enable_safe();
+#endif
                 response[0] = 'M';
                 for (uint8_t i = 1; i < 33; i+=2)
                 {

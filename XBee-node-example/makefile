@@ -22,11 +22,24 @@
 # To rebuild project do "make clean" then "make all".
 #
 
-# Set the base address to start of selected bootloader area
-BASEADDR = 0x0000
-
 # MCU name
-MCU ?= attiny4313
+MCU ?= atmega168
+
+# Set the base address to start of application area
+ifeq ($(MCU),atmega168)
+BASEADDR = 0x0000
+endif
+ifeq ($(MCU),attiny4313)
+BASEADDR = 0x06C0
+endif
+
+# Set MCU_TYPE variable to pass to source codes
+ifeq ($(MCU),atmega168)
+MCU_TYPE = 1
+endif
+ifeq ($(MCU),attiny4313)
+MCU_TYPE = 2
+endif
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -37,11 +50,10 @@ OPT = 2
 
 
 # Target file name (without extension).
-TARGET = bootloader
+TARGET = xbee-node-example
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c serial.c
-
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s
@@ -70,6 +82,8 @@ CFLAGS = -g -O$(OPT) \
 -Wall -Wstrict-prototypes \
 -Wa,-adhlns=$(<:.c=.lst) \
 $(patsubst %,-I%,$(EXTRAINCDIRS))
+
+CFLAGS += -DMCU_TYPE=$(MCU_TYPE)
 
 
 # Set a "language standard" compiler flag.

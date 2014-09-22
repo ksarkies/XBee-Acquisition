@@ -52,10 +52,17 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+
+#if (MCU_TYPE==1)
+#include "defines-M168.h"
+#elif (MCU_TYPE==2)
 #include "defines-T4313.h"
+#endif
+
+#include <util/delay.h>
+
 #include "xbee-node.h"
 #include "serial.h"
-#include <util/delay.h>
 
 #define TRUE 1
 #define FALSE 0

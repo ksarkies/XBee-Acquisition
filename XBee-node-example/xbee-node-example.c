@@ -2,7 +2,7 @@
 @mainpage XBee AVR Node Example
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
-@date 4 January 2013
+@date 21 September 2014
 @brief Code for an AVR with an XBee in a Remote Low Power Node
 
 This code forms the core of an interface between an XBee networking device
@@ -34,15 +34,21 @@ Tested:   ATMega168 at 8MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#define F_CPU               8000000
-
 #include <inttypes.h>
 #include <avr/sfr_defs.h>
 #include <avr/wdt.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+
+#if (MCU_TYPE==1)
+#include "defines-M168.h"
+#elif (MCU_TYPE==2)
+#include "defines-T4313.h"
+#endif
+
 #include <util/delay.h>
+
 #include "serial.h"
 #include "timer.h"
 #include "xbee-node-example.h"
@@ -302,6 +308,8 @@ Because ATMega64, ATMega128, ATMega103 offer different scale factors, there
 needs to be a conversion provided between the specification here and the scale
 setting. The additional clock settings provided for those MCUs are not used
 here, nor are the external clock settings of the remaining MCUs.
+
+This code is also valid for the ATTiny4313.
 
 Timer 0 is typically an 8-bit timer and has very basic functionality. Some MCUs
 offer PWM capability while most do not.

@@ -19,7 +19,13 @@
  ***************************************************************************/
 
 #include <avr/io.h>
+#if (MCU_TYPE==1)
 #include "defines-M168.h"
+#elif (MCU_TYPE==2)
+#include "defines-T4313.h"
+#else
+#error "Processor not defined"
+#endif
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))

@@ -22,7 +22,13 @@
 #define BOOTLOADER_H
 
 #include <avr/sfr_defs.h>
+#if (MCU_TYPE==1)
+#include "defines-M168.h"
+#elif (MCU_TYPE==2)
 #include "defines-T4313.h"
+#else
+#error "Processor not defined"
+#endif
 
 #define TRUE 1
 #define FALSE 0

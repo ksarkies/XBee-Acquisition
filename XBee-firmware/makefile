@@ -24,7 +24,23 @@
 
 
 # MCU name
-MCU ?= atmega168
+MCU ?= attiny4313
+
+# Set the base address to start of application area
+ifeq ($(MCU),atmega168)
+BASEADDR = 0x0000
+endif
+ifeq ($(MCU),attiny4313)
+BASEADDR = 0x06C0
+endif
+
+# Set MCU_TYPE variable to pass to source codes
+ifeq ($(MCU),atmega168)
+MCU_TYPE = 1
+endif
+ifeq ($(MCU),attiny4313)
+MCU_TYPE = 2
+endif
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -35,7 +51,7 @@ OPT = 2
 
 
 # Target file name (without extension).
-TARGET = xbee-node-example
+TARGET = xbee-node
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c serial.c
@@ -68,6 +84,7 @@ CFLAGS = -g -O$(OPT) \
 -Wa,-adhlns=$(<:.c=.lst) \
 $(patsubst %,-I%,$(EXTRAINCDIRS))
 
+CFLAGS += -DMCU_TYPE=$(MCU_TYPE)
 
 # Set a "language standard" compiler flag.
 #   Unremark just one line below to set the language standard to use.
@@ -94,7 +111,7 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  -Wl,...:   tell GCC to pass this to linker.
 #  -Map:      create map file
 #  --cref:    add cross reference to  map file
-LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS = -Ttext=$(BASEADDR) -Wl,-Map=$(TARGET).map,--cref
 
 
 

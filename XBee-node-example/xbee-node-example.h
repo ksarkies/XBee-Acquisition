@@ -1,11 +1,12 @@
 /*        XBee AVR Node Example
        Ken Sarkies ksarkies@internode.on.net
-            4 January 2013
+            21 September 2014
 
 version     0.0.0
 Software    AVR-GCC 4.8.2
 Target:     Any AVR with sufficient output ports and a timer
 Tested:     ATMega48 at 8MHz internal clock.
+            ATMega168 at 8MHz internal clock.
 
 */
 /****************************************************************************
@@ -31,14 +32,18 @@ Tested:     ATMega48 at 8MHz internal clock.
 
 #include <inttypes.h>
 
-/* 0.128ms clock for 8MHz clock and value 5 (gives scale 1024, see timer.c)
+#if (MCU_TYPE==1)
+/* 0.128ms clock from 8MHz clock
+Timer clock scale value 5 gives scale of 1024, (see timer.c)
 This gives a 32ms overflow interrupt.*/
 #define RTC_SCALE           5
 
-/* Baudrate settings */
-#define UART_BAUD_RATE      38400
-
-#define BAUDRATE UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU)
+#elif (MCU_TYPE==2)
+/* 0.256ms clock from 1MHz clock
+Timer clock scale value 4 gives scale of 256, (see timer.c)
+This gives a 64ms overflow interrupt.*/
+#define RTC_SCALE           4
+#endif
 
 /* Xbee parameters */
 #define RF_PAYLOAD  63

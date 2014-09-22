@@ -31,13 +31,10 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #ifndef	PPINC
 /* indicate that preprocessor result is included */
 #define	PPINC
-/* device select */
-#define	_ATTINY4313
 #include	<avr/io.h>
 
-/* Choose whether to use hardware flow control for serial comms.
-Needed for the bootloader as the upload is extensive. */
-#define USE_HARDWARE_FLOW
+/* Choose whether to use hardware flow control for serial comms. */
+//#define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               1000000
@@ -100,7 +97,7 @@ include) */
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
-#define	APP_START	            0x800
+#define	APP_START	            0x06C0
 #define	APP_END	                MEMORY_SIZE
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (MEMORY_SIZE / PAGESIZE)
