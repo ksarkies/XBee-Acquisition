@@ -49,8 +49,8 @@ Tested:   ATMega168 at 8MHz internal clock.
 
 #include <util/delay.h>
 
-#include "serial.h"
-#include "timer.h"
+#include "../libs/serial.h"
+#include "../libs/timer.h"
 #include "xbee-node-example.h"
 
 /** Convenience macros (we don't use them all) */
@@ -98,6 +98,14 @@ uint8_t counter;
     uint8_t coordinatorAddress16[2];
     uint8_t rxOptions;
 
+/* Local Prototypes */
+
+void hardwareInit(void);
+void timerInit(void);
+void resetTimer(void);
+void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
+                        uint8_t radius, uint8_t length, uint8_t data[]);
+
 /*****************************************************************************/
 /** @brief Main Program */
 
@@ -117,7 +125,7 @@ int main(void)
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery event. */
-    for  (uint8_t i=0; i < 64; i++) coordinatorAddress64[0] = 0x00;
+    for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
     messageState = 0;
@@ -200,27 +208,6 @@ address avoids knowing the actual address, but may cause an address discovery ev
 }
 
 /****************************************************************************/
-/** @brief Build and transmit a basic frame
-
-Send preamble, then data block, followed by computed checksum
-*/
-void sendBaseFrame(txFrameType txMessage)
-{
-    sendch(0x7E);
-    sendch(high(txMessage.length));
-    sendch(low(txMessage.length));
-    sendch(txMessage.frameType);
-    txMessage.checksum = txMessage.frameType;
-    for (uint8_t i=0; i < txMessage.length-1; i++)
-    {
-        uint8_t txData = txMessage.message.array[i];
-        sendch(txData);
-        txMessage.checksum += txData;
-    }
-    sendch(0xFF-txMessage.checksum);
-}
-
-/****************************************************************************/
 /** @brief Build and transmit a Tx Request frame
 
 A data message for the XBee API is formed and transmitted.
@@ -252,7 +239,20 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
     {
         txMessage.message.txRequest.data[i] = data[i];
     }
-    sendBaseFrame(txMessage);
+/* Build and transmit a basic frame.
+Send preamble, then data block, followed by computed checksum */
+    sendch(0x7E);
+    sendch(high(txMessage.length));
+    sendch(low(txMessage.length));
+    sendch(txMessage.frameType);
+    txMessage.checksum = txMessage.frameType;
+    for (uint8_t i=0; i < txMessage.length-1; i++)
+    {
+        uint8_t txData = txMessage.message.array[i];
+        sendch(txData);
+        txMessage.checksum += txData;
+    }
+    sendch(0xFF-txMessage.checksum);
 }
 
 /****************************************************************************/
