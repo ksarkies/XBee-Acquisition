@@ -62,7 +62,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <util/delay.h>
 
 #include "xbee-node.h"
-#include "serial.h"
+#include "../libs/serial.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -110,7 +110,7 @@ int main(void)
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
 event. */
-    for  (uint8_t i=0; i < 64; i++) coordinatorAddress64[0] = 0x00;
+    for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
     messageState = 0;

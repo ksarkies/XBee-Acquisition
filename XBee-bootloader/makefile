@@ -53,7 +53,7 @@ OPT = 2
 TARGET = bootloader
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c serial.c
+SRC = $(TARGET).c ../libs/serial.c
 
 
 # List Assembler source files here.

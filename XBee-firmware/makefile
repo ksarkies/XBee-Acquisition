@@ -54,7 +54,7 @@ OPT = 2
 TARGET = xbee-node
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c serial.c
+SRC = $(TARGET).c ../libs/serial.c
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s

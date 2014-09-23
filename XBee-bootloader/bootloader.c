@@ -88,7 +88,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 /* definitions, structures, macros for the bootloader */
 #include "bootloader.h"
 /* macros for UART send/receive */
-#include "serial.h"
+#include "../libs/serial.h"
 #include <util/delay.h>
 
 static inline void initxbee(void);
@@ -297,7 +297,7 @@ writing a page. Then we need to write the last part page. */
                         if (line[3] == 1)
                         {
                             response[0] = 'J';
-                            sendDataMessage(response,1);
+                            sendDataMessageCoordinator(response,1);
                             boot_spm_busy_wait();
 #ifdef RWWSRE
                             boot_rww_enable();
@@ -336,7 +336,7 @@ writing a page. Then we need to write the last part page. */
                 responseLength = 33;
             }
             else response[0] = 'I';         /* invalid command or line */
-            sendDataMessage(response,responseLength);
+            sendDataMessageCoordinatorCoordinator(response,responseLength);
         }
     }
 }
@@ -350,7 +350,7 @@ unknown 16 bit address). The data to be sent is an ASCII string, ending in 0.
 @parameter uint8_t ch: character string to send
 */
 
-void sendDataMessage(uint8_t* ch, uint8_t messageLength)
+void sendDataMessageCoordinatorCoordinator(uint8_t* ch, uint8_t messageLength)
 {
     uint8_t messageString[15];
     messageString[0] = 0x03;            /* The frame ID */
