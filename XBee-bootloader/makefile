@@ -25,20 +25,18 @@
 # MCU name
 MCU ?= atmega168
 
-# Set the base address to start of application area
+# Set MCU_TYPE variable to pass to source codes
+# Set the base address to start of bootloader area
+# Set the code start address for bootloader in small AVRs
 ifeq ($(MCU),atmega168)
+MCU_TYPE = 1
 BASEADDR = 0x3800
 endif
 ifeq ($(MCU),attiny4313)
-BASEADDR = 0x0000
-endif
-
-# Set MCU_TYPE variable to pass to source codes
-ifeq ($(MCU),atmega168)
-MCU_TYPE = 1
-endif
-ifeq ($(MCU),attiny4313)
 MCU_TYPE = 2
+BASEADDR = 0x0000
+MAINADDR = 0x0800
+BOOTADDR = 0x0C00
 endif
 
 # Output format. (can be srec, ihex, binary)
@@ -46,14 +44,14 @@ FORMAT = ihex
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-OPT = 2
+OPT = s
 
 
 # Target file name (without extension).
 TARGET = bootloader
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c ../libs/serial.c
+SRC = $(TARGET).c
 
 
 # List Assembler source files here.
@@ -111,7 +109,13 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  -Wl,...:   tell GCC to pass this to linker.
 #  -Map:      create map file
 #  --cref:    add cross reference to  map file
-LDFLAGS = -Ttext=$(BASEADDR) -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS = -Ttext=$(BASEADDR)
+LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
+
+ifeq ($(MCU_TYPE),2)
+LDFLAGS += -Wl,--section-start=.bootmain=$(MAINADDR)
+LDFLAGS += -Wl,--section-start=.bootloader=$(BOOTADDR)
+endif
 
 
 # Additional libraries
@@ -124,9 +128,6 @@ LDFLAGS = -Ttext=$(BASEADDR) -Wl,-Map=$(TARGET).map,--cref
 
 # -lm = math library
 LDFLAGS += -lm
-
-
-
 
 # Programming support using avrdude. Settings and variables.
 

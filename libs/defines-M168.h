@@ -1,13 +1,15 @@
-/* AVR/XBee Bootloader Defines
+/* AVR/XBee Defines
 
-For AVR microcontrollers without bootloader section.
+For AVR microcontrollers with a bootloader section.
 
 This file assigns registers, particular to an AVR type, to common constants.
+It is valid for bootloader and application firmware.
 
 I/O pin values for controlling the bootloader operation are given at the end.
 
 Software: AVR-GCC 4.8.2
-Tested:   ATTiny4313 at 1MHz internal clock.
+Target:   Any AVR with sufficient output ports and a timer
+Tested:   ATMega168 at 8MHz internal clock.
 */
 
 /****************************************************************************
@@ -28,32 +30,27 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef	PPINC
-/* indicate that preprocessor result is included */
-#define	PPINC
 #include	<avr/io.h>
 
-/* Choose whether to use hardware flow control for serial comms. */
-//#define USE_HARDWARE_FLOW
+/* Choose whether to use hardware flow control for serial comms.
+Needed for the bootloader as the upload is extensive. */
+#define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
-#define F_CPU               1000000
-#define BAUD                9600
+#define F_CPU               8000000
+#define BAUD                38400
 #define BOOTLOADER_SIZE     2048
 
 /* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered
-automatically */
+/* Use the defined input pin to decide if the application will be entered automatically */
 #define AUTO_ENTER_APP      1
-
-/* Use the defined output pin to force the XBee to stay awake while in the
-bootloader. This is valid for the XBee sleep mode 1 only. The application should
-move it to other modes if necessary. Note that using this may fail because the
-output pins may be forced to an undesired level during programming. */
+/* Use the defined output pin to force the XBee to stay awake while in the bootloader.
+This is valid for the XBee sleep mode 1 only. The application should move it to other modes
+if necessary. Note that using this may fail because the output pins may be forced
+to an undesired level during programming. */
 #define XBEE_STAY_AWAKE     1
 
-/* Simple serial I/O (must define cpu frequency and baudrate before this
-include) */
+// Simple serial I/O (must define cpu frequency and baudrate before this include) */
 #include <util/setbaud.h>
 
 /* Convenience macros (we don't use them all) */
@@ -67,38 +64,35 @@ include) */
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
-/* Simple serial I/O (must define cpu frequency and baudrate before this include) */
-#include <util/setbaud.h>
-
 /* definitions for UART control */
-#define	BAUD_RATE_HIGH_REG	    UBRRH
-#define	BAUD_RATE_LOW_REG	    UBRRL
-#define	UART_CONTROL_REG	    UCSRB
-#define	UART_FORMAT_REG	        UCSRC
-#define FRAME_SIZE              UCSZ0
-#define	ENABLE_TRANSMITTER_BIT	TXEN
-#define	ENABLE_RECEIVER_BIT	    RXEN
-#define	UART_STATUS_REG	        UCSRA
-#define	TRANSMIT_COMPLETE_BIT	TXC
-#define	RECEIVE_COMPLETE_BIT	RXC
-#define	UART_DATA_REG	        UDR
-#define DOUBLE_RATE             U2X
+#define	BAUD_RATE_HIGH_REG	    UBRR0H
+#define	BAUD_RATE_LOW_REG	    UBRR0L
+#define	UART_CONTROL_REG	    UCSR0B
+#define	UART_FORMAT_REG	        UCSR0C
+#define FRAME_SIZE              UCSZ00
+#define	ENABLE_TRANSMITTER_BIT	TXEN0
+#define	ENABLE_RECEIVER_BIT	    RXEN0
+#define	UART_STATUS_REG	        UCSR0A
+#define	TRANSMIT_COMPLETE_BIT	TXC0
+#define	RECEIVE_COMPLETE_BIT	RXC0
+#define	UART_DATA_REG	        UDR0
+#define DOUBLE_RATE             U2X0
 
 /* UART Flow control ports */
-#define UART_CTS_PORT           PINA
-#define UART_CTS_PORT_DIR       DDRA
-#define UART_CTS_PIN            1
-#define UART_RTS_PORT           PORTA
-#define UART_RTS_PORT_DIR       DDRA
-#define UART_RTS_PIN            0
+#define UART_CTS_PORT           PIND
+#define UART_CTS_PORT_DIR       DDRD
+#define UART_CTS_PIN            2
+#define UART_RTS_PORT           PORTD
+#define UART_RTS_PORT_DIR       DDRD
+#define UART_RTS_PIN            3
 
 /* definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
-#define	APP_START	            0x06C0
-#define	APP_END	                MEMORY_SIZE
+#define	APP_START	            0x0000
+#define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (MEMORY_SIZE / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
@@ -113,4 +107,3 @@ These are defined from avr-libc io.h based on processor choice. */
 #define WAKE_PORT               PORTB
 #define WAKE_PIN                3
 
-#endif

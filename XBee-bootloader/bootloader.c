@@ -12,10 +12,21 @@ before writing starts, with lockout bits being used to prevent them being erased
 at later times. If the process needs to be restarted, the microcontroller must
 be reset.
 
-This bootloader is written for microcontrollers without a separate bootloader
-section, therefore it must be placed at the beginning of memory. The application
-starts at address 0x06C0 just above the bootloader. If the bootloader pin is not
-active the bootloader will jump directly to the application code, and also after
+One of the input pins on the microcontroller is tested and used as an
+instruction to remain in the bootloader after a reset. This should be an XBee
+output pin. After firmware update is complete the program may be entered by
+simply removing the signal on this pin. While the bootloader is active, an
+output pin on the microcontroller is used to force the XBee to remain awake.
+This must be connected to the Sleep Request pin of the XBee.
+
+This bootloader is written to the top of FLASH memory. It requires almost 2K
+of space, and so is suited only to microcontrollers with 4K of memory or more.
+The code supports microcontrollers without a separate bootloader section. In
+those cases the application code must contain a test of the bootloader pin and
+a jump to the bootloader at the start if the bootloader is to be used. In cases
+where a bootloader section is provided, the fuses must be set to jump to the
+bootloader on reset. If the bootloader pin is not active the bootloader will
+then jump directly to the application code at location zero, and also after
 firmware has been uploaded.
 
 When each line has been programmed an acknowledgement is returned as 'Y'
@@ -34,15 +45,8 @@ bootloader is restarted.
 Commands are:
 ; - program an iHex line.
 X - erase all Flash in application area (excluding bootloader).
-Q - quit the bootloader and jump to application code.
+J - quit the bootloader and jump to application code.
 Mxxxx - dump memory in hex, 16 bytes from the hex address xxxx
-
-One of the input pins on the microcontroller is tested and used as an
-instruction to remain in the bootloader. This should be attached to an XBee
-output pin. After firmware update is complete the program may be entered by
-simply removing the signal on this pin. While the bootloader is active, an
-output pin on the microcontroller is used to force the XBee to remain awake.
-This must be attached to the Sleep Request pin of the XBee.
 
 Responses are single ASCII character
 'Y' command completed successfully
@@ -85,35 +89,67 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <string.h>
 #include <avr/pgmspace.h>
 #include <avr/wdt.h>
-/* definitions, structures, macros for the bootloader */
 #include "bootloader.h"
-/* macros for UART send/receive */
-#include "../libs/serial.h"
 #include <util/delay.h>
 
-static inline void initxbee(void);
-static inline uint8_t loaderPinSet(void);
-static inline void setXbeeWake(void);
-static inline uint8_t hexToNybble(uint8_t hex);
-static inline uint8_t nybbleToHex(uint8_t x);
-static inline uint8_t isHex(uint8_t hex);
+/* Prototypes: force all code into the top of memory for microcontrollers
+without a separate bootloader section. The main program is forced to the start
+of the bootloader so that any application code may find it.  */
+
+int main(void)
+ __attribute__ ((section (".bootmain")));
+static inline void initxbee(void)
+ __attribute__ ((section (".bootloader")));
+static inline uint8_t loaderPinSet(void)
+ __attribute__ ((section (".bootloader")));
+static inline void setXbeeWake(void)
+ __attribute__ ((section (".bootloader")));
+static uint8_t hexToNybble(uint8_t hex)
+ __attribute__ ((section (".bootloader")));
+static uint8_t nybbleToHex(uint8_t x)
+ __attribute__ ((section (".bootloader")));
+static uint8_t isHex(uint8_t hex)
+ __attribute__ ((section (".bootloader")));
+messageError parseMessage(uint8_t inputChar, uint8_t *messageState, rxFrameType *message)
+ __attribute__ ((section (".bootloader")));
+void sendDataMessageCoordinator(uint8_t *ch, uint8_t messageLength)
+ __attribute__ ((section (".bootloader")));
+void inline uartInit(void)
+ __attribute__ ((section (".bootloader")));
+void sendch(unsigned char c)
+ __attribute__ ((section (".bootloader")));
+unsigned inline char getch(void)
+ __attribute__ ((section (".bootloader")));
 
 /**********************************************************************
 	Start of Main Program
 */
 
-__attribute__ ((OS_main)) void main(void)   /* (This disables normal register saving) */
+/* (Disables call register saving) */
+__attribute__ ((OS_main)) int main(void)
 {
     uint8_t ch;
 
-/* Initialization */
-/* function pointer to app start. This is above the bootloader. */
+/* Cause jump to app if bootloader pin is inactive.
+MCU_TYPE 1 needs this as it has a separate bootloader section. */
+
+/* Pointer to app start. */
+    void *jumpToApp = (void *)0x0000;
+
+/* This section is not needed for AVRs without a bootloader section (MCU_TPE=2)
+ as the application code must handle the test and jump. */
 #if (MCU_TYPE==1)
-    void (*jumpToApp)( void ) = 0x0000;
-#elif (MCU_TYPE==2)
-    void (*jumpToApp)( void ) = 0x06C0;
-#else
-#error "Processor not defined"
+/* Test for the bootloader pin pulled high, then jump directly to the
+application. If this is not used, the J instruction will provide the jump.*/
+#if AUTO_ENTER_APP == 1
+    if (loaderPinSet())
+    {
+#ifdef RWWSRE
+        boot_rww_enable_safe();
+#endif
+        goto *jumpToApp;
+    }
+#endif
 #endif
 
 /* Reset the watchdog timer as required for the ATMega family */
@@ -151,17 +187,6 @@ these */
 discarded */
                 do
                 {
-/* Test for the selected bootloader pin pulled low, then jump directly to the
-application. If this is not used, the Q instruction will provide the jump.*/
-#if AUTO_ENTER_APP == 1
-                    if (loaderPinSet())
-                    {
-#ifdef RWWSRE
-                        boot_rww_enable_safe();
-#endif
-                        jumpToApp();
-                    }
-#endif
                     ch = getch();           /* Check for a command character. */
                 }
                 while (parseMessage(ch, &messageState, &rxMessage) != ready);
@@ -302,7 +327,7 @@ writing a page. Then we need to write the last part page. */
 #ifdef RWWSRE
                             boot_rww_enable();
 #endif
-                            jumpToApp();        /* Jump to Application Reset vector 0x0000 */
+                            goto *jumpToApp;    /* Jump to Application Reset vector 0x0000 */
                         }
                     }
                 }
@@ -315,7 +340,7 @@ writing a page. Then we need to write the last part page. */
                 boot_rww_enable_safe();
 #endif
                 response[0] = 'J';
-                jumpToApp();                /* Jump to Application Reset vector 0x0000 */
+                goto *jumpToApp;            /* Jump to Application Reset vector 0x0000 */
             }
 /* Dump of Memory */
             else if (command == 'M')
@@ -336,7 +361,7 @@ writing a page. Then we need to write the last part page. */
                 responseLength = 33;
             }
             else response[0] = 'I';         /* invalid command or line */
-            sendDataMessageCoordinatorCoordinator(response,responseLength);
+            sendDataMessageCoordinator(response,responseLength);
         }
     }
 }
@@ -350,7 +375,7 @@ unknown 16 bit address). The data to be sent is an ASCII string, ending in 0.
 @parameter uint8_t ch: character string to send
 */
 
-void sendDataMessageCoordinatorCoordinator(uint8_t* ch, uint8_t messageLength)
+void sendDataMessageCoordinator(uint8_t* ch, uint8_t messageLength)
 {
     uint8_t messageString[15];
     messageString[0] = 0x03;            /* The frame ID */
@@ -463,6 +488,68 @@ uint8_t nybbleToHex(uint8_t x)
 uint8_t isHex(uint8_t hex)
 {
     return (((hex - '0') <= 9) || ((hex - 'A') <= 5));
+}
+/*-----------------------------------------------------------------------------*/
+/* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
+
+Baud rate is derived from the header call to setbaud.h.
+UBRRL_VALUE and UBRRH_VALUE and USE_2X are returned, the latter requires the
+U2X bit to be set in UCSRA to force a double baud rate clock.
+*/
+
+void uartInit(void)
+{
+    BAUD_RATE_LOW_REG = UBRRL_VALUE;
+    BAUD_RATE_HIGH_REG = UBRRH_VALUE;
+#if USE_2X
+    sbi(UART_STATUS_REG,DOUBLE_RATE);
+#else
+    cbi(UART_STATUS_REG,DOUBLE_RATE);
+#endif
+    UART_FORMAT_REG = (3 << FRAME_SIZE);                // Set 8 bit frames
+    UART_CONTROL_REG |= _BV(ENABLE_RECEIVER_BIT) |
+                        _BV(ENABLE_TRANSMITTER_BIT);    // enable receive and transmit 
+#ifdef USE_HARDWARE_FLOW
+    cbi(UART_CTS_PORT_DIR,UART_CTS_PIN);                // Set flow control pins CTS input
+    sbi(UART_RTS_PORT_DIR,UART_RTS_PIN);                // RTS output
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                    // RTS cleared to enable
+#endif
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Send a character when the Tx is ready
+
+The function waits until CTS is asserted low then waits until the UART indicates
+that the character has been sent.
+*/
+
+void sendch(unsigned char c)
+{
+#ifdef USE_HARDWARE_FLOW
+        while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     // wait for clear to send
+#endif
+        UART_DATA_REG = c;                                  // send
+        while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    // wait till gone
+        UART_STATUS_REG |= _BV(TRANSMIT_COMPLETE_BIT);      // reset TXCflag
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Get a character when the Rx is ready (blocking)
+
+The function asserts RTS low then waits for the receive complete bit is set.
+RTS is then cleared high. The character is then retrieved.
+*/
+
+unsigned char getch(void)
+{
+#ifdef USE_HARDWARE_FLOW
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
+#endif
+    while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
+#ifdef USE_HARDWARE_FLOW
+    sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
+#endif
+    return UART_DATA_REG;
 }
 /*-----------------------------------------------------------------------------*/
 

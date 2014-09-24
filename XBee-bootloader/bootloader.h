@@ -23,9 +23,9 @@
 
 #include <avr/sfr_defs.h>
 #if (MCU_TYPE==1)
-#include "defines-M168.h"
+#include "../libs/defines-M168.h"
 #elif (MCU_TYPE==2)
-#include "defines-T4313.h"
+#include "../libs/defines-T4313.h"
 #else
 #error "Processor not defined"
 #endif
@@ -124,8 +124,6 @@ typedef enum {ready, inprogress, checksum, statemachine} messageError;
 typedef enum {pageStart, pageFilling, pageErasing, pageWriting} pState;
 
 /* Prototypes */
-messageError parseMessage(uint8_t inputChar, uint8_t *messageState, rxFrameType *message);
-void sendDataMessage(uint8_t *ch, uint8_t messageLength);
 
 #endif
 
