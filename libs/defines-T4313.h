@@ -94,8 +94,8 @@ include) */
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
-#define	APP_START	            0x06C0
-#define	APP_END	                MEMORY_SIZE
+#define	APP_START	            0x0000
+#define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (MEMORY_SIZE / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)

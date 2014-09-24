@@ -25,13 +25,7 @@
 # MCU name
 MCU ?= atmega168
 
-# Set the base address to start of application area
-ifeq ($(MCU),atmega168)
 BASEADDR = 0x0000
-endif
-ifeq ($(MCU),attiny4313)
-BASEADDR = 0x06C0
-endif
 
 # Set MCU_TYPE variable to pass to source codes
 ifeq ($(MCU),atmega168)

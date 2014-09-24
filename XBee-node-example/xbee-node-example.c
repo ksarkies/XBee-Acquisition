@@ -124,10 +124,11 @@ MCU_TYPE 1 does not need this as it has a separate bootloader section. */
 
 #if (MCU_TYPE==2)
 /* Pointer to bootloader start. Address may differ for different FLASH sizes. */
-    void *bootloader = (void *)0x0800;       /* Any 4K AVR */
+    void (*bootloader)( void ) = 0x0800;
 /* Test for the selected bootloader pin pulled low, then jump directly to the
 bootloader.*/
-    if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0) goto *bootloader;
+    cbi(PROG_PORT_DIR,PROG_PIN);
+    if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0) bootloader();
 #endif
 
 
@@ -305,9 +306,9 @@ This ISR sends a dummy data record to the coordinator.
 
 ISR(TIMER0_OVF_vect)
 {
-        if ((inb(PORTB)&0x01) == 0) sbi(PORTB,0);
-        else cbi(PORTB,0);
-    uint8_t data[7] = "DHowdy";
+    if ((inb(PORTB)&0x01) == 0) sbi(PORTB,0);
+    else cbi(PORTB,0);
+    uint8_t data[7] = "DHello";
     time.timeValue++;
     counter--;
     if (counter == 0)
