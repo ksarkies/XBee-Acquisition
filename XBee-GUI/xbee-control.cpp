@@ -163,7 +163,7 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
 #ifdef DEBUG
     qDebug() << "Device type" << (int)deviceType;
 #endif
-// Change sleep mode on end device only, coordinator and routers never change
+// Change sleep mode on end device only; coordinator and routers never sleep
     if (deviceType == 2)
     {
 // Keep old value.
@@ -302,14 +302,31 @@ or abort if nothing comes back in a reasonable time. */
             qApp->processEvents();
         }
     }
-/* Remove bootloader signal - node should enter application mode */
+/* Remove bootloader signal and reset again. Node will enter application mode */
 /* Set the DIO11 port on the XBee (back to application) */
     firmwareCommand.clear();
     firmwareCommand.append('R');
     firmwareCommand.append(char(row));
     firmwareCommand.append("P1");
     firmwareCommand.append(5);
-    sendCommand(firmwareCommand);
+    errorCode = sendCommand(firmwareCommand);
+    if (errorCode > 0) failPoint = 6;
+/* Clear the DIO12 port on the XBee (AVR Reset) */
+    firmwareCommand.clear();
+    firmwareCommand.append('R');
+    firmwareCommand.append(char(row));
+    firmwareCommand.append("P2");
+    firmwareCommand.append(4);
+    errorCode = sendCommand(firmwareCommand);
+    if (errorCode > 0) failPoint = 7;
+/* Set the DIO12 port on the XBee (AVR Reset) */
+    firmwareCommand.clear();
+    firmwareCommand.append('R');
+    firmwareCommand.append(char(row));
+    firmwareCommand.append("P2");
+    firmwareCommand.append(5);
+    errorCode = sendCommand(firmwareCommand);
+    if (errorCode > 0) failPoint = 8;
 /* Turn off progress bar when ended */
     XbeeControlFormUi.uploadProgressBar->setValue(file->size());
     XbeeControlFormUi.uploadProgressBar->setVisible(false);
@@ -329,7 +346,7 @@ or abort if nothing comes back in a reasonable time. */
         if (sendAtCommand(sleepModeCommand, true,3000) > 0)
         {
 #ifdef DEBUG
-            qDebug() << "Timeout setting remote node sleep mode";
+            qDebug() << "Timeout reloading remote node sleep mode";
 #endif
         }
     }
