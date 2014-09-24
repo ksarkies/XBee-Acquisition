@@ -202,6 +202,7 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     firmwareCommand.append(4);
     errorCode = sendCommand(firmwareCommand);
     if (errorCode > 0) failPoint = 2;
+    millisleep(500);                 // Wait a bit for reset to complete
 /* Set the DIO12 port on the XBee (AVR Reset) */
     firmwareCommand.clear();
     firmwareCommand.append('R');
@@ -215,7 +216,6 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     XbeeControlFormUi.uploadProgressBar->setMinimum(0);
     XbeeControlFormUi.uploadProgressBar->setMaximum(file->size());
     XbeeControlFormUi.uploadProgressBar->setValue(0);
-    millisleep(500);                 // Wait a bit for reset to complete
     firmwareCommand.clear();
     firmwareCommand.append('S');
     firmwareCommand.append(char(row));
@@ -319,6 +319,7 @@ or abort if nothing comes back in a reasonable time. */
     firmwareCommand.append(4);
     errorCode = sendCommand(firmwareCommand);
     if (errorCode > 0) failPoint = 7;
+    millisleep(500);                 // Wait a bit for reset to complete
 /* Set the DIO12 port on the XBee (AVR Reset) */
     firmwareCommand.clear();
     firmwareCommand.append('R');
