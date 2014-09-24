@@ -134,7 +134,7 @@ __attribute__ ((OS_main)) int main(void)
 MCU_TYPE 1 needs this as it has a separate bootloader section. */
 
 /* Pointer to app start. */
-    void *jumpToApp = (void *)0x0000;
+    void (*jumpToApp)( void ) = 0x0000;
 
 /* This section is not needed for AVRs without a bootloader section (MCU_TPE=2)
  as the application code must handle the test and jump. */
@@ -147,7 +147,7 @@ application. If this is not used, the J instruction will provide the jump.*/
 #ifdef RWWSRE
         boot_rww_enable_safe();
 #endif
-        goto *jumpToApp;
+        jumpToApp()
     }
 #endif
 #endif
@@ -327,7 +327,7 @@ writing a page. Then we need to write the last part page. */
 #ifdef RWWSRE
                             boot_rww_enable();
 #endif
-                            goto *jumpToApp;    /* Jump to Application Reset vector 0x0000 */
+                            jumpToApp()    /* Jump to Application Reset vector 0x0000 */
                         }
                     }
                 }
@@ -340,7 +340,7 @@ writing a page. Then we need to write the last part page. */
                 boot_rww_enable_safe();
 #endif
                 response[0] = 'J';
-                goto *jumpToApp;            /* Jump to Application Reset vector 0x0000 */
+                jumpToApp()            /* Jump to Application Reset vector 0x0000 */
             }
 /* Dump of Memory */
             else if (command == 'M')
