@@ -9,6 +9,9 @@ This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
 measurements for communication to a base controller.
 
+NOTE: with the current avr-gcc, optimization level 1 must be used. Other levels
+appear to create faulty code.
+
 @note
 Software: AVR-GCC 4.8.2
 @note
@@ -42,9 +45,9 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/sleep.h>
 
 #if (MCU_TYPE==1)
-#include "defines-M168.h"
+#include "../libs/defines-M168.h"
 #elif (MCU_TYPE==2)
-#include "defines-T4313.h"
+#include "../libs/defines-T4313.h"
 #endif
 
 #include <util/delay.h>
@@ -98,11 +101,13 @@ uint8_t counter;
     uint8_t coordinatorAddress16[2];
     uint8_t rxOptions;
 
+/*****************************************************************************/
 /* Local Prototypes */
 
-void hardwareInit(void);
-void timerInit(void);
-void resetTimer(void);
+static void inline hardwareInit(void);
+static void inline timer0Init(uint8_t mode,uint16_t timerClock);
+static void resetTimer(void);
+static uint16_t timer0Read(void);
 void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
                         uint8_t radius, uint8_t length, uint8_t data[]);
 
@@ -111,20 +116,31 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
 
 int main(void)
 {
+
+/* THIS CODE MUST BE PRESENT HERE IN EVERY APPLICATION FOR AVRs
+WITHOUT A SEPARATE BOOTLOADER SECTION.
+Cause jump to bootloader if bootloader pin is active.
+MCU_TYPE 1 does not need this as it has a separate bootloader section. */
+
+#if (MCU_TYPE==2)
+/* Pointer to bootloader start. Address may differ for different FLASH sizes. */
+    void *bootloader = (void *)0x0800;       /* Any 4K AVR */
+/* Test for the selected bootloader pin pulled low, then jump directly to the
+bootloader.*/
+    if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0) goto *bootloader;
+#endif
+
+
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* reset timer */
-/** Initialize the UART library, pass the baudrate and avr cpu clock 
-(uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
 
-/** Enable interrupts, since the UART library is interrupt controlled. */
-//    sei();
-
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
-address avoids knowing the actual address, but may cause an address discovery event. */
+address avoids knowing the actual address, but may cause an address discovery
+event. */
     for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
@@ -289,7 +305,9 @@ This ISR sends a dummy data record to the coordinator.
 
 ISR(TIMER0_OVF_vect)
 {
-    uint8_t data[7] = "DHello";
+        if ((inb(PORTB)&0x01) == 0) sbi(PORTB,0);
+        else cbi(PORTB,0);
+    uint8_t data[7] = "DHowdy";
     time.timeValue++;
     counter--;
     if (counter == 0)

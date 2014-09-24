@@ -26,6 +26,7 @@
 #else
 #error "Processor not defined"
 #endif
+#include "serial.h"
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))

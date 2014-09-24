@@ -95,7 +95,4 @@ functions. Any or all may be used. */
 #define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
-extern void timer0Init(uint8_t mode,uint16_t timerClockScale);
-extern uint16_t timer0Read(void);
-
 #endif
