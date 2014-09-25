@@ -127,10 +127,9 @@ MCU_TYPE 1 does not need this as it has a separate bootloader section. */
     void (*bootloader)( void ) = 0x0800;
 /* Test for the selected bootloader pin pulled low, then jump directly to the
 bootloader.*/
-    cbi(PROG_PORT_DIR,PROG_PIN);
+    cbi(PROG_PORT_DIR,PROG_PIN);    /* Set bootloader test pin input */
     if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0) bootloader();
 #endif
-
 
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
@@ -306,7 +305,7 @@ This ISR sends a dummy data record to the coordinator.
 
 ISR(TIMER0_OVF_vect)
 {
-    if ((inb(PORTB)&0x01) == 0) sbi(PORTB,0);
+    if ((inb(PORTB) & 0x01) == 0) sbi(PORTB,0);
     else cbi(PORTB,0);
     uint8_t data[7] = "DHello";
     time.timeValue++;
