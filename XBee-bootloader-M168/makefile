@@ -1,43 +1,17 @@
 # Makefile to compile and link the UARTlibrary and test program
 # 
 # based on
-# WinAVR Sample makefile written by Eric B. Weddington, J�g Wunsch, et al.
-#
-# On command line:
-#
-# make all = Make software.
-#
-# make clean = Clean out built project files.
-#
-# make coff = Convert ELF to AVR COFF (for use with AVR Studio 3.x or VMLAB).
-#
-# make extcoff = Convert ELF to AVR Extended COFF (for use with AVR Studio
-#                4.07 or greater).
-#
-# make program = Download the hex file to the device, using avrdude.  Please
-#                customize the avrdude settings below first!
-#
-# make filename.s = Just compile filename.c into the assembler code only
-#
-# To rebuild project do "make clean" then "make all".
+# WinAVR Sample makefile
+# written by Eric B. Weddington, J�g Wunsch, et al.
 #
 
-# MCU name
+# This makefile compiles a bootloader for AVRs with a bootloader section.
+
+# MCU name and bootloader base address
 MCU ?= atmega168
-
-# Set MCU_TYPE variable to pass to source codes
-# Set the base address to start of bootloader area
-# Set the code start address for bootloader in small AVRs
-ifeq ($(MCU),atmega168)
-MCU_TYPE = 1
 BASEADDR = 0x3800
-endif
-ifeq ($(MCU),attiny4313)
-MCU_TYPE = 2
-BASEADDR = 0x0000
-MAINADDR = 0x0800
-BOOTADDR = 0x0C00
-endif
+# Set MCU_TYPE variable to pass to source codes
+MCU_TYPE = 1
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -83,6 +57,7 @@ CFLAGS = -g -O$(OPT) \
 $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 CFLAGS += -DMCU_TYPE=$(MCU_TYPE)
+CFLAGS += -DBASEADDR=$(BASEADDR)
 
 # Set a "language standard" compiler flag.
 #   Unremark just one line below to set the language standard to use.
@@ -111,11 +86,6 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  --cref:    add cross reference to  map file
 LDFLAGS = -Ttext=$(BASEADDR)
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
-
-ifeq ($(MCU_TYPE),2)
-LDFLAGS += -Wl,--section-start=.bootmain=$(MAINADDR)
-LDFLAGS += -Wl,--section-start=.bootloader=$(BOOTADDR)
-endif
 
 
 # Additional libraries

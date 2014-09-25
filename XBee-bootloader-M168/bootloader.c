@@ -21,13 +21,10 @@ This must be connected to the Sleep Request pin of the XBee.
 
 This bootloader is written to the top of FLASH memory. It requires almost 2K
 of space, and so is suited only to microcontrollers with 4K of memory or more.
-The code supports microcontrollers without a separate bootloader section. In
-those cases the application code must contain a test of the bootloader pin and
-a jump to the bootloader at the start if the bootloader is to be used. In cases
-where a bootloader section is provided, the fuses must be set to jump to the
-bootloader on reset. If the bootloader pin is not active the bootloader will
-then jump directly to the application code at location zero, and also after
-firmware has been uploaded.
+The code supports microcontrollers a separate bootloader section. The fuses
+must be set to jump to the bootloader on reset. If the bootloader pin is not
+active the bootloader will then jump directly to the application code at
+location zero, and also after firmware has been uploaded.
 
 When each line has been programmed an acknowledgement is returned as 'Y'
 representing OK, or other responses (see below) representing errors. When an
@@ -130,13 +127,9 @@ __attribute__ ((OS_main)) int main(void)
 
 /* Cause jump to app if bootloader pin is inactive.
 MCU_TYPE 1 needs this as it has a separate bootloader section. */
-
 /* Pointer to app start. */
     void (*jumpToApp)( void ) = 0x0000;
 
-/* This section is not needed for AVRs without a bootloader section (MCU_TPE=2)
- as the application code must handle the test and jump. */
-#if (MCU_TYPE==1)
 /* Test for the bootloader pin pulled high, then jump directly to the
 application. If this is not used, the J instruction will provide the jump.*/
 #if AUTO_ENTER_APP == 1
@@ -147,7 +140,6 @@ application. If this is not used, the J instruction will provide the jump.*/
 #endif
         jumpToApp();
     }
-#endif
 #endif
 
 /* Reset the watchdog timer as required for the ATMega family */
@@ -463,8 +455,8 @@ void initxbee(void)
 void setXbeeWake(void)
 {
 #if XBEE_STAY_AWAKE == 1
-    sbi(WAKE_PORT_DIR,WAKE_PIN);
-    cbi(WAKE_PORT,WAKE_PIN);
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
 #endif
 }
 /*-----------------------------------------------------------------------------*/

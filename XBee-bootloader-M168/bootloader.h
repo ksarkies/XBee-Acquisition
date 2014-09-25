@@ -1,4 +1,15 @@
-/* Bootloader Header file */
+/*          Bootloader Header file
+
+       Ken Sarkies ksarkies@internode.on.net
+            25 September 2014
+
+Bootloader for AVRs with a bootload section
+
+version     0.0.0
+Software    AVR-GCC 4.8.2
+Target:     Any AVR with sufficient output ports and a timer
+Tested:     ATMega168 at 8MHz internal clock.
+*/
 
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -22,13 +33,7 @@
 #define BOOTLOADER_H
 
 #include <avr/sfr_defs.h>
-#if (MCU_TYPE==1)
 #include "../libs/defines-M168.h"
-#elif (MCU_TYPE==2)
-#include "../libs/defines-T4313.h"
-#else
-#error "Processor not defined"
-#endif
 
 #define TRUE 1
 #define FALSE 0
