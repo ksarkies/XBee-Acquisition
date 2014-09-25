@@ -63,8 +63,13 @@ include) */
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
-/* Simple serial I/O (must define cpu frequency and baudrate before this include) */
-#include <util/setbaud.h>
+/* UART Error Definitions. */
+#define NO_DATA                 0x01
+#define BUFFER_OVERFLOW         0x02
+#define OVERRUN_ERROR           0x04
+#define FRAME_ERROR             0x08
+#define STATE_MACHINE           0x10
+#define CHECKSUM                0x11
 
 /* definitions for UART control */
 #define	BAUD_RATE_HIGH_REG	    UBRRH
@@ -94,7 +99,7 @@ include) */
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
 #define	APP_START	            0x0000
-#define	APP_END	                BASEADDRESS
+#define	APP_END	                BASEADDR
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (APP_END / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)

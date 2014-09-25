@@ -64,6 +64,14 @@ to an undesired level during programming. */
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
+/* UART Error Definitions. */
+#define NO_DATA                 0x01
+#define BUFFER_OVERFLOW         0x02
+#define OVERRUN_ERROR           0x04
+#define FRAME_ERROR             0x08
+#define STATE_MACHINE           0x10
+#define CHECKSUM                0x11
+
 /* definitions for UART control */
 #define	BAUD_RATE_HIGH_REG	    UBRR0H
 #define	BAUD_RATE_LOW_REG	    UBRR0L

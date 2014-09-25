@@ -40,19 +40,6 @@ This gives a 32ms overflow interrupt.*/
 /* Xbee parameters */
 #define RF_PAYLOAD  63
 
-/**********************************************************/
-/** @name Error Definitions.
-From the UART:
-@{*/
-#define NO_DATA                 0x01
-#define BUFFER_OVERFLOW         0x02
-#define OVERRUN_ERROR           0x04
-#define FRAME_ERROR             0x08
-
-#define STATE_MACHINE           0x10
-#define CHECKSUM                0x11
-/*@}*/
-
 #define RX_REQUEST              0x90
 #define TX_REQUEST              0x10
 
