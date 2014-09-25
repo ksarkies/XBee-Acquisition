@@ -1,4 +1,4 @@
-# Makefile to compile and link the UARTlibrary and test program
+# Makefile to compile and link the ATMega168 bootloader
 # 
 # based on
 # WinAVR Sample makefile

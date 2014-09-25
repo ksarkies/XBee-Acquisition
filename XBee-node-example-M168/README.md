@@ -17,8 +17,8 @@ make MCU=xxx
 
 where xxx is atmega168 or any valid AVR type.
 
-The makefile needs to be changed for other AVR types to adjust for differences.
-A separate defines-xxx.h file needs to be incorporated.
+The makefile may need to be changed for other AVR types to account for
+differences. A separate defines-xxx.h file may need to be incorporated.
 
 Currently optimization level 1 only works with this code. Other optimization
 levels create faulty code.

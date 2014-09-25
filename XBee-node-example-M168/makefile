@@ -1,25 +1,8 @@
-# Makefile to compile and link the UARTlibrary and test program
+# Makefile to compile and link the ATMega168 example
 # 
 # based on
-# WinAVR Sample makefile written by Eric B. Weddington, J�g Wunsch, et al.
-#
-# On command line:
-#
-# make all = Make software.
-#
-# make clean = Clean out built project files.
-#
-# make coff = Convert ELF to AVR COFF (for use with AVR Studio 3.x or VMLAB).
-#
-# make extcoff = Convert ELF to AVR Extended COFF (for use with AVR Studio
-#                4.07 or greater).
-#
-# make program = Download the hex file to the device, using avrdude.  Please
-#                customize the avrdude settings below first!
-#
-# make filename.s = Just compile filename.c into the assembler code only
-#
-# To rebuild project do "make clean" then "make all".
+# WinAVR Sample makefile
+# written by Eric B. Weddington, J�g Wunsch, et al.
 #
 
 # MCU name

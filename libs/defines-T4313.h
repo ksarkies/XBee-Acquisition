@@ -36,7 +36,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               1000000
 #define BAUD                9600
-#define BOOTLOADER_SIZE     2048
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
@@ -95,9 +94,9 @@ include) */
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
 #define	APP_START	            0x0000
-#define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
+#define	APP_END	                BASEADDRESS
 #define	PAGESIZE	            SPM_PAGESIZE
-#define PAGES                   (MEMORY_SIZE / PAGESIZE)
+#define PAGES                   (APP_END / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
 
 /* define pin for remaining in bootloader */
@@ -109,4 +108,19 @@ These are defined from avr-libc io.h based on processor choice. */
 #define WAKE_PORT_DIR           DDRB
 #define WAKE_PORT               PORTB
 #define WAKE_PIN                3
+
+/* Battery Measurement Control */
+#define VBAT_PORT_DIR DDRD
+#define VBAT_PORT PORTD
+#define VBAT_PIN 5
+
+/* Sleep request Control */
+#define SLEEP_RQ_PORT_DIR DDRB
+#define SLEEP_RQ_PORT PORTB
+#define SLEEP_RQ_PIN 3
+
+/* Test pin */
+#define TEST_PORT_DIR DDRB
+#define TEST_PORT PORTB
+#define TEST_PIN 1
 

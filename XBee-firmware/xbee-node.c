@@ -54,9 +54,9 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/sleep.h>
 
 #if (MCU_TYPE==1)
-#include "defines-M168.h"
+#include "../libs/defines-M168.h"
 #elif (MCU_TYPE==2)
-#include "defines-T4313.h"
+#include "../libs/defines-T4313.h"
 #endif
 
 #include <util/delay.h>
