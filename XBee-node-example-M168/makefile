@@ -25,15 +25,9 @@
 # MCU name
 MCU ?= atmega168
 
-BASEADDR = 0x0000
-
-# Set MCU_TYPE variable to pass to source codes
-ifeq ($(MCU),atmega168)
+# Set MCU_TYPE variable to pass to source codes.
+# AVRs with Bootloader sections
 MCU_TYPE = 1
-endif
-ifeq ($(MCU),attiny4313)
-MCU_TYPE = 2
-endif
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -105,7 +99,7 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  -Wl,...:   tell GCC to pass this to linker.
 #  -Map:      create map file
 #  --cref:    add cross reference to  map file
-LDFLAGS = -Ttext=$(BASEADDR) -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
 
 
 

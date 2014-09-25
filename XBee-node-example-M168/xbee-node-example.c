@@ -2,15 +2,18 @@
 @mainpage XBee AVR Node Example
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
-@date 21 September 2014
+@date 25 September 2014
 @brief Code for an AVR with an XBee in a Remote Low Power Node
 
 This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
 measurements for communication to a base controller.
 
-NOTE: with the current avr-gcc, optimization level 1 must be used. Other levels
-appear to create faulty code.
+This application works with AVRs having a bootloader block or for situations
+where a bootloader is not required. It has no code referring to a bootloader.
+
+Currently optimization level 1 only works with this code. Other optimization
+levels create faulty code.
 
 @note
 Software: AVR-GCC 4.8.2
@@ -43,15 +46,8 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-
-#if (MCU_TYPE==1)
 #include "../libs/defines-M168.h"
-#elif (MCU_TYPE==2)
-#include "../libs/defines-T4313.h"
-#endif
-
 #include <util/delay.h>
-
 #include "../libs/serial.h"
 #include "../libs/timer.h"
 #include "xbee-node-example.h"
@@ -116,21 +112,6 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
 
 int main(void)
 {
-
-/* THIS CODE MUST BE PRESENT HERE IN EVERY APPLICATION FOR AVRs
-WITHOUT A SEPARATE BOOTLOADER SECTION.
-Cause jump to bootloader if bootloader pin is active.
-MCU_TYPE 1 does not need this as it has a separate bootloader section. */
-
-#if (MCU_TYPE==2)
-/* Pointer to bootloader start. Address may differ for different FLASH sizes. */
-    void (*bootloader)( void ) = 0x0800;
-/* Test for the selected bootloader pin pulled low, then jump directly to the
-bootloader.*/
-    cbi(PROG_PORT_DIR,PROG_PIN);    /* Set bootloader test pin input */
-    if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0) bootloader();
-#endif
-
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */

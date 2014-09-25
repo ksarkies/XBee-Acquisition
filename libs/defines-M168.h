@@ -1,6 +1,7 @@
 /* AVR/XBee Defines
 
 For AVR microcontrollers with a bootloader section.
+The bootloader start address BASEADDR must be given in the makefile.
 
 This file assigns registers, particular to an AVR type, to common constants.
 It is valid for bootloader and application firmware.
@@ -39,7 +40,6 @@ Needed for the bootloader as the upload is extensive. */
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               8000000
 #define BAUD                38400
-#define BOOTLOADER_SIZE     2048
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered automatically */
@@ -92,9 +92,9 @@ to an undesired level during programming. */
 These are defined from avr-libc io.h based on processor choice. */
 #define MEMORY_SIZE             FLASHEND
 #define	APP_START	            0x0000
-#define	APP_END	                (MEMORY_SIZE - BOOTLOADER_SIZE)
+#define	APP_END	                BASEADDR
 #define	PAGESIZE	            SPM_PAGESIZE
-#define PAGES                   (MEMORY_SIZE / PAGESIZE)
+#define PAGES                   (BASEADDR / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
 
 /* define pin for remaining in bootloader */
@@ -102,8 +102,19 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PROG_PORT               PINB
 #define PROG_PIN                2
 
-/* define pin for forcing the XBee to stay awake (sleep_rq) */
-#define WAKE_PORT_DIR           DDRB
-#define WAKE_PORT               PORTB
-#define WAKE_PIN                3
+/* Battery Measurement Control */
+#define VBAT_PORT_DIR           DDRD
+#define VBAT_PORT               PORTD
+#define VBAT_PIN                5
+
+/* Define pin for forcing the XBee to stay awake */
+/* Sleep request Control */
+#define SLEEP_RQ_PORT_DIR       DDRB
+#define SLEEP_RQ_PORT           PORTB
+#define SLEEP_RQ_PIN            3
+
+/* Test pin */
+#define TEST_PORT_DIR           DDRD
+#define TEST_PORT               PORTD
+#define TEST_PIN                0
 

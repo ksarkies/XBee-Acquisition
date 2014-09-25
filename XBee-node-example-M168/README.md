@@ -8,14 +8,14 @@ gEDA-XBee/xbee-node-atmega48.sch
 A dummy message is sent to the coordinator at timed intervals and PORTB0 is
 toggled in the timer ISR.
 
-The code is written to permit use of other microcontroller types and currently
-also supports ATTiny4313.
+The code is used only with AVR microcontrollers with a bootloader block, or
+where a bootloader is not required.
 
 The MCU variable is passed to the source in various places to allow:
 
 make MCU=xxx
 
-where xxx is either attiny4313 or atmega168.
+where xxx is atmega168 or any valid AVR type.
 
 The makefile needs to be changed for other AVR types to adjust for differences.
 A separate defines-xxx.h file needs to be incorporated.
@@ -24,5 +24,5 @@ Currently optimization level 1 only works with this code. Other optimization
 levels create faulty code.
 
 K. Sarkies
-24 September 2014
+25 September 2014
 
