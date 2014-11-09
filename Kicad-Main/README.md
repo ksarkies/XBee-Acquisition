@@ -1,11 +1,11 @@
 XBee Data Acquisition PCB
 -------------------------
 
-PCB for remote unit, including XBee with battery monitor and photodiode
+PCB for a remote unit, including XBee with battery monitor and photodiode
 counter. A major requirement for this circuit is ultra-low power to allow the
-batteries to last for over a year.
+selected batteries to last for over a year.
 
-The PCB is intended to fit inside a cylindrical watermeter along with batteries.
+The PCB is intended to fit inside a cylindrical watermeter with the batteries.
 Due to space constraints the XBee is mounted on a separate board that sits at
 right angles to the PCB. The XBee connects to an external aerial through an RF
 cable. For measurement of battery voltage, a switched divider circuit is
@@ -14,13 +14,19 @@ circuit power supply (which is sourced via a voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
-XBee footprint is taken from Ian McInerney's library:
+An XBee footprint was taken from Ian McInerney's library:
 https://github.com/imciner2/KiCad-Libraries RF_OEM_PARTS.lib and footprints.mod
+The legacy footprint has been modified to the newer kicad_mod format and solder
+mask has been added to the pads.
 
-TPS77033 symbol from Rochester Institute of technology:
+The TPS77033 symbol from Rochester Institute of technology:
 http://edge.rit.edu/edge/P13271/public/KiCad/Libraries KB1LQC.lib
 
-These are legacy footprints. Place the mod files into the modules directory. In
+A photodiode symbol was taken from:
+http://vkoeppel.free.fr/files/diy/kicad_diy_libraries.zip
+
+The provided Photodiode.pretty footprint library should contain all necessary
+footprints. Place any legacy footprint mod files into the modules directory. In
 CvPcb go to "Library Tables", then select the tab "Project Specific Libraries".
 Append a new entry, add the library path (including the name of the .mod file),
 choosing "Legacy" for the plugin type. The nickname will then appear in the main
@@ -35,5 +41,5 @@ hole pins. In CvPcb append a new KiCad entry and add the library path to the
 are some 2mm pin spacing header footprints.
 
 K. Sarkies
-9 August 2014
+8 November 2014
 
