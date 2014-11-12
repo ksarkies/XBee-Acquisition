@@ -53,11 +53,11 @@ Compiler: gcc 4.6.3
 #include "xbee.h"
 #include "xbee-acqcontrol.h"
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -86,6 +86,8 @@ FILE *fpd;                      /* File for configuration XBee list */
 int flushCount;                 /* Number of records at which buffers are flushed to the disk. */
 int fileCount;                  /* Number of records at which the file is closed and a new one opened. */
 char dirname[40];
+char inPort[40];
+uint baudrate;
 
 /* Callback Prototypes */
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
@@ -102,11 +104,54 @@ int min(int x, int y) {if (x>y) return y; else return x;}
 
 int main(int argc,char ** argv)
 {
-
 /*---------------------------------------------------------------------------------*/
-/* Create a directory name for storage of data, from the arguments */
-    if (argc == 2) strcpy(dirname,argv[1]);
-    else strcpy(dirname,DATA_PATH);
+/* Parse the command line arguments.
+P - serial port to use, default /dev/ttyUSB0
+b - baud rate, default 38400 baud.
+d - directory for results file.
+ */
+    strcpy(inPort,SERIAL_PORT);
+    baudrate = BAUDRATE;
+    bool ok;
+    strcpy(dirname,DATA_PATH);
+
+    int c;
+    opterr = 0;
+    while ((c = getopt (argc, argv, "d:P:b:")) != -1)
+    {
+        switch (c)
+        {
+        case 'd':
+            strcpy(dirname,optarg);
+            break;
+        case 'P':
+            strcpy(inPort,optarg);
+            break;
+        case 'b':
+            baudrate = atoi(optarg);
+            switch (baudrate)
+            {
+            case 2400:  break;
+            case 4800:  break;
+            case 9600:  break;
+            case 19200:  break;
+            case 38400:  break;
+            case 57600:  break;
+            case 115200:  break;
+            default:
+                fprintf (stderr, "Invalid Baudrate %i.\n", baudrate);
+                return false;
+            }
+            break;
+        case '?':
+            if ((optopt == 'P') || (optopt == 'b') || (optopt == 'd'))
+                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint(optopt))
+                fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
+        }
+    }
     if (dirname[strlen(dirname)-1] != '/') dirname[strlen(dirname)] = '/';
 
 /*---------------------------------------------------------------------------------*/
@@ -145,7 +190,7 @@ int main(int argc,char ** argv)
     int listener;               /* listening socket descriptor */
 
     FD_ZERO(&master);
-	if ((error = init_socket(&listener)) > 0)
+    if ((error = init_socket(&listener)) > 0)
     {
         syslog(LOG_INFO, "Could not setup interface %d\n", error);
         return false;
@@ -162,7 +207,7 @@ int main(int argc,char ** argv)
 /* main loop */
 
     for(;;)
-	{
+    {
 /* Check Internet connections. When data arrives command_handler is called */
         check_connections(&master, &fdmax, listener);
         if (fdnumber > fdmax)
@@ -177,7 +222,7 @@ int main(int argc,char ** argv)
 
     closeGlobalConnections();
     closeRemoteConnections();
-	xbee_shutdown(xbee);
+    xbee_shutdown(xbee);
     closelog();
     return 0;
 }
@@ -263,7 +308,7 @@ connections. This may be needed after an Xbee network or software reset. */
         case 'X':
             closeGlobalConnections();
             closeRemoteConnections();
-        	xbee_shutdown(xbee);
+            xbee_shutdown(xbee);
             sleep(10);                  /* Wait for coordinator to initialise */
             setupXbeeInstance();
             openRemoteConnections();
@@ -516,22 +561,28 @@ int setupXbeeInstance()
 /* Use Unix stat to check if the file was created and find a suitable one.
 Not guaranteed to be the XBee one so manually remove all other USB serial devices. */
     struct stat st;
-    if(stat("/dev/ttyUSB0",&st) == 0)       /* Check if USB0 exists */
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB0", 38400);
+    if(stat(inPort,&st) == 0)           /* Check if serial port exists */
+    {
+        ret = xbee_setup(&xbee, "xbee2", inPort, baudrate);
+        if (ret != XBEE_ENONE)
+        {
+            syslog(LOG_INFO, "Unable to open XBee port: %d (%s)", ret, xbee_errorToStr(ret));
+            return ret;
+        }
+    }
     else
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB1", 38400);
+    {
+        syslog(LOG_INFO, "Serial Port %s not available.", inPort);
+        return -1;
+    }
+    
+/* Setup a connection for local AT commands */
+    ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL);
     if (ret != XBEE_ENONE)
     {
-        syslog(LOG_INFO, "Unable to open XBee port: %d (%s)", ret, xbee_errorToStr(ret));
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
         return ret;
     }
-/* Setup a connection for local AT commands */
-	ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL);
-    if (ret != XBEE_ENONE)
-    {
-		syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
-		return ret;
-	}
 /* Attempt to send an AP command to revert to mode 1 (in case set to mode 2)
 For some reason the XBee needs a command like this before sending out the ND
 otherwise it doesn't pick up the responses. */
@@ -670,8 +721,8 @@ int nodeProbe()
     {
         if ((ret = xbee_conSleepSet(localATCon, CON_SLEEP)) != XBEE_ENONE)
         {
-	        syslog(LOG_INFO, "Cannot sleep local connection: %d (%s)", ret, xbee_errorToStr(ret));
-	        return ret;
+            syslog(LOG_INFO, "Cannot sleep local connection: %d (%s)", ret, xbee_errorToStr(ret));
+            return ret;
         }
         sleeping = TRUE;
     }
@@ -679,19 +730,19 @@ int nodeProbe()
 /* Open a local AT connection without callback. */
     if ((ret = xbee_conNew(xbee, &probeATCon, "Local AT", NULL)) != XBEE_ENONE)
     {
-	    syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
     }
     else
     {
         ret = xbee_conTx(probeATCon, &txRet, "ND");
         syslog(LOG_INFO, "ND probe sent: %d (%s)", txRet, xbee_errorToStr(ret));
         if ((ret != XBEE_ENONE) && (ret != XBEE_ETX))
-	        syslog(LOG_INFO, "ND probe Tx failed: %d (%s)", ret, xbee_errorToStr(ret));
+            syslog(LOG_INFO, "ND probe Tx failed: %d (%s)", ret, xbee_errorToStr(ret));
         else
         {
 /* Timeout always seems to occur so we won't act on this */
             if (txRet == (unsigned char)XBEE_ETIMEOUT)
-        	    syslog(LOG_INFO, "ND probe Tx timeout: %d (%s)", txRet, xbee_errorToStr(XBEE_ETIMEOUT));
+                syslog(LOG_INFO, "ND probe Tx timeout: %d (%s)", txRet, xbee_errorToStr(XBEE_ETIMEOUT));
 /* For this particular command callbacks have not been used and the Rx is polled for all
 responding nodes */
             int rxWait = 20;            /* Default response delay max is 6sec, so wait up to 10sec */
@@ -719,11 +770,11 @@ responding nodes */
 #endif
         }
 /* Close off local AT connection */
-	    ret = xbee_conEnd(probeATCon);
+        ret = xbee_conEnd(probeATCon);
         if (ret != XBEE_ENONE)
         {
-		    syslog(LOG_INFO, "Local AT connection exit failed: %d (%s)", ret, xbee_errorToStr(ret));
-	    }
+            syslog(LOG_INFO, "Local AT connection exit failed: %d (%s)", ret, xbee_errorToStr(ret));
+        }
     }
     if (! sleeping) xbee_conSleepSet(localATCon, CON_AWAKE);
     return ret;
@@ -742,28 +793,28 @@ int openGlobalConnections()
 
     if ((ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL)) != XBEE_ENONE)
     {
-	    syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
-	    return ret;
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret, xbee_errorToStr(ret));
+        return ret;
     }
 /* Set the callback for the local AT response. */
-	if ((ret = xbee_conCallbackSet(localATCon, localATCallback, NULL)) != XBEE_ENONE)
+    if ((ret = xbee_conCallbackSet(localATCon, localATCallback, NULL)) != XBEE_ENONE)
     {
-		syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret, xbee_errorToStr(ret));
+        syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret, xbee_errorToStr(ret));
         xbee_conEnd(localATCon);
-		return ret;
-	}
+        return ret;
+    }
 /* Setup a long-running connection for Identify packets for nodes starting up later. */
-	if ((ret = xbee_conNew(xbee, &identifyCon, "Identify", NULL)) != XBEE_ENONE)
+    if ((ret = xbee_conNew(xbee, &identifyCon, "Identify", NULL)) != XBEE_ENONE)
     {
-		syslog(LOG_INFO, "Identify Connection failed: %d (%s)", ret, xbee_errorToStr(ret));
-		return ret;
-	}
+        syslog(LOG_INFO, "Identify Connection failed: %d (%s)", ret, xbee_errorToStr(ret));
+        return ret;
+    }
 /* Set the callback for the identify response. */
-	if ((ret = xbee_conCallbackSet(identifyCon, nodeIDCallback, NULL)) != XBEE_ENONE)
+    if ((ret = xbee_conCallbackSet(identifyCon, nodeIDCallback, NULL)) != XBEE_ENONE)
     {
-		syslog(LOG_INFO, "Identify Callback Set failed: %d (%s)", ret, xbee_errorToStr(ret));
+        syslog(LOG_INFO, "Identify Callback Set failed: %d (%s)", ret, xbee_errorToStr(ret));
         xbee_conEnd(identifyCon);
-	}
+    }
     return ret;
 }
 
@@ -779,15 +830,15 @@ int closeGlobalConnections()
 {
     xbee_err ret;
 
-	if ((ret = xbee_conEnd(localATCon)) != XBEE_ENONE)
+    if ((ret = xbee_conEnd(localATCon)) != XBEE_ENONE)
     {
-		syslog(LOG_INFO, "Could not close local AT connection %d\n", ret);
-		return ret;
-	}
-	if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
+        syslog(LOG_INFO, "Could not close local AT connection %d\n", ret);
+        return ret;
+    }
+    if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
     {
-		syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
-	}
+        syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
+    }
     return ret;
 }
 
@@ -814,9 +865,9 @@ Try out the returned addresses and select the first that binds OK.
 
 @returns    int *listener: file handler for the socket created 
 @returns    0: OK
-		    1: failed getting address information
-		    2: failed to bind to address
-		    3: failed to initiate listening
+            1: failed getting address information
+            2: failed to bind to address
+            3: failed to initiate listening
 */
 int init_socket(int *listener)
 {
@@ -835,7 +886,7 @@ int yes=1;        /* for setsockopt() SO_REUSEADDR, below */
     
 /* Try out all the returned addresses and pick the first available one */
     for(p = ai; p != NULL; p = p->ai_next)
-	{
+    {
 /* Try to open a socket for the address */
         listen_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (listen_fd < 0) continue;
@@ -845,7 +896,7 @@ int yes=1;        /* for setsockopt() SO_REUSEADDR, below */
 
 /* If socket opened, try to bind the socket to the address */
         if (bind(listen_fd, p->ai_addr, p->ai_addrlen) < 0)
-		{
+        {
             close(listen_fd);
             continue;
         }
@@ -877,8 +928,8 @@ data received.
 @parameter  int listener: file handler for the socket created 
 @returns    updated *master and *fd_max
 @returns    0: OK
-		    1: failed select
-		    2: failed accept
+            1: failed select
+            2: failed accept
 */
 
 int check_connections(fd_set *master, int *fd_max, const int listener)
@@ -897,17 +948,17 @@ int fd,nbytes;
 
 /* Found one so run through the existing connections looking for data to read */
     for(fd = 0; fd <= fdmax; fd++)
-	{
+    {
         if (FD_ISSET(fd, &read_fds))
-		{
+        {
 /* Check the local listening socket (means a new connection has arrived). */
             if (fd == listener)
-			{
+            {
                 addrlen = sizeof remoteaddr;
 /* accept() doesn't block because we know there is a new connection pending */
                 if ((newfd = accept(listener,(struct sockaddr *)&remoteaddr,&addrlen)) == -1) return 2;
                 else
-				{
+                {
                     FD_SET(newfd, master);  /* add to master list */
                     if (newfd > fdmax)
                     {
@@ -916,18 +967,18 @@ int fd,nbytes;
                     }
                 }
             }
-			else
-			{
+            else
+            {
 /* If not the listener, then handle data from a client */
                 if ((nbytes = recv(fd, buf, sizeof buf, 0)) <= 0)
-				{
+                {
 /* got error or connection was closed by client. Remove from the list. */
 /* (in case of error just let client die as we are running as a background process) */
                     close(fd);
                     FD_CLR(fd, master); /* remove from master set */
                 }
-				else
-				{
+                else
+                {
 /* we got some data from a client so call a command handler. */
                     command_handler(fd, buf);
                 }
@@ -1039,14 +1090,14 @@ int findRow(unsigned char *addr)
     int row=0;
     for (; row<numberNodes; row++)
     {
-	    if ((addr[0] == ((nodeInfo[row].SH >> 24) & 0xFF)) &&
-	        (addr[1] == ((nodeInfo[row].SH >> 16) & 0xFF)) &&
-	        (addr[2] == ((nodeInfo[row].SH >> 8) & 0xFF)) &&
-	        (addr[3] == (nodeInfo[row].SH & 0xFF)) &&
-	        (addr[4] == ((nodeInfo[row].SL >> 24) & 0xFF)) &&
-	        (addr[5] == ((nodeInfo[row].SL >> 16) & 0xFF)) &&
-	        (addr[6] == ((nodeInfo[row].SL >> 8) & 0xFF)) &&
-	        (addr[7] == (nodeInfo[row].SL & 0xFF))) break;
+        if ((addr[0] == ((nodeInfo[row].SH >> 24) & 0xFF)) &&
+            (addr[1] == ((nodeInfo[row].SH >> 16) & 0xFF)) &&
+            (addr[2] == ((nodeInfo[row].SH >> 8) & 0xFF)) &&
+            (addr[3] == (nodeInfo[row].SH & 0xFF)) &&
+            (addr[4] == ((nodeInfo[row].SL >> 24) & 0xFF)) &&
+            (addr[5] == ((nodeInfo[row].SL >> 16) & 0xFF)) &&
+            (addr[6] == ((nodeInfo[row].SL >> 8) & 0xFF)) &&
+            (addr[7] == (nodeInfo[row].SL & 0xFF))) break;
     }
     return row;
 }

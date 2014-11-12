@@ -34,6 +34,12 @@ Title:    XBee Acquisition Control process
 
 #define DATA_PATH       "/data/XBee/"
 
+#define SERIAL_PORT     "/dev/ttyUSB0"
+#define BAUDRATE        38400
+
+#define PORT "58532"        // port for the external command I/F
+#define MAX_CLIENTS 2       // Number of external connections allowed
+
 #include "xbee.h"
 #include <stdint.h>
 
@@ -94,9 +100,6 @@ typedef struct {
 
 extern int numberNodes;
 extern nodeEntry nodeInfo[25];
-
-#define PORT "58532"        // port for the external command I/F
-#define MAX_CLIENTS 2       // Number of external connections allowed
 
 //-----------------------------------------------------------------------------
 /* Prototypes */
