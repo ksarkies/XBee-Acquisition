@@ -46,7 +46,15 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#if (MCU_TYPE==168)
 #include "../libs/defines-M168.h"
+#elif (MCU_TYPE==4313)
+#include "../libs/defines-T4313.h"
+#elif (MCU_TYPE==841)
+#include "../libs/defines-T841.h"
+#else
+#error "Processor not defined"
+#endif
 #include <util/delay.h>
 #include "../libs/serial.h"
 #include "../libs/timer.h"
@@ -192,8 +200,10 @@ event. */
             else if (rxMessage.frameType == RX_REQUEST)
             {
 /* Toggle test port */
-                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(PORTB,0);
-                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(PORTB,0);
+#ifdef TEST_PORT_DIR
+                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
+                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
+#endif
 /* Echo */
                 sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                                    rxMessage.message.rxRequest.sourceAddress16,
@@ -258,8 +268,10 @@ Send preamble, then data block, followed by computed checksum */
 */
 void hardwareInit(void)
 {
-    sbi(DDRB,0);
-    sbi(PORTB,0);
+#ifdef TEST_PORT_DIR
+    sbi(TEST_PORT_DIR,TEST_PIN);
+    sbi(TEST_PORT,TEST_PIN);
+#endif
 }
 
 /****************************************************************************/

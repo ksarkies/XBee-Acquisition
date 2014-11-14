@@ -1,5 +1,5 @@
-XBee Data Acquisition Remote Firmware Example
----------------------------------------------
+XBee Data Acquisition Remote Firmware Test Example
+--------------------------------------------------
 
 This is an example firmware for the remote unit. Written in C under avr-gcc.
 The node hardware is based on the ATMega168. The hardware is defined in

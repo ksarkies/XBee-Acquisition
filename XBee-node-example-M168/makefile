@@ -2,15 +2,25 @@
 # 
 # based on
 # WinAVR Sample makefile
-# written by Eric B. Weddington, J�g Wunsch, et al.
+# written by Eric B. Weddington, Jorg Wunsch, et al.
 #
+
+# Define toolchain directories, if needed.
+# This is the Atmel version of gcc-avr. The open-source version lacks some
+# devices, notable the ATTiny441/841.
+DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 
 # MCU name
 MCU ?= atmega168
 
-# Set MCU_TYPE variable to pass to source codes.
-# AVRs with Bootloader sections
-MCU_TYPE = 1
+# Set MCU_TYPE as numerical variable to pass to source codes.
+ifeq ($(MCU),atmega168)
+MCU_TYPE = 168
+else ifeq ($(MCU),attiny4313)
+MCU_TYPE = 4313
+else ifeq ($(MCU),attiny841)
+MCU_TYPE = 841
+endif
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -137,26 +147,26 @@ AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 
 # ---------------------------------------------------------------------------
 
-# Define directories, if needed.
-DIRAVR = /opt/cdk4avr
-DIRAVRBIN = $(DIRAVR)/bin
+ifdef DIRAVR
+DIRAVRBIN = $(DIRAVR)/bin/
 DIRAVRUTILS = 
-DIRINC = $(DIRAVR)/avr/include
-DIRLIB = $(DIRAVR)/avr/lib
+DIRINC = $(DIRAVR)/avr/include/
+DIRLIB = $(DIRAVR)/avr/lib/
+endif
 
 
 # Define programs and commands.
 SHELL = sh
 
-CC = avr-gcc
+CC = $(DIRAVRBIN)avr-gcc
 
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-SIZE = avr-size
+OBJCOPY = $(DIRAVRBIN)avr-objcopy
+OBJDUMP = $(DIRAVRBIN)avr-objdump
+SIZE = $(DIRAVRBIN)avr-size
 
 
 # Programming support using avrdude.
-AVRDUDE = avrdude
+AVRDUDE = $(DIRAVRBIN)avrdude
 
 
 REMOVE = rm -f
@@ -166,6 +176,7 @@ HEXSIZE = $(SIZE) --target=$(FORMAT) $(TARGET).hex
 ELFSIZE = $(SIZE) -A $(TARGET).elf
 
 
+# ---------------------------------------------------------------------------
 
 # Define Messages
 # English
