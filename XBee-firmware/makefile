@@ -22,9 +22,22 @@
 # To rebuild project do "make clean" then "make all".
 #
 
+# Define toolchain directories, if needed.
+# This is the Atmel version of gcc-avr. The open-source version lacks some
+# devices, notable the ATTiny441/841.
+DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 
 # MCU name
-MCU ?= attiny4313
+MCU ?= atmega168
+
+# Set MCU_TYPE as numerical variable to pass to source codes.
+ifeq ($(MCU),atmega168)
+MCU_TYPE = 168
+else ifeq ($(MCU),attiny4313)
+MCU_TYPE = 4313
+else ifeq ($(MCU),attiny841)
+MCU_TYPE = 841
+endif
 
 # Set the base address to start of application area
 ifeq ($(MCU),atmega168)
@@ -32,14 +45,6 @@ BASEADDR = 0x0000
 endif
 ifeq ($(MCU),attiny4313)
 BASEADDR = 0x06C0
-endif
-
-# Set MCU_TYPE variable to pass to source codes
-ifeq ($(MCU),atmega168)
-MCU_TYPE = 1
-endif
-ifeq ($(MCU),attiny4313)
-MCU_TYPE = 2
 endif
 
 # Output format. (can be srec, ihex, binary)
@@ -166,26 +171,26 @@ AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 
 # ---------------------------------------------------------------------------
 
-# Define directories, if needed.
-DIRAVR = /opt/cdk4avr
-DIRAVRBIN = $(DIRAVR)/bin
+ifdef DIRAVR
+DIRAVRBIN = $(DIRAVR)/bin/
 DIRAVRUTILS = 
-DIRINC = $(DIRAVR)/avr/include
-DIRLIB = $(DIRAVR)/avr/lib
+DIRINC = $(DIRAVR)/avr/include/
+DIRLIB = $(DIRAVR)/avr/lib/
+endif
 
 
 # Define programs and commands.
 SHELL = sh
 
-CC = avr-gcc
+CC = $(DIRAVRBIN)avr-gcc
 
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-SIZE = avr-size
+OBJCOPY = $(DIRAVRBIN)avr-objcopy
+OBJDUMP = $(DIRAVRBIN)avr-objdump
+SIZE = $(DIRAVRBIN)avr-size
 
 
 # Programming support using avrdude.
-AVRDUDE = avrdude
+AVRDUDE = $(DIRAVRBIN)avrdude
 
 
 REMOVE = rm -f

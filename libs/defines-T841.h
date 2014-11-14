@@ -34,8 +34,8 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 //#define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
-#define F_CPU               1000000
-#define BAUD                9600
+#define F_CPU               8000000
+#define BAUD                38400
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
@@ -72,26 +72,18 @@ include) */
 #define CHECKSUM                0x11
 
 /* definitions for UART control */
-#define	BAUD_RATE_HIGH_REG	    UBRRH
-#define	BAUD_RATE_LOW_REG	    UBRRL
-#define	UART_CONTROL_REG	    UCSRB
-#define	UART_FORMAT_REG	        UCSRC
-#define FRAME_SIZE              UCSZ0
-#define	ENABLE_TRANSMITTER_BIT	TXEN
-#define	ENABLE_RECEIVER_BIT	    RXEN
-#define	UART_STATUS_REG	        UCSRA
-#define	TRANSMIT_COMPLETE_BIT	TXC
-#define	RECEIVE_COMPLETE_BIT	RXC
-#define	UART_DATA_REG	        UDR
-#define DOUBLE_RATE             U2X
-
-/* UART Flow control ports */
-#define UART_CTS_PORT           PINA
-#define UART_CTS_PORT_DIR       DDRA
-#define UART_CTS_PIN            1
-#define UART_RTS_PORT           PORTA
-#define UART_RTS_PORT_DIR       DDRA
-#define UART_RTS_PIN            0
+#define	BAUD_RATE_HIGH_REG	    UBRR0H
+#define	BAUD_RATE_LOW_REG	    UBRR0L
+#define	UART_CONTROL_REG	    UCSR0B
+#define	UART_FORMAT_REG	        UCSR0C
+#define	UART_STATUS_REG	        UCSR0A
+#define FRAME_SIZE              UCSZ00
+#define	ENABLE_TRANSMITTER_BIT	TXEN0
+#define	ENABLE_RECEIVER_BIT	    RXEN0
+#define	TRANSMIT_COMPLETE_BIT	TXC0
+#define	RECEIVE_COMPLETE_BIT	RXC0
+#define	UART_DATA_REG	        UDR0
+#define DOUBLE_RATE             U2X0
 
 /* definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
@@ -107,25 +99,21 @@ These are defined from avr-libc io.h based on processor choice. */
 /* define pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
 #define PROG_PORT               PINB
-#define PROG_PIN                2
+#define PROG_PIN                0
 
 /* define pin for forcing the XBee to stay awake (sleep_rq) */
-#define WAKE_PORT_DIR           DDRB
-#define WAKE_PORT               PORTB
+#define WAKE_PORT_DIR           DDRA
+#define WAKE_PORT               PORTA
 #define WAKE_PIN                3
 
 /* Battery Measurement Control */
-#define VBAT_PORT_DIR           DDRD
-#define VBAT_PORT               PORTD
-#define VBAT_PIN                5
+#define VBAT_PORT_DIR           DDRA
+#define VBAT_PORT               PORTA
+#define VBAT_PIN                7
 
 /* Sleep request Control */
-#define SLEEP_RQ_PORT_DIR       DDRB
-#define SLEEP_RQ_PORT           PORTB
+#define SLEEP_RQ_PORT_DIR       DDRA
+#define SLEEP_RQ_PORT           PORTA
 #define SLEEP_RQ_PIN            3
 
-/* Test pin */
-#define TEST_PORT_DIR           DDRB
-#define TEST_PORT               PORTB
-#define TEST_PIN                1
 

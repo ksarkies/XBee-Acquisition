@@ -53,10 +53,14 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
-#if (MCU_TYPE==1)
+#if (MCU_TYPE==168)
 #include "../libs/defines-M168.h"
-#elif (MCU_TYPE==2)
+#elif (MCU_TYPE==4313)
 #include "../libs/defines-T4313.h"
+#elif (MCU_TYPE==841)
+#include "../libs/defines-T841.h"
+#else
+#error "Processor not defined"
 #endif
 
 #include <util/delay.h>
