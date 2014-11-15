@@ -21,6 +21,8 @@
 #include <avr/io.h>
 #if (MCU_TYPE==168)
 #include "defines-M168.h"
+#elif (MCU_TYPE==48)
+#include "../libs/defines-M168.h"
 #elif (MCU_TYPE==4313)
 #include "defines-T4313.h"
 #elif (MCU_TYPE==841)

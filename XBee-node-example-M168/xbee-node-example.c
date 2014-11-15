@@ -48,6 +48,8 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/sleep.h>
 #if (MCU_TYPE==168)
 #include "../libs/defines-M168.h"
+#elif (MCU_TYPE==48)
+#include "../libs/defines-M168.h"
 #elif (MCU_TYPE==4313)
 #include "../libs/defines-T4313.h"
 #elif (MCU_TYPE==841)
