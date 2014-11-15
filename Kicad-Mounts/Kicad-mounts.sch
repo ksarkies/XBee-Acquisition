@@ -257,9 +257,9 @@ F 3 "" H 3000 3400 60  0000 C CNN
 $EndComp
 Text Label 5100 4100 0    60   ~ 0
 On/Sleep
-Text Label 3000 3500 2    60   ~ 0
-Tx
 Text Label 3000 3600 2    60   ~ 0
+Tx
+Text Label 3000 3500 2    60   ~ 0
 Rx
 Text Label 5200 5250 2    60   ~ 0
 CTS
