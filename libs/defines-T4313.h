@@ -93,6 +93,21 @@ include) */
 #define UART_RTS_PORT_DIR       DDRA
 #define UART_RTS_PIN            0
 
+/* definitions for peripheral power control */
+#define PRR_USART0              PRUSART
+
+/* definitions for digital input control */
+#define DI_DR0                  DIDR0
+
+/* definitions for interrupt control */
+#define IMSK                    GIMSK
+#define INT_CR                  MCUCR
+#define WDT_CSR                 WDTCR
+
+/* definitions for analogue comparator control */
+#define AC_SR0                  ACSR
+#define AC_D0                   ACD
+
 /* definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
 /* Pagesize and addresses are in bytes (note the datasheets use word values).

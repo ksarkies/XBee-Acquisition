@@ -22,11 +22,6 @@
 # To rebuild project do "make clean" then "make all".
 #
 
-# Define toolchain directories, if needed.
-# This is the Atmel version of gcc-avr. The open-source version lacks some
-# devices, notable the ATTiny441/841.
-DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
-
 # MCU name
 MCU ?= atmega168
 
@@ -40,11 +35,16 @@ MCU_TYPE = 841
 endif
 
 # Set the base address to start of application area
-ifeq ($(MCU),atmega168)
 BASEADDR = 0x0000
-endif
 ifeq ($(MCU),attiny4313)
-BASEADDR = 0x06C0
+#BASEADDR = 0x06C0
+endif
+
+# Define toolchain directories, if needed.
+# This is the Atmel version of gcc-avr. The open-source version lacks some
+# devices, notably the ATTiny441/841.
+ifeq ($(MCU),attiny841)
+DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 endif
 
 # Output format. (can be srec, ihex, binary)
@@ -52,7 +52,7 @@ FORMAT = ihex
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-OPT = 2
+OPT = 1
 
 
 # Target file name (without extension).

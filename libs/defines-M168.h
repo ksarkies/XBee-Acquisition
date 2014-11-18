@@ -94,6 +94,26 @@ to an undesired level during programming. */
 #define UART_RTS_PORT_DIR       DDRD
 #define UART_RTS_PIN            3
 
+/* definitions for peripheral power control */
+#define PRR_USART0              PRUSART0
+
+/* definitions for digital input control */
+#define DI_DR0                  DIDR0
+#define DI_DR1                  DIDR1
+
+/* definitions for interrupt control */
+#define IMSK                    EIMSK
+#define INT_CR                  EICRA
+#define WDT_CSR                 WDTCSR
+
+/* definitions for analogue comparator control */
+#define AC_SR0                  ACSR
+#define AC_D0                   ACD
+
+/* definitions for ADC control */
+#define ADC_ONR                 ADCSRA
+#define AD_EN                   ADEN
+
 /* definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
 /* Pagesize and addresses are in bytes (note the datasheets use word values).

@@ -29,8 +29,14 @@ Tested:     ATtint4313 at 1MHz internal clock.
 #ifndef _XBEE_NODE_H_
 #define _XBEE_NODE_H_
 
+/* WDT count to give desired time between activations of the AVR */
 #define ACTION_MINUTES  10
-#define ACTION_COUNT    (ACTION_MINUTES*75)/2
+
+/* Timeout setting for WDT to give 8 second ticks */
+#define WDT_TIME        0x09
+
+//#define ACTION_COUNT    (ACTION_MINUTES*60)/8
+#define ACTION_COUNT    1
 
 /* Xbee parameters */
 #define RF_PAYLOAD  63
@@ -101,12 +107,14 @@ typedef struct
     } message;
 } txFrameType;
 
+/****************************************************************************/
 /* Prototypes */
 
 void hardwareInit(void);
-void wdtInit(void);
-
+void wdtInit(uint8_t timeout);
+void sendMessage(uint8_t* data);
 void handleReceiveMessage(void);
+void intToHex(uint32_t value, uint8_t buffer[]);
 
 /* XBee related prototypes */
 

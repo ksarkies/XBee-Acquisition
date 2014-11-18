@@ -23,7 +23,7 @@ Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.
 @note
 Software: AVR-GCC 4.8.2
 @note
-Target:   Any AVR with sufficient output ports and a timer
+Target:   AVR with sufficient output ports and a USART (USI not supported)
 @note
 Tested:   ATTiny4313 at 1MHz internal clock.
 
@@ -47,6 +47,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <string.h>
 #include <avr/sfr_defs.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
@@ -54,6 +55,8 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/sleep.h>
 
 #if (MCU_TYPE==168)
+#include "../libs/defines-M168.h"
+#elif (MCU_TYPE==48)
 #include "../libs/defines-M168.h"
 #elif (MCU_TYPE==4313)
 #include "../libs/defines-T4313.h"
@@ -81,35 +84,31 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
-/* Global variables */
-    uint8_t counter0;               /**< Counters for signal pulses */
-    uint8_t counter1;
-    uint8_t counter2;
-    uint8_t counter3;
-    uint8_t wdtCounter;             /**< Counter to extend WDT range */
+/* Global variables used in ISRs */
+volatile uint8_t counter0;      /**< Counters for signal pulses */
+volatile uint8_t counter1;
+volatile uint8_t counter2;
+volatile uint8_t counter3;
+volatile uint8_t wdtCounter;    /**< Counter to extend WDT range */
+volatile uint8_t signalAction;
 
-/** @name UART variables */
-/*@{*/
-    volatile uint16_t uartInput;    /**< Character and errorcode read from uart */
-    volatile uint8_t lastError;     /**< Error code for transmission back */
-    volatile uint8_t checkSum;      /**< Checksum on message contents */
-/*@}*/
+uint8_t messageState;           /**< Progress in message reception */
+uint8_t messageReady;           /**< Indicate that a message is ready */
+uint8_t coordinatorAddress64[8];
+uint8_t coordinatorAddress16[2];
+uint8_t rxOptions;
 
-    uint8_t messageState;           /**< Progress in message reception */
-    uint8_t messageReady;           /**< Indicate that a message is ready */
-    uint8_t coordinatorAddress64[8];
-    uint8_t coordinatorAddress16[2];
-    uint8_t rxOptions;
 /*---------------------------------------------------------------------------*/
 int main(void)
 {
 
 /*  Initialise hardware */
     hardwareInit();
-    wdtInit();
+    wdtInit(WDT_TIME);
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
+    sei();
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -128,28 +127,41 @@ event. */
 
 /* Initialise WDT counter */
     wdtCounter = 0;
+    signalAction = FALSE;
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
     for(;;)
     {
+/* Power down the AVR until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
-        if (wdtCounter == 0)
-        {
-/* Wakeup the XBee and wait for a bit. Send a message and sleep it again
-after a delay. */
-            cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
-            _delay_ms(PIN_WAKE_PERIOD);
-            uint8_t data[12] = "DNode End-3";
-            sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,data);
-            sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
+//        cli();              /* Disable interrupts until ready to sleep again*/
 
-/* Toggle the test port to see if WDT interrupt working. */
-//            if ((inb(TEST_PORT) & _BV(TEST_PIN)) > 0) cbi(TEST_PORT,TEST_PIN);
-//            else sbi(TEST_PORT,TEST_PIN);
+/* When the watchdog timer has expired, see if there is anything to send */
+        if (signalAction)
+        {
+            uint32_t count = (uint32_t)counter0+(uint32_t)(counter1<<8)
+                            +(uint32_t)(counter2<<16)+(uint32_t)(counter3<<24);
+//            if (count > 0)
+            {
+                uint8_t data[9];
+                uint8_t i;
+                for (i = 0; i < 8; i++)
+                {
+	                data[7-i] = "0123456789ABCDEF"[count & 0x0F];
+	                count >>= 4;
+                }
+                data[8] = 0;
+                sendMessage(data);
+                counter0 = 0;
+                counter1 = 0;
+                counter2 = 0;
+                counter3 = 0;
+            }
+            signalAction = FALSE;
         }
-//        handleReceiveMessage();
+        handleReceiveMessage();
     }
 }
 
@@ -224,11 +236,13 @@ void handleReceiveMessage(void)
         if (messageError > 0) sendch(messageError);
         else if (rxMessage.frameType == RX_REQUEST)
         {
+#ifdef TEST_PIN
 /* Simply toggle test port in response to simple commands */
             if (rxMessage.message.rxRequest.data[0] == 'L')
                 cbi(TEST_PORT,TEST_PIN);
             if (rxMessage.message.rxRequest.data[0] == 'O')
                 sbi(TEST_PORT,TEST_PIN);
+#endif
 /* TEST: Echo message back */
             sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                             rxMessage.message.rxRequest.sourceAddress16,
@@ -241,7 +255,7 @@ void handleReceiveMessage(void)
 /****************************************************************************/
 /** @brief Initialize the hardware for process measurement
 
-Set unused ports to inputs and disable all unused peripherals.
+Set unused ports to inputs and disable power to all unused peripherals.
 Set the process counter interrupt to INT0.
 */
 void hardwareInit(void)
@@ -249,46 +263,108 @@ void hardwareInit(void)
 /* Set PRR to disable all peripherals except USART.
 Set input ports to pullups and disable digital input buffers on AIN inputs. */
 
-    outb(PRR,0x0F);     /* power down timer/counters, USI */
-    cbi(PRR,PRUSART);   /* power up USART */
+#ifdef ADC_ONR
+    cbi(ADC_ONR,AD_EN); /* Power off ADC */
+#endif
+    outb(PRR,0xFF);     /* power down all controllable peripherals */
+    cbi(PRR,PRR_USART0);/* power up USART */
+#ifdef PORTA
     outb(DDRA,0);       /* set as inputs */
     outb(PORTA,0x07);   /* set pullups   */
+#endif
+#ifdef PORTB
     outb(DDRB,0);       /* set as inputs */
     outb(PORTB,0xFF);   /* set pullups   */
+#endif
+#ifdef PORTC
+    outb(DDRC,0);       /* set as inputs */
+    outb(PORTC,0xFF);   /* set pullups   */
+#endif
+#ifdef PORTD
     outb(DDRD,0);       /* set as inputs */
     outb(PORTD,0x1F);   /* set pullups   */
-    sbi(ACSR,ACD);      /* turn off Analogue Comparator */
-    outb(DIDR,3);       /* turn off digital input buffers */
+#endif
+#ifdef AC_SR0
+    sbi(AC_SR0,AC_D0);  /* turn off Analogue Comparator 0 */
+#endif
+#ifdef AC_SR1
+    sbi(AC_SR1,AC_D1);  /* turn off Analogue Comparator 1 */
+#endif
+#ifdef DID_R0
+    outb(DI_DR0,3);     /* turn off digital input buffers */
+#endif
+#ifdef DID_R1
+    outb(DI_DR1,3);
+#endif
 
 /* Set output ports to desired directions and initial settings */
 
-    sbi(TEST_PORT_DIR,TEST_PIN);        /* Test port */
-    sbi(VBAT_PORT_DIR,VBAT_PIN);
-    cbi(VBAT_PORT,VBAT_PIN);            /* Battery Measure */
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);
-    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Default XBee Sleep */
+#ifdef TEST_PIN
+    sbi(TEST_PORT_DIR,TEST_PIN);
+    cbi(TEST_PORT,TEST_PIN);            /* Test port */
+#endif
+#ifdef VBAT_PIN
+    sbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
+    cbi(VBAT_PORT,VBAT_PIN);
+#endif
+#ifdef SLEEP_RQ_PIN
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
+    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee off */
+#endif
+#ifdef COUNT_PIN
+    cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
+    sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
+#endif
+#ifdef ON_SLEEP_PIN
+    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+#endif
 
-/** Counter: Use Interrupt 0 with rising edge triggering in power down mode */
-    sbi(GIMSK,INT0);                    /* Enable Interrupt 0 */
-    outb(MCUCR,inb(MCUCR) | 0x03);      /* Rising edge trigger on interrupt 0 */
+/** Counter: Use Interrupt 0 with low level triggering in power down mode.
+Only low level triggering is possible in power down as all clocks are halted. */
+//    sbi(IMSK,INT0);                     /* Enable Interrupt 0 */
+//    outb(INT_CR,inb(INT_CR) & ~0x03);   /* Low level trigger on interrupt 0 */
 }
 
 /****************************************************************************/
 /** @brief Initialize the watchdog timer to interrupt on maximum delay
 
-*/
-void wdtInit(void)
-{
-/* Initialize the Watchdog timer to interrupt. */
-/* IMPORTANT: Disable the "WDT Always On" fuse so that WDT can be turned off. */
-    wdt_disable();     /* watchdog timer turn off ready for setup. */
-    outb(WDTCR,0);
-/* Set the WDT with WDE clear, interrupts enabled, interrupt mode set, and
-maximum timeout 8 seconds to give continuous interrupt mode. */
-    sei();
-//    outb(WDTCR,_BV(WDIE)|_BV(WDP3)|_BV(WDP0));
-    outb(WDTCR,_BV(WDIE));  /* For test only: 32 ms timeout */
+The watchdog timer is set to interrupt rather than reset so that it can wakeup
+the AVR. Keeping WDTON disabled (default) will allow the settings to be
+changed without restriction. The watchdog timer is initially disabled after
+reset.
 
+The timeout settings give the same time interval for each AVR, regardless of the
+clock frequency used by the WDT.
+
+The interrupt enable mode is set. The WDE bit is left off to ensure that the WDT
+remains in interrupt mode.
+
+IMPORTANT: Disable the "WDT Always On" fuse.
+
+@param[in] uint8_t timeout: a register setting, 9 or less (see datasheet).
+*/
+void wdtInit(uint8_t timeout)
+{
+    outb(WDT_CSR,0);     /* Clear the WDT register */
+    if (timeout > 9) timeout = 9;
+    uint8_t wdtcsrSetting = (timeout & 0x07);
+    if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
+    outb(WDT_CSR,wdtcsrSetting | _BV(WDIE));
+}
+
+/****************************************************************************/
+/** @brief Wake the XBee and send a message
+
+Wakeup the XBee and wait for a bit. Send a string message and sleep it again.
+
+@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
+*/
+void sendMessage(uint8_t* data)
+{
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
+    _delay_ms(PIN_WAKE_PERIOD);
+    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,strlen(data),data);
+    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
 }
 
 /****************************************************************************/
@@ -350,6 +426,23 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
     sendBaseFrame(txMessage);
 }
 
+/*--------------------------------------------------------------------------*/
+/** @brief Convert an integer to a string in 16 bit ASCII hex form
+
+@param[in] int32_t value: integer value to be printed.
+*/
+
+void intToHex(uint32_t value, uint8_t buffer[])
+{
+	uint8_t i;
+
+	for (i = 7; i >= 0; i--)
+	{
+		buffer[i] = "0123456789ABCDEF"[value & 0x0F];
+		value >>= 4;
+	}
+    buffer[8] = 0;
+}
 /****************************************************************************/
 /** @brief Interrupt on INT0.
 
@@ -389,15 +482,24 @@ ISR(INT0_vect)
 /** @brief Interrupt on WDT.
 
 When the WDT timer overflows, 8 seconds will have elapsed which is too short to
-do anything useful, so we go back to sleep again until 75 such events have
-occurred (10 minutes). Here just reset the count. Check in the main program
-if some action is needed.
+do anything useful, so we go back to sleep again until enough such events have
+occurred. Here just reset the counter. Check in the main program if some action
+is needed.
+
+NOTE: sendMessage is used to signal a wake period.
 */
-ISR(WDT_OVERFLOW_vect )
+#if (MCU_TYPE==4313)
+ISR(WDT_OVERFLOW_vect)
+#else
+ISR(WDT_vect)
+#endif
 {
     if (wdtCounter++ > ACTION_COUNT)
     {
+        sendMessage("aA");
         wdtCounter = 0;
+        signalAction = TRUE;
+        _delay_ms(1);
     }
 }
 

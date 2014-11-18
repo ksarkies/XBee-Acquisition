@@ -34,8 +34,8 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 //#define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
-#define F_CPU               8000000
-#define BAUD                38400
+#define F_CPU               1000000
+#define BAUD                9600
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
@@ -85,6 +85,28 @@ include) */
 #define	UART_DATA_REG	        UDR0
 #define DOUBLE_RATE             U2X0
 
+/* definitions for peripheral power control */
+#define PRR_USART0              PRUSART0
+
+/* definitions for digital input control */
+#define DI_DR0                  DIDR0
+#define DI_DR1                  DIDR1
+
+/* definitions for interrupt control */
+#define IMSK                    GIMSK
+#define INT_CR                  MCUCR
+#define WDT_CSR                 WDTCSR
+
+/* definitions for analogue comparator control */
+#define AC_SR0                  ACSR0A
+#define AC_SR1                  ACSR1A
+#define AC_D0                   ACD0
+#define AC_D1                   ACD1
+
+/* definitions for ADC control */
+#define ADC_ONR                 ADCSRA
+#define AD_EN                   ADEN
+
 /* definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
@@ -96,15 +118,15 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PAGES                   (APP_END / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
 
-/* define pin for remaining in bootloader */
+/* INT0 pin */
+#define COUNT_PORT_DIR          DDRB
+#define COUNT_PORT              PINB
+#define COUNT_PIN               1
+
+/* Pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
 #define PROG_PORT               PINB
 #define PROG_PIN                0
-
-/* define pin for forcing the XBee to stay awake (sleep_rq) */
-#define WAKE_PORT_DIR           DDRA
-#define WAKE_PORT               PORTA
-#define WAKE_PIN                3
 
 /* Battery Measurement Control */
 #define VBAT_PORT_DIR           DDRA
@@ -115,5 +137,10 @@ These are defined from avr-libc io.h based on processor choice. */
 #define SLEEP_RQ_PORT_DIR       DDRA
 #define SLEEP_RQ_PORT           PORTA
 #define SLEEP_RQ_PIN            3
+
+/* On/Sleep Status */
+#define ON_SLEEP_PORT_DIR       DDRA
+#define ON_SLEEP_PORT           PORTA
+#define ON_SLEEP_PIN            0
 
 
