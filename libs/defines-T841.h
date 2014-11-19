@@ -96,6 +96,9 @@ include) */
 #define IMSK                    GIMSK
 #define INT_CR                  MCUCR
 #define WDT_CSR                 WDTCSR
+#define PC_MSK                  PCMSK1
+#define PC_INT                  1
+#define PC_IE                   PCIE1
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR0A
@@ -118,7 +121,7 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PAGES                   (APP_END / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
 
-/* INT0 pin */
+/* Count Signal pin */
 #define COUNT_PORT_DIR          DDRB
 #define COUNT_PORT              PINB
 #define COUNT_PIN               1
@@ -140,7 +143,7 @@ These are defined from avr-libc io.h based on processor choice. */
 
 /* On/Sleep Status */
 #define ON_SLEEP_PORT_DIR       DDRA
-#define ON_SLEEP_PORT           PORTA
+#define ON_SLEEP_PORT           PINA
 #define ON_SLEEP_PIN            0
 
 

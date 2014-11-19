@@ -105,6 +105,9 @@ to an undesired level during programming. */
 #define IMSK                    EIMSK
 #define INT_CR                  EICRA
 #define WDT_CSR                 WDTCSR
+#define PC_MSK                  PCMSK1
+#define PC_INT                  1
+#define PC_IE                   PCIE1
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR
@@ -124,6 +127,11 @@ These are defined from avr-libc io.h based on processor choice. */
 #define	PAGESIZE	            SPM_PAGESIZE
 #define PAGES                   (BASEADDR / PAGESIZE)
 #define PAGE_FLAGS              (PAGES >> 3)
+
+/* Count Signal pin */
+#define COUNT_PORT_DIR          DDRB
+#define COUNT_PORT              PINB
+#define COUNT_PIN               1
 
 /* define pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB

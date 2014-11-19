@@ -19,17 +19,7 @@
  ***************************************************************************/
 
 #include <avr/io.h>
-#if (MCU_TYPE==168)
-#include "defines-M168.h"
-#elif (MCU_TYPE==48)
-#include "../libs/defines-M168.h"
-#elif (MCU_TYPE==4313)
-#include "defines-T4313.h"
-#elif (MCU_TYPE==841)
-#include "defines-T841.h"
-#else
-#error "Processor not defined"
-#endif
+#include "defines.h"
 #include "serial.h"
 
 /* Convenience macros (we don't use them all) */
@@ -100,6 +90,26 @@ unsigned char getch(void)
     cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
 #endif
     while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
+#ifdef USE_HARDWARE_FLOW
+    sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
+#endif
+    return UART_DATA_REG;
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Get a character when the Rx is ready (non blocking)
+
+The function asserts RTS low then waits for the receive complete bit is set.
+RTS is then cleared high. The character is then retrieved.
+*/
+
+unsigned int getchn(void)
+{
+#ifdef USE_HARDWARE_FLOW
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
+#endif
+    if (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)))
+        return (NO_DATA << 8);
 #ifdef USE_HARDWARE_FLOW
     sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
 #endif

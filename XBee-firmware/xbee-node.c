@@ -54,22 +54,10 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
-#if (MCU_TYPE==168)
-#include "../libs/defines-M168.h"
-#elif (MCU_TYPE==48)
-#include "../libs/defines-M168.h"
-#elif (MCU_TYPE==4313)
-#include "../libs/defines-T4313.h"
-#elif (MCU_TYPE==841)
-#include "../libs/defines-T841.h"
-#else
-#error "Processor not defined"
-#endif
-
-#include <util/delay.h>
-
-#include "xbee-node.h"
+#include "../libs/defines.h"
 #include "../libs/serial.h"
+#include <util/delay.h>
+#include "xbee-node.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -84,14 +72,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
-/* Global variables used in ISRs */
-volatile uint8_t counter0;      /**< Counters for signal pulses */
-volatile uint8_t counter1;
-volatile uint8_t counter2;
-volatile uint8_t counter3;
-volatile uint8_t wdtCounter;    /**< Counter to extend WDT range */
-volatile uint8_t signalAction;
-
+/* Global variables */
 uint8_t messageState;           /**< Progress in message reception */
 uint8_t messageReady;           /**< Indicate that a message is ready */
 uint8_t coordinatorAddress64[8];
@@ -108,7 +89,6 @@ int main(void)
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    sei();
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -119,49 +99,55 @@ event. */
     messageState = 0;
     messageReady = FALSE;
 
-/* initialise process counter */
-    counter0 = 0;
-    counter1 = 0;
-    counter2 = 0;
-    counter3 = 0;
+/* Initialise process counter */
+    uint32_t counter = 0;
 
-/* Initialise WDT counter */
-    wdtCounter = 0;
-    signalAction = FALSE;
+/* Initialise count signal value */
+    uint8_t countSignal = inb(COUNT_PORT) & _BV(COUNT_PIN);
+    uint8_t lastCountSignal = countSignal;
+
+/* Initialise watchdog timer count */
+    uint8_t wdtCounter = 0;
+
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
     for(;;)
     {
 /* Power down the AVR until an interrupt occurs */
+        sei();
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
-//        cli();              /* Disable interrupts until ready to sleep again*/
+        cli();              /* Disable interrupts until ready to sleep again*/
 
-/* When the watchdog timer has expired, see if there is anything to send */
-        if (signalAction)
+/* Determine if a change in the count signal level has occurred. A downward
+change will require a count to be registered. No change will suggest a
+Watchdog timeout. */
+
+        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+        if ((countSignal == 0) && (lastCountSignal > 0)) counter++;
+        else if (countSignal == lastCountSignal)
         {
-            uint32_t count = (uint32_t)counter0+(uint32_t)(counter1<<8)
-                            +(uint32_t)(counter2<<16)+(uint32_t)(counter3<<24);
-//            if (count > 0)
+/* No change in count signal so most likely WDT timer overflow.
+8 seconds is too short to do anything useful, so go back to sleep again
+until enough such events have occurred. */
+            if (wdtCounter++ > ACTION_COUNT)
             {
+                wdtCounter = 0;
                 uint8_t data[9];
                 uint8_t i;
                 for (i = 0; i < 8; i++)
                 {
-	                data[7-i] = "0123456789ABCDEF"[count & 0x0F];
-	                count >>= 4;
+	                data[7-i] = "0123456789ABCDEF"[counter & 0x0F];
+	                counter >>= 4;
                 }
                 data[8] = 0;
                 sendMessage(data);
-                counter0 = 0;
-                counter1 = 0;
-                counter2 = 0;
-                counter3 = 0;
+                counter = 0;
+                handleReceiveMessage();
             }
-            signalAction = FALSE;
         }
-        handleReceiveMessage();
+        lastCountSignal = countSignal;
     }
 }
 
@@ -181,7 +167,7 @@ void handleReceiveMessage(void)
 {
     rxFrameType rxMessage;
 /* Wait for data to appear */
-    uint16_t inputChar = getch();
+    uint16_t inputChar = getchn();
     uint8_t messageError = high(inputChar);
     if (messageError != NO_DATA)
     {
@@ -319,7 +305,12 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
     cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
 #endif
 
-/** Counter: Use Interrupt 0 with low level triggering in power down mode.
+/* Counter: Use PCINT for the asynchronous pin change interrupt on the
+count signal line. */
+    sbi(PC_MSK,PC_INT);
+    sbi(IMSK,PC_IE);
+
+/* Counter: Use Interrupt 0 with low level triggering in power down mode.
 Only low level triggering is possible in power down as all clocks are halted. */
 //    sbi(IMSK,INT0);                     /* Enable Interrupt 0 */
 //    outb(INT_CR,inb(INT_CR) & ~0x03);   /* Low level trigger on interrupt 0 */
@@ -434,59 +425,28 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
 
 void intToHex(uint32_t value, uint8_t buffer[])
 {
-	uint8_t i;
-
-	for (i = 7; i >= 0; i--)
-	{
-		buffer[i] = "0123456789ABCDEF"[value & 0x0F];
-		value >>= 4;
-	}
+    uint8_t i;
+    for (i = 0; i < 8; i++)
+    {
+        buffer[7-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
+    }
     buffer[8] = 0;
 }
+
 /****************************************************************************/
-/** @brief Interrupt on INT0.
+/** @brief Interrupt on Count Signal.
 
-Increment a counter 32 bits.
-
-When a counter overflows the test is for zero value. The first test will only
-trigger after 256 ISR calls, so the additional time of the following code
-is negligible.
-
-The code done this way looks clumsy but is much faster and gives the same
-binary code size as incrementing a 32 bit integer, even using optimization
-level 3 or fast.
-
-This code requires 23 clock cycles. It is almost as fast as direct assembler
-can make it with the exception that register R1 is pushed, cleared to zero and
-a cpse instruction used for the test, needing 6 cycles. If a cpi and breq is
-used, no register is involved and the time is reduced to 2 cycles, giving a
-time saving of 17%.
+Simply return and determine source of interrupt in main program.
 */
-ISR(INT0_vect)
+ISR(PCINT1_vect)
 {
-    counter0++;
-    if (counter0 == 0)
-    {
-        counter1++;
-        if (counter1 == 0)
-        {
-            counter2++;
-            if (counter2 == 0)
-            {
-                counter3++;
-            }
-        }
-    }
 }
+
 /****************************************************************************/
 /** @brief Interrupt on WDT.
 
-When the WDT timer overflows, 8 seconds will have elapsed which is too short to
-do anything useful, so we go back to sleep again until enough such events have
-occurred. Here just reset the counter. Check in the main program if some action
-is needed.
-
-NOTE: sendMessage is used to signal a wake period.
+Simply return and determine source of interrupt in main program.
 */
 #if (MCU_TYPE==4313)
 ISR(WDT_OVERFLOW_vect)
@@ -494,12 +454,5 @@ ISR(WDT_OVERFLOW_vect)
 ISR(WDT_vect)
 #endif
 {
-    if (wdtCounter++ > ACTION_COUNT)
-    {
-        sendMessage("aA");
-        wdtCounter = 0;
-        signalAction = TRUE;
-        _delay_ms(1);
-    }
 }
 
