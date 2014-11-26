@@ -1,10 +1,10 @@
 XBee Data Acquisition
 ---------------------
 
-This project develops a remote data collection board, primarily aimed at, but
-not limited to, a water flow meter, that communicates collected data over an
-XBee network to a master processing point. The remote unit includes a bootloader
-for remote upload of new firmware.
+This project develops a remote data collection board, primarily aimed at a
+specific water flow meter. The board communicates collected data over
+an XBee network to a master processing point. The remote unit includes a
+bootloader for remote upload of new firmware.
 
 The challenge with this project is to reduce power consumption to a minimum
 to extend the life of the batteries, which may be difficult to access for
@@ -30,7 +30,7 @@ Subdirectories:
 
 &bull; XBee-bootloader-T4313       Bootloader for remote unit ATTiny4313
 
-&bull; XBee-firmware-T4313         Firmware for remote unit ATTiny4313
+&bull; XBee-firmware               Firmware for remote unit ATTiny4313
 
 &bull; XBee-GUI                    Linux PC based GUI for network control
 
