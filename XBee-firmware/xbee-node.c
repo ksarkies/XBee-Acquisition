@@ -79,6 +79,9 @@ uint8_t coordinatorAddress64[8];
 uint8_t coordinatorAddress16[2];
 uint8_t rxOptions;
 
+uint32_t counter;
+uint8_t wdtCounter;
+
 /*---------------------------------------------------------------------------*/
 int main(void)
 {
@@ -100,54 +103,52 @@ event. */
     messageReady = FALSE;
 
 /* Initialise process counter */
-    uint32_t counter = 0;
-
-/* Initialise count signal value */
-    uint8_t countSignal = inb(COUNT_PORT) & _BV(COUNT_PIN);
-    uint8_t lastCountSignal = countSignal;
+    counter = 0;
 
 /* Initialise watchdog timer count */
-    uint8_t wdtCounter = 0;
+    wdtCounter = 0;
 
+    sei();
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
     for(;;)
     {
-/* Power down the AVR until an interrupt occurs */
-        sei();
+/* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
-        cli();              /* Disable interrupts until ready to sleep again*/
 
-/* Determine if a change in the count signal level has occurred. A downward
-change will require a count to be registered. No change will suggest a
-Watchdog timeout. */
-
-        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
-        if ((countSignal == 0) && (lastCountSignal > 0)) counter++;
-        else if (countSignal == lastCountSignal)
+/* On waking, note the count, wait a bit, and check if it has advanced. If
+not, return to sleep. Otherwise keep awake until the counts have settled. */
+        uint8_t lastCount = 0;
+        do
         {
-/* No change in count signal so most likely WDT timer overflow.
-8 seconds is too short to do anything useful, so go back to sleep again
+            lastCount = counter;
+
+/* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
+8 seconds will be too short to do anything useful, so go back to sleep again
 until enough such events have occurred. */
-            if (wdtCounter++ > ACTION_COUNT)
+            if (wdtCounter > ACTION_COUNT)
             {
-                wdtCounter = 0;
+                wdtCounter = 0; /* Reset the WDT counter for next time */
+/* Generate a hex result for the count */
                 uint8_t data[9];
-                uint8_t i;
-                for (i = 0; i < 8; i++)
-                {
-	                data[7-i] = "0123456789ABCDEF"[counter & 0x0F];
-	                counter >>= 4;
-                }
-                data[8] = 0;
+                intToHex(counter,data);
+                counter = 0;    /* Reset the event counter. */
                 sendMessage(data);
-                counter = 0;
-                handleReceiveMessage();
+/* Stay awake to wait for a message that should be an acknowledge or a command.
+If the WDT overflows again, then give up and go back to sleep. */
+                while (! messageReady)
+                {
+                    handleReceiveMessage();
+                    if (wdtCounter > 0) break;
+                }
+                messageReady = FALSE;
             }
+
+            _delay_ms(1);
         }
-        lastCountSignal = countSignal;
+        while (counter != lastCount);
     }
 }
 
@@ -218,7 +219,6 @@ void handleReceiveMessage(void)
 /* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
     if (messageReady)
     {
-        messageReady = FALSE;
         if (messageError > 0) sendch(messageError);
         else if (rxMessage.frameType == RX_REQUEST)
         {
@@ -310,10 +310,6 @@ count signal line. */
     sbi(PC_MSK,PC_INT);
     sbi(IMSK,PC_IE);
 
-/* Counter: Use Interrupt 0 with low level triggering in power down mode.
-Only low level triggering is possible in power down as all clocks are halted. */
-//    sbi(IMSK,INT0);                     /* Enable Interrupt 0 */
-//    outb(INT_CR,inb(INT_CR) & ~0x03);   /* Low level trigger on interrupt 0 */
 }
 
 /****************************************************************************/
@@ -334,8 +330,9 @@ IMPORTANT: Disable the "WDT Always On" fuse.
 
 @param[in] uint8_t timeout: a register setting, 9 or less (see datasheet).
 */
-void wdtInit(uint8_t timeout)
+void wdtInit(const uint8_t waketime)
 {
+    uint8_t timeout = waketime;
     outb(WDT_CSR,0);     /* Clear the WDT register */
     if (timeout > 9) timeout = 9;
     uint8_t wdtcsrSetting = (timeout & 0x07);
@@ -350,7 +347,7 @@ Wakeup the XBee and wait for a bit. Send a string message and sleep it again.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
-void sendMessage(uint8_t* data)
+void sendMessage(const uint8_t* data)
 {
     cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
     _delay_ms(PIN_WAKE_PERIOD);
@@ -365,20 +362,20 @@ Send preamble, then message block, followed by computed checksum.
 
 @param[in]  txFrameType txMessage
 */
-void sendBaseFrame(txFrameType txMessage)
+void sendBaseFrame(const txFrameType txMessage)
 {
     sendch(0x7E);
     sendch(high(txMessage.length));
     sendch(low(txMessage.length));
     sendch(txMessage.frameType);
-    txMessage.checksum = txMessage.frameType;
+    uint8_t checksum = txMessage.frameType;
     for (uint8_t i=0; i < txMessage.length-1; i++)
     {
         uint8_t txData = txMessage.message.array[i];
         sendch(txData);
-        txMessage.checksum += txData;
+        checksum += txData;
     }
-    sendch(0xFF-txMessage.checksum);
+    sendch(0xFF-checksum);
 }
 
 /****************************************************************************/
@@ -392,9 +389,9 @@ A data message for the XBee API is formed and transmitted.
 @param[in]:   uint8_t dataLength. Length of data array.
 @param[in]:   uint8_t data[]. Define array size to be greater than length.
 */
-void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                        uint8_t radius, uint8_t dataLength,
-                        uint8_t data[])
+void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAddress16[],
+                        const uint8_t radius, const uint8_t dataLength,
+                        const uint8_t data[])
 {
     txFrameType txMessage;
     txMessage.frameType = TX_REQUEST;
@@ -423,9 +420,10 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
 @param[in] int32_t value: integer value to be printed.
 */
 
-void intToHex(uint32_t value, uint8_t buffer[])
+void intToHex(const uint32_t datum, uint8_t buffer[])
 {
     uint8_t i;
+    uint32_t value = datum;
     for (i = 0; i < 8; i++)
     {
         buffer[7-i] = "0123456789ABCDEF"[value & 0x0F];
@@ -437,16 +435,25 @@ void intToHex(uint32_t value, uint8_t buffer[])
 /****************************************************************************/
 /** @brief Interrupt on Count Signal.
 
-Simply return and determine source of interrupt in main program.
+Determine if a change in the count signal level has occurred. A downward
+change will require a count to be registered. An upward change is ignored.
+
+Sample twice to ensure that this isn't a false alarm.
 */
 ISR(PCINT1_vect)
 {
+    uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+    if (countSignal == 0)
+    {
+        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+        if (countSignal == 0) counter++;
+    }
 }
 
 /****************************************************************************/
-/** @brief Interrupt on WDT.
+/** @brief Interrupt on Watchdog Timer.
 
-Simply return and determine source of interrupt in main program.
+Increment the counter to signal state of WDT.
 */
 #if (MCU_TYPE==4313)
 ISR(WDT_OVERFLOW_vect)
@@ -454,5 +461,6 @@ ISR(WDT_OVERFLOW_vect)
 ISR(WDT_vect)
 #endif
 {
+    wdtCounter++;
 }
 

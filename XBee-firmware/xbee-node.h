@@ -111,15 +111,15 @@ typedef struct
 /* Prototypes */
 
 void hardwareInit(void);
-void wdtInit(uint8_t timeout);
-void sendMessage(uint8_t* data);
+void wdtInit(const uint8_t waketime);
+void sendMessage(const uint8_t* data);
 void handleReceiveMessage(void);
-void intToHex(uint32_t value, uint8_t buffer[]);
+void intToHex(const uint32_t datum, uint8_t buffer[]);
 
 /* XBee related prototypes */
 
-void sendBaseFrame(txFrameType txMessage);
-void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                        uint8_t radius, uint8_t length, uint8_t data[]);
+void sendBaseFrameconst (txFrameType txMessage);
+void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAddress16[],
+                        const uint8_t radius, const uint8_t length, const uint8_t data[]);
 
 #endif /*_XBEE_NODE_H_ */
