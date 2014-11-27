@@ -40,6 +40,9 @@ hole pins. In CvPcb append a new KiCad entry and add the library path to the
 .pretty directory (not the file, which is a single footprint). Also included
 are some 2mm pin spacing header footprints.
 
+27 November 2014: Add missing ground points. Correct error in battery voltage
+                  circuit.
+
 K. Sarkies
-8 November 2014
+27 November 2014
 

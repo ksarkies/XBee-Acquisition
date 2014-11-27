@@ -10,6 +10,9 @@ https://github.com/imciner2/KiCad-Libraries RF_OEM_PARTS.lib and footprints.mod
 The LED mount provides for two LEDs VSMY2850 and SFH4056 reverse mounted (under
 the board and facing through a cutout) and a top mounted LED SFH4258.
 
+27 November 2014: Flip XBee over, adjust XBee footprint, reduce size the of the
+                  two boards, interchange Rx and Tx.
+
 K. Sarkies
-31 August 2014
+27 November 2014
 
