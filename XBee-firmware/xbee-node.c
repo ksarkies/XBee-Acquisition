@@ -73,8 +73,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define  low(x) ((uint8_t) (x & 0xFF))
 
 /* Global variables */
-uint8_t messageState;           /**< Progress in message reception */
-uint8_t messageReady;           /**< Indicate that a message is ready */
 uint8_t coordinatorAddress64[8];
 uint8_t coordinatorAddress16[2];
 uint8_t rxOptions;
@@ -99,8 +97,6 @@ event. */
     for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
-    messageState = 0;
-    messageReady = FALSE;
 
 /* Initialise process counter */
     counter = 0;
@@ -113,14 +109,16 @@ event. */
 /* Main loop forever. */
     for(;;)
     {
+        sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
 
 /* On waking, note the count, wait a bit, and check if it has advanced. If
-not, return to sleep. Otherwise keep awake until the counts have settled. */
-        uint8_t lastCount = 0;
+not, return to sleep. Otherwise keep awake until the counts have settled.
+This will avoid rapid wake/sleep cycles when counts are changing. */
+        uint32_t lastCount;
         do
         {
             lastCount = counter;
@@ -130,20 +128,78 @@ not, return to sleep. Otherwise keep awake until the counts have settled. */
 until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
+/* Now ready to initiate a transmission */
                 wdtCounter = 0; /* Reset the WDT counter for next time */
-/* Generate a hex result for the count */
-                uint8_t data[9];
-                intToHex(counter,data);
-                counter = 0;    /* Reset the event counter. */
-                sendMessage(data);
-/* Stay awake to wait for a message that should be an acknowledge or a command.
-If the WDT overflows again, then give up and go back to sleep. */
-                while (! messageReady)
+/* Initiate contact with the base station. */
+                sendDataCommand('C',lastCount);
+/* Stay awake and wait for a message that should be an acknowledge or a command. */
+                rxFrameType rxMessage;
+                uint8_t repeat = 0;
+                uint8_t messageState = 0;
+                uint16_t timeout = 0;
+                uint8_t messageStatus;
+                do
                 {
-                    handleReceiveMessage();
-                    if (wdtCounter > 0) break;
+                    messageStatus = receiveMessage(&rxMessage, &messageState);
+                    if (messageStatus == NO_DATA) timeout++;
+                    else
+                    {
+                        timeout = 0;
+/* Got a message without error. Interpret ACKs and commands. */
+                        if (messageStatus == COMPLETE)
+                        {
+/* The first character in the data field is an ACK, NAK or command. */
+                            uint8_t command = rxMessage.message.rxRequest.data[0];
+/* Base station picked up an error and sent a NAK. */
+                            if (command == 'N')
+                            {
+/* Resend up to 3 times then give up. */
+                                sendDataCommand('N',lastCount);
+                                timeout = 0;
+                                if (repeat++ >= 3) break;
+                            }
+/* Oooh that feels good, getting an ACK. */
+                            else if (command == 'X')
+                            {
+/* but we still need to test the checksum. It should be two hex ASCII digits */
+                                uint8_t highDigit = rxMessage.message.rxRequest.data[1]-'0';
+                                if (highDigit > 9) highDigit += 10 - 'A';
+                                uint8_t lowDigit = rxMessage.message.rxRequest.data[2]-'0';
+                                if (lowDigit > 9) lowDigit += 10 - 'A';
+                                uint8_t checksum = lastCount + (lastCount >> 8)
+                                                   + (lastCount >> 16) + (lastCount >> 24);
+                                if (checksum != (highDigit << 4) + lowDigit)
+                                {
+/* Resend up to 3 times then give up. */
+                                    sendDataCommand('M',lastCount);
+                                    timeout = 0;
+                                    if (repeat++ >= 3) break;
+                                }
+/* We can now subtract the transmitted count from the current counter value
+and go back to sleep. This will take us to the next outer loop so set lastCount
+to cause it to drop out immediately if counts had not changed. */
+                                counter -= lastCount;
+                                lastCount = 0;
+                                break;
+                            }
+                        }
+                        else
+                        {
+/* Message error detected. Resend up to 3 times then give up. */
+                            sendDataCommand('M',lastCount);
+                            timeout = 0;
+                            if (repeat++ >= 3) break;
+                        }
+                    }
+/* Nothing received within the timeout period, resend up to 3 times */
+                    if (timeout > RESPONSE_DELAY)
+                    {
+                        sendDataCommand('T',lastCount);
+                        timeout = 0;
+                        if (repeat++ >= 3) break;
+                    }
                 }
-                messageReady = FALSE;
+                while (TRUE);   /* rely on breaks to get out. */
             }
 
             _delay_ms(1);
@@ -155,87 +211,71 @@ If the WDT overflows again, then give up and go back to sleep. */
 /****************************************************************************/
 /** @brief Check for incoming messages and respond.
 
-An incoming message is assembled over multiple calls to this function, and
-when complete messageReady is set. The message is then parsed and actions
-taken as appropriate.
+An incoming message is assembled over multiple calls to this function. A status
+is returned indicating completion or error status of the message.
 
-Note: The Rx message variable is re-used and must be processed before the next
-arrives.
+The message is built up as serial data is received, and therefore must not be
+changed outside the function until the function returns COMPLETE.
 
-Globals: messageReady, messageState
+@param[out] rxFrameType *rxMessage: Message received.
+@param[out] uint8_t *messageState: Message build state, must be set to zero on
+                                   the first call.
+@returns uint8_t message completion/error state. Zero means character received
+                                   OK but not yet finished.
 */
-void handleReceiveMessage(void)
+uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
-    rxFrameType rxMessage;
 /* Wait for data to appear */
     uint16_t inputChar = getchn();
     uint8_t messageError = high(inputChar);
     if (messageError != NO_DATA)
     {
-/* Pull in the next character and look for message start */
+        uint8_t state = *messageState;
+/* Pull in the received character and look for message start */
 /* Read in the length (16 bits) and frametype then the rest to a buffer */
         uint8_t inputValue = low(inputChar);
-        switch(messageState)
+        switch(state)
         {
 /* Sync character */
             case 0:
-                if (inputChar == 0x7E) messageState++;
+                if (inputChar == 0x7E) state++;
                 break;
 /* Two byte length */
             case 1:
-                rxMessage.length = (inputChar << 8);
-                messageState++;
+                rxMessage->length = (inputChar << 8);
+                state++;
                 break;
             case 2:
-                rxMessage.length += inputValue;
-                messageState++;
+                rxMessage->length += inputValue;
+                state++;
                 break;
 /* Frame type */
             case 3:
-                rxMessage.frameType = inputValue;
-                rxMessage.checksum = inputValue;
-                messageState++;
+                rxMessage->frameType = inputValue;
+                rxMessage->checksum = inputValue;
+                state++;
                 break;
 /* Rest of message, maybe include addresses or just data */
             default:
-                if (messageState > rxMessage.length + 3)
+                if (state > rxMessage->length + 3)
                     messageError = STATE_MACHINE;
-                else if (rxMessage.length + 3 > messageState)
+                else if (rxMessage->length + 3 > state)
                 {
-                    rxMessage.message.array[messageState-4] = inputValue;
-                    messageState++;
-                    rxMessage.checksum += inputValue;
+                    rxMessage->message.array[state-4] = inputValue;
+                    state++;
+                    rxMessage->checksum += inputValue;
                 }
                 else
                 {
-                    messageReady = TRUE;
-                    messageState = 0;
-                    if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0)
+                    state = 0;
+                    if (((rxMessage->checksum + inputValue + 1) & 0xFF) > 0)
                         messageError = CHECKSUM;
+                    else messageError = COMPLETE;
                 }
         }
+        *messageState = state;
     }
-/* Respond to received message */
-/* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
-    if (messageReady)
-    {
-        if (messageError > 0) sendch(messageError);
-        else if (rxMessage.frameType == RX_REQUEST)
-        {
-#ifdef TEST_PIN
-/* Simply toggle test port in response to simple commands */
-            if (rxMessage.message.rxRequest.data[0] == 'L')
-                cbi(TEST_PORT,TEST_PIN);
-            if (rxMessage.message.rxRequest.data[0] == 'O')
-                sbi(TEST_PORT,TEST_PIN);
-#endif
-/* TEST: Echo message back */
-            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                            rxMessage.message.rxRequest.sourceAddress16,
-                            0, rxMessage.length-12,
-                            rxMessage.message.rxRequest.data);
-        }
-    }
+    return messageError;
 }
 
 /****************************************************************************/
@@ -341,17 +381,29 @@ void wdtInit(const uint8_t waketime)
 }
 
 /****************************************************************************/
-/** @brief Wake the XBee and send a message
+/** @brief Wake the XBee and send a string message
 
-Wakeup the XBee and wait for a bit. Send a string message and sleep it again.
+If XBee is not awake, wake it and wait for a bit. Send a string message.
+The Sleep_Rq pin is active low.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
 void sendMessage(const uint8_t* data)
 {
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
-    _delay_ms(PIN_WAKE_PERIOD);
+    if ((inb(SLEEP_RQ_PORT) & SLEEP_RQ_PIN) > 0)
+    {
+        cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
+        _delay_ms(PIN_WAKE_PERIOD);
+    }
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,strlen(data),data);
+}
+
+/****************************************************************************/
+/** @brief Sleep the XBee
+
+*/
+inline void sleepXBee(void)
+{
     sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
 }
 
@@ -415,21 +467,25 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAdd
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Convert an integer to a string in 16 bit ASCII hex form
+/** @brief Convert a 32 bit value to ASCII hex form and send with a command
 
-@param[in] int32_t value: integer value to be printed.
+@param[in] int8_t command: ASCII command character to prepend to message.
+@param[in] int32_t datum: integer value to be sent.
 */
 
-void intToHex(const uint32_t datum, uint8_t buffer[])
+void sendDataCommand(const uint8_t command, const uint32_t datum)
 {
+    uint8_t buffer[10];
     uint8_t i;
     uint32_t value = datum;
     for (i = 0; i < 8; i++)
     {
-        buffer[7-i] = "0123456789ABCDEF"[value & 0x0F];
+        buffer[8-i] = "0123456789ABCDEF"[value & 0x0F];
         value >>= 4;
     }
-    buffer[8] = 0;
+    buffer[9] = 0;
+    buffer[0] = command;
+    sendMessage(buffer);
 }
 
 /****************************************************************************/

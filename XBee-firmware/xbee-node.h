@@ -30,18 +30,22 @@ Tested:     ATtint4313 at 1MHz internal clock.
 #define _XBEE_NODE_H_
 
 /* WDT count to give desired time between activations of the AVR */
-#define ACTION_MINUTES  10
+#define ACTION_MINUTES          10
 
 /* Timeout setting for WDT to give 8 second ticks */
-#define WDT_TIME        0x09
+#define WDT_TIME                0x09
 
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-#define ACTION_COUNT    1
+#define ACTION_COUNT            1
 
 /* Xbee parameters */
-#define RF_PAYLOAD  63
-/* Time XBee waits before sleeping */
-#define PIN_WAKE_PERIOD 1
+#define RF_PAYLOAD              63
+/* Time in ms XBee waits before sleeping */
+#define PIN_WAKE_PERIOD         1
+/* Time to wait for a response from the base station. Time units depend on
+the code execution time needed to check for a received character, and F_CPU.
+Aim at 10ms with an assumption that 10 clock cycles needed for the check. */
+#define RESPONSE_DELAY          F_CPU/1000
 
 /**********************************************************/
 /** @name Error Definitions.
@@ -54,6 +58,9 @@ From the UART:
 
 #define STATE_MACHINE           0x10
 #define CHECKSUM                0x11
+#define ACK                     0x12
+#define NAK                     0x13
+#define COMPLETE                0x20
 /*@}*/
 
 #define RX_REQUEST              0x90
@@ -113,8 +120,9 @@ typedef struct
 void hardwareInit(void);
 void wdtInit(const uint8_t waketime);
 void sendMessage(const uint8_t* data);
-void handleReceiveMessage(void);
-void intToHex(const uint32_t datum, uint8_t buffer[]);
+uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
+void sendDataCommand(const uint8_t command, const uint32_t datum);
+void sleepXBee(void);
 
 /* XBee related prototypes */
 

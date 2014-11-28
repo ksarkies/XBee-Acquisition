@@ -14,6 +14,19 @@ Tasks are:
 3. Transmit count and battery voltage.
 4. Request any pending configuration instructions from the master.
 
+The code uses an error checking protocol to ensure that data is transmitted
+reliably. When woken by the WDT, it transmits the watermeter count and waits
+for an acknowledgement with a checksum of its transmitted data. If no response
+comes, or a response in error, or the base station reports an error, it will
+repeat the transmission up to three times before giving up. Only when no errors
+have been detected will it reset the watermeter count. The base station is
+responsible for its own involvement in this protocol.
+
+Options are provided for the base station to send commands to change
+parameters in the remote unit. This must be sent BEFORE the acknowledgement
+otherwise the remote unit will return to sleep once it has received a good
+response.
+
 The code is written to allow several AVR microcontroller types and currently
 supports ATMega168, ATTiny4313 and ATTiny841, the latter selected for the
 watermeter.
@@ -31,5 +44,5 @@ makefile) and passes it to the source files. This variable must then be used in
 the defines.h header to incorporate the appropriate MCU specific defines file.
 
 K. Sarkies
-19 November 2014
+28 November 2014
 
