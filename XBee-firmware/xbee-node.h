@@ -44,8 +44,8 @@ Tested:     ATtint4313 at 1MHz internal clock.
 #define PIN_WAKE_PERIOD         1
 /* Time to wait for a response from the base station. Time units depend on
 the code execution time needed to check for a received character, and F_CPU.
-Aim at 10ms with an assumption that 10 clock cycles needed for the check. */
-#define RESPONSE_DELAY          F_CPU/1000
+Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
+#define RESPONSE_DELAY          F_CPU/50
 
 /**********************************************************/
 /** @name Error Definitions.

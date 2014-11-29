@@ -161,7 +161,7 @@ until enough such events have occurred. */
                                     if (repeat++ >= 3) break;
                                     sendDataCommand('N',lastCount);
                                 }
-/* Got an ACK: mmmmh that feels good. */
+/* Got an ACK: aaaah that feels good. */
                                 else if (command == 'X')
                                 {
 /* but we still need to test the checksum. It should be two hex ASCII digits.
@@ -181,9 +181,12 @@ until enough such events have occurred. */
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to cause it to drop out immediately if the counts had not changed. */
-                                    counter -= lastCount;
-                                    lastCount = 0;
-                                    break;
+                                    else
+                                    {
+                                        counter -= lastCount;
+                                        lastCount = 0;
+                                        break;
+                                    }
                                 }
                             }
 /* TODO At this point we can check other XBee incoming frames, particularly the
@@ -195,8 +198,8 @@ transmit status frame to see if it was delivered OK. */
                         {
 /* Clear message, resend up to 3 times then give up. */
                             if (repeat++ >= 3) break;
+                            sendDataCommand('E',lastCount);
                             timeout = 0;
-                            sendDataCommand('E',(uint32_t)messageStatus+(((uint32_t)messageState)<<8)+(((uint32_t)rxMessage.frameType)<<16)+(((uint32_t)rxMessage.length)<<24));
                             messageState = 0;
                             rxMessage.frameType = 0;
                         }
@@ -205,8 +208,8 @@ transmit status frame to see if it was delivered OK. */
                     if (timeout > RESPONSE_DELAY)
                     {
                         if (repeat++ >= 3) break;
-                        timeout = 0;
                         sendDataCommand('T',lastCount);
+                        timeout = 0;
                     }
                 }
                 while (TRUE);   /* rely on breaks to get out. */
