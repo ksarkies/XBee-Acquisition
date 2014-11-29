@@ -81,7 +81,10 @@ void sendch(unsigned char c)
 /* Get a character when the Rx is ready (blocking)
 
 The function asserts RTS low then waits for the receive complete bit is set.
-RTS is then cleared high. The character is then retrieved.
+RTS is then cleared high. The character is then retrieved. If no character is
+present, the function blocks.
+
+returns: unsigned char. The received character.
 */
 
 unsigned char getch(void)
@@ -101,6 +104,8 @@ unsigned char getch(void)
 
 The function asserts RTS low then waits for the receive complete bit is set.
 RTS is then cleared high. The character is then retrieved.
+
+returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
 
 unsigned int getchn(void)

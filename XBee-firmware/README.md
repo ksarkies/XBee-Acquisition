@@ -28,8 +28,15 @@ otherwise the remote unit will return to sleep once it has received a good
 response.
 
 The code is written to allow several AVR microcontroller types and currently
-supports ATMega168, ATTiny4313 and ATTiny841, the latter selected for the
-watermeter.
+supports ATMega168, ATTiny4313 and ATTiny841, the latter being the one selected
+for the watermeter.
+
+The XBee does not use hardware flow control, although RTS may be
+possible. This is due to a lack of ports on the AVR package intended for use
+(ATTiny841).
+
+The AVR is set to 1MHz for low power, and a baud rate of 9600, aimed at
+giving sufficient time for processing messages.
 
 The MCU variable defaults to the atmega168 but can be passed to the makefile:
 

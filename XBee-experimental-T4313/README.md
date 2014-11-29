@@ -1,10 +1,10 @@
 XBee Data Acquisition Remote Firmware Experimental Bootloader Development
 -------------------------------------------------------------------------
 
-This is an test firmware for the remote unit. Written in C under avr-gcc.
+This is a test firmware for the remote unit. Written in C under avr-gcc.
 
 This particular code example is identical to the node-example. It is used to
-develop the bootloader interface for the ATTiny AVRs without a separate
+develop the bootloader interface for the ATTiny AVRs that do not have a separate
 bootloader section.
 
 A dummy message is sent to the coordinator at timed intervals and PORTB0 is

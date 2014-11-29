@@ -137,66 +137,76 @@ until enough such events have occurred. */
                 uint8_t repeat = 0;
                 uint8_t messageState = 0;
                 uint16_t timeout = 0;
-                uint8_t messageStatus;
                 do
                 {
-                    messageStatus = receiveMessage(&rxMessage, &messageState);
+                    uint8_t  messageStatus = receiveMessage(&rxMessage, &messageState);
+/* Nothing on the line, so keep looping until timeout triggers */
                     if (messageStatus == NO_DATA) timeout++;
                     else
                     {
                         timeout = 0;
-/* Got a message without error. Interpret ACKs and commands. */
+/* Got a message without error. */
                         if (messageStatus == COMPLETE)
                         {
+                            messageState = 0;   /* Reset in case of a repeat */
+/* Respond only to an XBee receive packet. */
+                            if (rxMessage.frameType == 0x90)
+                            {
 /* The first character in the data field is an ACK, NAK or command. */
-                            uint8_t command = rxMessage.message.rxRequest.data[0];
+                                uint8_t command = rxMessage.message.rxRequest.data[0];
 /* Base station picked up an error and sent a NAK. */
-                            if (command == 'N')
-                            {
-/* Resend up to 3 times then give up. */
-                                sendDataCommand('N',lastCount);
-                                timeout = 0;
-                                if (repeat++ >= 3) break;
-                            }
-/* Oooh that feels good, getting an ACK. */
-                            else if (command == 'X')
-                            {
-/* but we still need to test the checksum. It should be two hex ASCII digits */
-                                uint8_t highDigit = rxMessage.message.rxRequest.data[1]-'0';
-                                if (highDigit > 9) highDigit += 10 - 'A';
-                                uint8_t lowDigit = rxMessage.message.rxRequest.data[2]-'0';
-                                if (lowDigit > 9) lowDigit += 10 - 'A';
-                                uint8_t checksum = lastCount + (lastCount >> 8)
-                                                   + (lastCount >> 16) + (lastCount >> 24);
-                                if (checksum != (highDigit << 4) + lowDigit)
+                                if (command == 'N')
                                 {
 /* Resend up to 3 times then give up. */
-                                    sendDataCommand('M',lastCount);
-                                    timeout = 0;
                                     if (repeat++ >= 3) break;
+                                    sendDataCommand('N',lastCount);
                                 }
+/* Got an ACK: mmmmh that feels good. */
+                                else if (command == 'X')
+                                {
+/* but we still need to test the checksum. It should be two hex ASCII digits.
+(no need for fancy checking here, just abandon if any discrepency). */
+                                    uint8_t highDigit = rxMessage.message.rxRequest.data[1]-'0';
+                                    if (highDigit > 9) highDigit += 10 - 'A' + '0';
+                                    uint8_t lowDigit = rxMessage.message.rxRequest.data[2]-'0';
+                                    if (lowDigit > 9) lowDigit += 10 - 'A' + '0';
+                                    uint8_t checksum = lastCount + (lastCount >> 8)
+                                                       + (lastCount >> 16) + (lastCount >> 24);
+                                    if (checksum != (highDigit << 4) + lowDigit)
+                                    {
+/* Resend up to 3 times then give up. */
+                                        if (repeat++ >= 3) break;
+                                        sendDataCommand('X',lastCount);
+                                    }
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
-to cause it to drop out immediately if counts had not changed. */
-                                counter -= lastCount;
-                                lastCount = 0;
-                                break;
+to cause it to drop out immediately if the counts had not changed. */
+                                    counter -= lastCount;
+                                    lastCount = 0;
+                                    break;
+                                }
                             }
+/* TODO At this point we can check other XBee incoming frames, particularly the
+transmit status frame to see if it was delivered OK. */
                         }
-                        else
+/* Zero message status means it is part way through. This detects other errors
+(namely checksum or packet length wrong). */
+                        else if ((messageStatus > 0) && (rxMessage.frameType == 0x90))
                         {
-/* Message error detected. Resend up to 3 times then give up. */
-                            sendDataCommand('M',lastCount);
-                            timeout = 0;
+/* Clear message, resend up to 3 times then give up. */
                             if (repeat++ >= 3) break;
+                            timeout = 0;
+                            sendDataCommand('E',(uint32_t)messageStatus+(((uint32_t)messageState)<<8)+(((uint32_t)rxMessage.frameType)<<16)+(((uint32_t)rxMessage.length)<<24));
+                            messageState = 0;
+                            rxMessage.frameType = 0;
                         }
                     }
 /* Nothing received within the timeout period, resend up to 3 times */
                     if (timeout > RESPONSE_DELAY)
                     {
-                        sendDataCommand('T',lastCount);
-                        timeout = 0;
                         if (repeat++ >= 3) break;
+                        timeout = 0;
+                        sendDataCommand('T',lastCount);
                     }
                 }
                 while (TRUE);   /* rely on breaks to get out. */
@@ -381,33 +391,6 @@ void wdtInit(const uint8_t waketime)
 }
 
 /****************************************************************************/
-/** @brief Wake the XBee and send a string message
-
-If XBee is not awake, wake it and wait for a bit. Send a string message.
-The Sleep_Rq pin is active low.
-
-@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
-*/
-void sendMessage(const uint8_t* data)
-{
-    if ((inb(SLEEP_RQ_PORT) & SLEEP_RQ_PIN) > 0)
-    {
-        cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
-        _delay_ms(PIN_WAKE_PERIOD);
-    }
-    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,strlen(data),data);
-}
-
-/****************************************************************************/
-/** @brief Sleep the XBee
-
-*/
-inline void sleepXBee(void)
-{
-    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
-}
-
-/****************************************************************************/
 /** @brief Build and transmit a basic frame
 
 Send preamble, then message block, followed by computed checksum.
@@ -486,6 +469,33 @@ void sendDataCommand(const uint8_t command, const uint32_t datum)
     buffer[9] = 0;
     buffer[0] = command;
     sendMessage(buffer);
+}
+
+/****************************************************************************/
+/** @brief Wake the XBee and send a string message
+
+If XBee is not awake, wake it and wait for a bit. Send a string message.
+The Sleep_Rq pin is active low.
+
+@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
+*/
+void sendMessage(const uint8_t* data)
+{
+    if ((inb(SLEEP_RQ_PORT) & SLEEP_RQ_PIN) > 0)
+    {
+        cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
+        _delay_ms(PIN_WAKE_PERIOD);
+    }
+    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,strlen(data),data);
+}
+
+/****************************************************************************/
+/** @brief Sleep the XBee
+
+*/
+inline void sleepXBee(void)
+{
+    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
 }
 
 /****************************************************************************/
