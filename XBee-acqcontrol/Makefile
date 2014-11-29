@@ -1,6 +1,6 @@
 PROJECT = xbee-acqcontrol
 
-LIBXBEE = ../auxiliary/libxbee-3.0.9
+LIBXBEE = ../auxiliary/libxbee-3.0.11
 
 CFLAGS  = -pipe -O2 -Wall -W -pedantic
 INCLUDE = -I. -I$(LIBXBEE)/

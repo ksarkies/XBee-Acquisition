@@ -1,5 +1,5 @@
 /**
-@mainpage XBee Acquisition Control process
+@mainpage XBee Acquisition Control Process
 @version 1.0
 @author Ken Sarkies (www.jiggerjuice.net)
 @date 10 January 2013
@@ -27,10 +27,14 @@ L0s send a local AT command s to the attached coordinator XBee.
 l0  request a response from the local AT command.
 
 @note
+The program uses libxbee by Attie Grande
+http://attie.co.uk/libxbee
+
+@note
 May be portable to Windows and OS X, if anyone is so crazy.
 
 @note
-Compiler: gcc 4.6.3
+Compiler: gcc 4.8.2
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -89,12 +93,13 @@ char dirname[40];
 char inPort[40];
 uint baudrate;
 
-/* Callback Prototypes */
+/* Callback Prototypes for libxbee */
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
 void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
 void remoteATCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
 void localATCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
 void ioCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
+
 int min(int x, int y) {if (x>y) return y; else return x;}
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
@@ -218,7 +223,7 @@ d - directory for results file.
     }
 
 /*---------------------------------------------------------------------------------*/
-/* Close up and quit (don't quite know how we're going to get here!) */
+/* Close up and quit (don't quite know how we would end up here!) */
 
     closeGlobalConnections();
     closeRemoteConnections();
@@ -600,8 +605,8 @@ would get mixed up with the ND. */
 /*-----------------------------------------------------------------------------*/
 /** @brief Open remote node connections
 
-The table entry is set as valid and a set of connections are built if they are not
-already present.
+The entry to the node table structure is set as valid and a set of xbee
+connections is built if it is not already present.
 
 Globals: xbee, nodeInfo
 
@@ -656,7 +661,6 @@ Globals: numberNodes
 
 void openRemoteConnections()
 {
-/* Invalidate all entries in the table */
     for (int node=0; node<numberNodes; node++)
     {
         openRemoteConnection(node);
@@ -1132,24 +1136,47 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt
     for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
     printf("\n");
 #endif
-    if ((*pkt)->data[0] == 'D')
+/* Determine if the packet received is a data packet and check for errors */
+    char command = (*pkt)->data[0];
+    bool error = false;
+/* These are the messages resulting from initial and error conditions in the remote. */
+    if ((command == 'C') || (command == 'T') || (command == 'N')
+                         || (command == 'E') || (command == 'X'))
     {
-        if (row == numberNodes) fprintf(fp,"Node Unknown ");
-        else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-        fprintf(fp," %s ", outstr);
-        fprintf(fp, "Data ");
-        for (int i=0; i<writeLength; i++) buffer[i] = (*pkt)->data[i+1];
-        fwrite(buffer,1,writeLength,fp);
-        fprintf(fp, "\n");
-        dataFileCheck();
+        if (writeLength != 9) error = true;
+        if (!error)
+        {
+/* Convert hex ASCII count to an integer */
+            long int count = 0;
+            int i;
+            for (i=0; i<8; i++)
+            {
+                int digit=0;
+                char hex = (*pkt)->data[i+1];
+                if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
+                else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
+                else error = true;
+                count = (count << 4) + digit;
+            }
+            char checksum = count + (count >> 8) + (count >> 16) + (count >> 24);
+            xbee_err ret = xbee_conTx(con, NULL, "X%02x",checksum);
+        }
     }
     else
     {
         dataResponseRcvd = true;
         for (int i=0; i< min(SIZE,writeLength); i++)
             dataResponseData[i] = (*pkt)->data[i];
-        fprintf(fp, "\n");
     }
+/* Print out everything to the file */
+    if (row == numberNodes) fprintf(fp,"Node Unknown ");
+    else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
+    fprintf(fp," %s ", outstr);
+    fprintf(fp, "Data ");
+    for (int i=0; i<writeLength; i++) buffer[i] = (*pkt)->data[i+1];
+    fwrite(buffer,1,writeLength,fp);
+    fprintf(fp, "\n\r");
+    dataFileCheck();
 /* If we are hearing from this then it is a valid node */
     if (row < numberNodes) nodeInfo[row].valid = TRUE;
 
