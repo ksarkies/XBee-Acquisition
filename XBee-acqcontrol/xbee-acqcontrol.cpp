@@ -1139,28 +1139,58 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt
 /* Determine if the packet received is a data packet and check for errors */
     char command = (*pkt)->data[0];
     bool error = false;
+    long int count = 0;
+    bool storeData = false;
 /* These are the messages resulting from initial and error conditions in the remote. */
     if ((command == 'C') || (command == 'T') || (command == 'N')
-                         || (command == 'E') || (command == 'X'))
+                         || (command == 'E'))
     {
-        if (writeLength != 9) error = true;
+        if (writeLength != 11) error = true;
         if (!error)
         {
-/* Convert hex ASCII count to an integer */
-            long int count = 0;
+/* Convert hex ASCII checksum and count to an integer */
             int i;
+/* Convert data in latter part of string */
             for (i=0; i<8; i++)
+            {
+                int digit=0;
+                char hex = (*pkt)->data[i+3];
+                if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
+                else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
+                else error = true;
+                count = (count << 4) + digit;
+            }
+/* Convert checksum in first part of string */
+            char checksum = 0;
+            for (i=0; i<2; i++)
             {
                 int digit=0;
                 char hex = (*pkt)->data[i+1];
                 if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
                 else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
                 else error = true;
-                count = (count << 4) + digit;
+                checksum = (checksum << 4) + digit;
             }
-            char checksum = count + (count >> 8) + (count >> 16) + (count >> 24);
-            xbee_err ret = xbee_conTx(con, NULL, "X%02x",checksum);
+/* Compute checksum of data and add to transmitted checksum */
+            checksum += count + (count >> 8) + (count >> 16) + (count >> 24);
+/* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
+            if (checksum != 0) error = true;
         }
+        if (error)
+            xbee_conTx(con, NULL, "N");
+        else
+            xbee_conTx(con, NULL, "A");
+    }
+/* Abandon the communication and discard the current count value as the remote
+will not reset its count. */
+    else if (command == 'X')
+    {
+        storeData = false;
+    }
+/* Accept the communication as valid and store the data permanently */
+    else if (command == 'A')
+    {
+        storeData = true;
     }
     else
     {

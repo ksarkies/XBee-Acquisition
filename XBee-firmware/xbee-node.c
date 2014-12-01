@@ -162,31 +162,14 @@ until enough such events have occurred. */
                                     sendDataCommand('N',lastCount);
                                 }
 /* Got an ACK: aaaah that feels good. */
-                                else if (command == 'X')
+                                else if (command == 'A')
                                 {
-/* but we still need to test the checksum. It should be two hex ASCII digits.
-(no need for fancy checking here, just abandon if any discrepency). */
-                                    uint8_t highDigit = rxMessage.message.rxRequest.data[1]-'0';
-                                    if (highDigit > 9) highDigit += 10 - 'A' + '0';
-                                    uint8_t lowDigit = rxMessage.message.rxRequest.data[2]-'0';
-                                    if (lowDigit > 9) lowDigit += 10 - 'A' + '0';
-                                    uint8_t checksum = lastCount + (lastCount >> 8)
-                                                       + (lastCount >> 16) + (lastCount >> 24);
-                                    if (checksum != (highDigit << 4) + lowDigit)
-                                    {
-/* Resend up to 3 times then give up. */
-                                        if (repeat++ >= 3) break;
-                                        sendDataCommand('X',lastCount);
-                                    }
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to cause it to drop out immediately if the counts had not changed. */
-                                    else
-                                    {
-                                        counter -= lastCount;
-                                        lastCount = 0;
-                                        break;
-                                    }
+                                    counter -= lastCount;
+                                    lastCount = 0;
+                                    break;
                                 }
                             }
 /* TODO At this point we can check other XBee incoming frames, particularly the
@@ -213,6 +196,11 @@ transmit status frame to see if it was delivered OK. */
                     }
                 }
                 while (TRUE);   /* rely on breaks to get out. */
+/* If we arrive here because the repeats were exceeded, notify the base
+station of the abandonment of this communication attempt. */
+                if (repeat >= 3) sendMessage("X");
+/* Otherwise notify acceptance */
+                else  sendMessage("A");
             }
 
             _delay_ms(1);
@@ -453,7 +441,10 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAdd
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Convert a 32 bit value to ASCII hex form and send with a command
+/** @brief Convert a 32 bit value to ASCII hex form and send with a command.
+
+Also compute an 8-bit modular sum checksum from the data and convert to hex
+for transmission. This is sent at the beginning of the string.
 
 @param[in] int8_t command: ASCII command character to prepend to message.
 @param[in] int32_t datum: integer value to be sent.
@@ -461,15 +452,17 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAdd
 
 void sendDataCommand(const uint8_t command, const uint32_t datum)
 {
-    uint8_t buffer[10];
+    uint8_t buffer[12];
     uint8_t i;
+    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
     uint32_t value = datum;
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 10; i++)
     {
-        buffer[8-i] = "0123456789ABCDEF"[value & 0x0F];
+        if (i == 8) value = checksum;
+        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
         value >>= 4;
     }
-    buffer[9] = 0;
+    buffer[11] = 0;             /* String terminator */
     buffer[0] = command;
     sendMessage(buffer);
 }
