@@ -26,16 +26,16 @@ Title:    XBee Acquisition Control process
 #define DEBUG   1
 
 // Limit definitions
-#define MAXNODES        25
-#define SIZE            256
+#define MAXNODES                25
+#define SIZE                   256
 #define DATA_BUFFER_SIZE        64
 #define FLUSH_LIMIT             32
 #define FILE_LIMIT            1024
 
-#define DATA_PATH       "/data/XBee/"
+#define DATA_PATH           "/data/XBee/"
 
-#define SERIAL_PORT     "/dev/ttyUSB0"
-#define BAUDRATE        38400
+#define SERIAL_PORT         "/dev/ttyUSB0"
+#define BAUDRATE            38400
 
 #define PORT "58532"        // port for the external command I/F
 #define MAX_CLIENTS 2       // Number of external connections allowed
@@ -77,8 +77,9 @@ enum FlowType
     FLOW_XONXOFF
 };
 
-// Structure for a node table entry
-// The node table holds all useful information about the nodes in teh XBee network.
+/* Structure for a node table entry.
+The node table holds all useful information about the nodes in the XBee
+network. */
 
 typedef struct {
     uint16_t adr;           // 16 bit address

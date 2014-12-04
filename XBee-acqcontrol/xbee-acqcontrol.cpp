@@ -66,32 +66,38 @@ Compiler: gcc 4.8.2
 
 /* Global Structures */
 struct xbee *xbee;
-struct xbee_con *localATCon;     // Connection for local AT commands
-struct xbee_con *identifyCon;    // Connection for identify packets
+struct xbee_con *localATCon;    /* Connection for local AT commands */
+struct xbee_con *identifyCon;   /* Connection for identify packets */
 int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
-uint8_t dataResponseRcvd;       /* Signal that a response to an AVR command has been received */
+char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
+uint8_t dataResponseRcvd;       /* Signal response to an AVR command received */
 char dataResponseData[SIZE];    /* The data record received with a response */
-uint8_t remoteATResponseRcvd;   /* Signal that a response to a remote AT command has been received */
+uint8_t remoteATResponseRcvd;   /* Signal response to a remote AT command received */
 uint8_t remoteATLength;
-char remoteATResponseData[SIZE];/* The data record received with a remote AT response */
-uint8_t localATResponseRcvd;    /* Signal that a response to a local AT command has been received */
+char remoteATResponseData[SIZE];/* Data record received with remote AT response */
+uint8_t localATResponseRcvd;    /* Signal response to a local AT command received */
 uint8_t localATLength;
 char localATResponseData[SIZE]; /* The data record received with a local AT response */
 FILE *fp;                       /* File for results */
 FILE *fpd;                      /* File for configuration XBee list */
-int flushCount;                 /* Number of records at which buffers are flushed to the disk. */
-int fileCount;                  /* Number of records at which the file is closed and a new one opened. */
+int flushCount;                 /* Number of records to flush buffers to disk. */
+int fileCount;                  /* Number of records close file and open new. */
 char dirname[40];
 char inPort[40];
 uint baudrate;
 
 /* Callback Prototypes for libxbee */
-void nodeIDCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
-void dataCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
-void remoteATCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
-void localATCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
-void ioCallback(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
+void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void dataCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void localATCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void ioCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
 
 int min(int x, int y) {if (x>y) return y; else return x;}
 
@@ -1145,6 +1151,9 @@ file.
 Other packets are responses to commands to the node AVR sent over the same
 connection. The response is stored in a global array. This should be read
 before any other node AVR command is sent to any node.
+
+TODO The data received is oriented to 32 bit counts. Needs generalization to
+other data types.
 */
 
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
@@ -1152,25 +1161,25 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
 {
     char buffer[DATA_BUFFER_SIZE];
     int row = findRow((*pkt)->address.addr64);
-    char outstr[20];
+    char timeString[20];
     time_t now;
     now = time(NULL);
     struct tm *tmp;
     tmp = localtime(&now);
-    strftime(outstr, sizeof(outstr),"%FT%H:%M:%S",tmp);
+    strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int writeLength = (*pkt)->dataLen;
     if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
 #ifdef DEBUG
     if (row == numberNodes) printf("Node Unknown ");
     else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf("Data Packet: Time %s length %d, data ",outstr,writeLength);
+    printf("Data Packet: Time %s length %d, data ",timeString,writeLength);
     for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
     printf("\n");
 #endif
 /* Determine if the packet received is a data packet and check for errors */
     char command = (*pkt)->data[0];
     bool error = false;
-    long int count = 0;
+    unsigned long int count = 0;
     bool storeData = false;
 /* These messages result from initial data transmission and error conditions in
 the remote. */
@@ -1180,10 +1189,9 @@ the remote. */
         if (writeLength != 11) error = true;
         if (!error)
         {
-/* Convert hex ASCII checksum and count to an integer */
-            int i;
-/* Convert data in latter part of string */
-            for (i=0; i<8; i++)
+/* Convert hex ASCII checksum and count to an integer from latter part of
+string */
+            for (int i=0; i<8; i++)
             {
                 int digit=0;
                 char hex = (*pkt)->data[i+3];
@@ -1194,7 +1202,7 @@ the remote. */
             }
 /* Convert checksum in first part of string */
             char checksum = 0;
-            for (i=0; i<2; i++)
+            for (int i=0; i<2; i++)
             {
                 int digit=0;
                 char hex = (*pkt)->data[i+1];
@@ -1204,7 +1212,8 @@ the remote. */
                 checksum = (checksum << 4) + digit;
             }
 /* Compute checksum of data and add to transmitted checksum */
-            checksum += count + (count >> 8) + (count >> 16) + (count >> 24);
+            checksum += count + (count >> 8) + 
+                       (count >> 16) + (count >> 24);
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
         }
@@ -1212,6 +1221,8 @@ the remote. */
 /* Negative Acknowledge */
             xbee_conTx(con, NULL, "N");
         else
+/* If no error, store data field aside for later recording. */
+            for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
             xbee_conTx(con, NULL, "A");
     }
@@ -1232,19 +1243,22 @@ string to the remote node. */
     {
         dataResponseRcvd = true;
         for (int i=1; i< min(SIZE,writeLength); i++)
-            dataResponseData[i] = (*pkt)->data[i];
+            dataResponseData[i] = (*pkt)->data[i+1];
     }
-/* Print out everything to the file */
-    if (row == numberNodes) fprintf(fp,"Node Unknown ");
-    else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-    fprintf(fp," %s ", outstr);
-    fprintf(fp, "Data ");
-    for (int i=0; i<writeLength; i++) buffer[i] = (*pkt)->data[i+1];
-    fwrite(buffer,1,writeLength,fp);
-    fprintf(fp, "\n\r");
-    dataFileCheck();
+/* Print out received data to the file once it is verified. */
+    if (storeData)
+    {
+        if (row == numberNodes) fprintf(fp,"Node Unknown ");
+        else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
+        fprintf(fp," %s ", timeString);
+        fprintf(fp, "Count ");
+        for (int i=0; i<writeLength; i++) buffer[i] = remoteData[i][row];
+        fwrite(buffer,1,writeLength,fp);
+        fprintf(fp, "\n\r");
+        dataFileCheck();
 /* If we are hearing from this then it is a valid node */
-    if (row < numberNodes) nodeInfo[row].valid = TRUE;
+        if (row < numberNodes) nodeInfo[row].valid = TRUE;
+    }
 
 }
 
@@ -1310,16 +1324,16 @@ Received data is simply stored in an external file.
 void ioCallback(struct xbee *xbee, struct xbee_con *con,
                 struct xbee_pkt **pkt, void **data)
 {
-    char outstr[20];
+    char timeString[20];
     time_t now;
     now = time(NULL);
     struct tm *tmp;
     tmp = localtime(&now);
-    strftime(outstr, sizeof(outstr),"%FT%H:%M:%S",tmp);
+    strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int row = findRow((*pkt)->address.addr64);
     if (row == numberNodes) fprintf(fp,"Node Unknown ");
     else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-    fprintf(fp," %s ", outstr);
+    fprintf(fp," %s ", timeString);
     fprintf(fp, "I/O ");
 /* Compute the digital data fields from the response. Check the mask and
 write the next word field directly as the set of digitial ports. */
@@ -1349,7 +1363,7 @@ write the next word field directly as the set of digitial ports. */
 #ifdef DEBUG
     if (row == numberNodes) printf("Node Unknown ");
     else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf("%s ", outstr);
+    printf("%s ", timeString);
     printf("I/O ");
 /* Compute the analogue data fields from the response */
     int jindex = 4;
