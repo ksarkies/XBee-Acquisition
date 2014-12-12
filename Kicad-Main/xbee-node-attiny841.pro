@@ -1,4 +1,4 @@
-update=Sat 08 Nov 2014 13:35:02 ACDT
+update=Sat 06 Dec 2014 09:00:33 ACDT
 version=1
 last_client=kicad
 [general]
