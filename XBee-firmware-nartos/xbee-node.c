@@ -75,34 +75,34 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define  low(x) ((uint8_t) (x & 0xFF))
 
 /* Global variables */
-uint8_t coordinatorAddress64[8];
-uint8_t coordinatorAddress16[2];
-uint8_t rxOptions;
+volatile uint8_t coordinatorAddress64[8];
+volatile uint8_t coordinatorAddress16[2];
+volatile uint8_t rxOptions;
 
-uint32_t counter;           /* External event counter */
-uint32_t lastCount;
-uint8_t wdtCounter;         /* Timer counter to extend sleep times */
+volatile uint32_t counter;           /* External event counter */
+volatile uint32_t lastCount;
+volatile uint8_t wdtCounter;         /* Timer counter to extend sleep times */
 
-bool txStatusReceived;      /* The Tx Status message has been received */
-bool txOK;                  /* Tx Status message received correctly. */
+volatile bool txStatusReceived;      /* The Tx Status message has been received */
+volatile bool txOK;                  /* Tx Status message received correctly. */
 
-uint8_t retry;              /* Counter for retrying messages */
-bool stayAwake;             /* Keep awake in response to command */
-baseResponse_t baseResponse;/* Response from the base station received */
-bool txFinished;            /* Finish data part of transmission */
-uint8_t txCommand;          /* Command to send with data */
-uint8_t rxCommand;          /* Command received */
-bool rxTerminate;           /* Signal to the receive task to terminate */
-rxFrameType inMessage;      /* Data message received */
+volatile uint8_t retry;              /* Counter for retrying messages */
+volatile bool stayAwake;             /* Keep awake in response to command */
+volatile baseResponse_t baseResponse;/* Response from the base station received */
+volatile bool txFinished;            /* Finish data part of transmission */
+volatile uint8_t txCommand;          /* Command to send with data */
+volatile uint8_t rxCommand;          /* Command received */
+volatile bool rxTerminate;           /* Signal to the receive task to terminate */
+volatile rxFrameType inMessage;      /* Data message received */
 
-uint8_t sendBuffer[12];     /* Transmission buffer */
-bool timeStatusResponse;    /* Timing of Tx Status response */
-uint8_t txStatusRetry;      /* Count of bad Tx status retries. */
+volatile uint8_t sendBuffer[12];     /* Transmission buffer */
+volatile bool timeStatusResponse;    /* Timing of Tx Status response */
+volatile uint8_t txStatusRetry;      /* Count of bad Tx status retries. */
 
-bool timeBaseResponse;      /* Timing of base station response */
-uint8_t messageState;       /* Progress of frame being received */
-rxFrameType rxMessage;      /* Buffered received message */
-messageError_t messageError;/* Error code for message received */
+volatile bool timeBaseResponse;      /* Timing of base station response */
+volatile uint8_t messageState;       /* Progress of frame being received */
+volatile rxFrameType rxMessage;      /* Buffered received message */
+volatile messageError_t messageError;/* Error code for message received */
 
 /* Task IDs */
 uint8_t mainTaskID;
@@ -194,7 +194,35 @@ means of notifying the base station that the AVR is awake. */
                 txCommand = 'C';
                 while (! txFinished)
                 {
-                    sendDataCommand(txCommand,lastCount);
+/* Build string to send. */
+                    char checksum = -(lastCount + (lastCount >> 8) +
+                                    (lastCount >> 16) + (lastCount >> 24));
+                    uint32_t value = lastCount;
+                    for (uint8_t i = 0; i < 10; i++)
+                    {
+                        if (i == 8) value = checksum;
+                        sendBuffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+                        value >>= 4;
+                    }
+                    sendBuffer[11] = 0;             /* String terminator */
+                    sendBuffer[0] = txCommand;
+/* Send message and test for valid delivery */
+                    txStatusRetry = 0;      /* Number of retries on bad status frames */
+/* Repeat the message only if we know it was not delivered. Continue on if
+Tx Status frame was corrupted or delivery was successful */
+                    do
+                    {
+                        txStatusReceived = false;       /* Wait for a Tx Status frame */
+                        txOK = true;                    /* Tx Status indicates delivery success */
+                        timeStatusResponse = 0;         /* Timeout count waiting for status */
+                        sendMessage(sendBuffer);
+                        while ((! txStatusReceived) && (timeStatusResponse++ < TX_STATUS_DELAY))
+                        {
+                            taskRelinquish();       /* Wait for Tx Status */
+                        }
+                    }
+                    while ((! txOK) && (txStatusRetry++ < 3));
+
 /* Wait for an eventual response from the base station */
                     timeBaseResponse = 0;
                     while ((timeBaseResponse++ < RESPONSE_DELAY) &&
@@ -367,8 +395,7 @@ void receiveTask(void)
                 inMessage.length = rxMessage.length;
                 inMessage.checksum = rxMessage.checksum;
                 inMessage.frameType = rxMessage.frameType;
-                uint8_t i = 0;
-                for (i=0; i<RF_PAYLOAD+13; i++)
+                for (uint8_t i=0; i<messageState-4; i++)
                     inMessage.message.array[i] = rxMessage.message.array[i];
                 baseResponse = packetReady;
             }
@@ -388,54 +415,6 @@ to continue. */
     }
     while (! rxTerminate);
     taskExit();
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Convert a 32 bit value to ASCII hex form and send with a command.
-
-Also compute an 8-bit modular sum checksum from the data and convert to hex
-for transmission. This is sent at the beginning of the string.
-
-The task is relinquished until a Tx Status frame is received. If this indicates
-that the transmission was not delivered the transmission is retried up to three
-times before abandoning.
-
-@param[in] int8_t command: ASCII command character to prepend to message.
-@param[in] int32_t datum: integer value to be sent.
-
-Globals: txStatusReceived, txNotOK from the receive task.
-         sendBuffer[12] all needed as NARTOS doesn't preserve state.
-*/
-
-void sendDataCommand(const uint8_t command, const uint32_t datum)
-{
-/* Build string to send. */
-    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
-    uint32_t value = datum;
-    for (uint8_t i = 0; i < 10; i++)
-    {
-        if (i == 8) value = checksum;
-        sendBuffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-        value >>= 4;
-    }
-    sendBuffer[11] = 0;             /* String terminator */
-    sendBuffer[0] = command;
-/* Send message and test for valid delivery */
-    txStatusReceived = false;       /* Wait for a Tx Status frame */
-    txOK = true;                    /* Tx Status indicates delivery success */
-    txStatusRetry = 0;              /* Number of retries on bad status frames */
-    timeStatusResponse = 0;         /* Timeout count waiting for status frame */
-/* Repeat the message only if we know it was not delivered. Continue on if
-Tx Status frame was corrupted or delivery was successful */
-    do
-    {
-        sendMessage(sendBuffer);
-        while ((! txStatusReceived) && (timeStatusResponse++ < TX_STATUS_DELAY))
-        {
-            taskRelinquish();       /* Wait for Tx Status */
-        }
-    }
-    while ((! txOK) && (txStatusRetry++ <= 3));
 }
 
 /****************************************************************************/
