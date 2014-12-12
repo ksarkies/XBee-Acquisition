@@ -1216,25 +1216,44 @@ string */
                        (count >> 16) + (count >> 24);
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
+#ifdef DEBUG
+            printf("Count %lu Checksum %lu\n\r",count,checksum);
+#endif
         }
         if (error)
+        {
+#ifdef DEBUG
+            printf("NAK: error %d\n\r",error);
+#endif
 /* Negative Acknowledge */
             xbee_conTx(con, NULL, "N");
+        }
         else
+        {
+#ifdef DEBUG
+            printf("ACK\n\r");
+#endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
             xbee_conTx(con, NULL, "A");
+        }
     }
 /* Abandon the communication and discard the current count value as the remote
 has detected ongoing errors and will now not reset its count. */
     else if (command == 'X')
     {
+#ifdef DEBUG
+        printf("Remote Abandoned\n\r");
+#endif
         storeData = false;
     }
 /* Accept the communication as valid and store the data permanently. */
     else if (command == 'A')
     {
+#ifdef DEBUG
+        printf("Remote Accepted\n\r");
+#endif
         storeData = true;
     }
 /* This is the response to a Parameter Change command which passes an arbitrary
@@ -1252,8 +1271,8 @@ string to the remote node. */
         else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
         fprintf(fp," %s ", timeString);
         fprintf(fp, "Count ");
-        for (int i=0; i<writeLength; i++) buffer[i] = remoteData[i][row];
-        fwrite(buffer,1,writeLength,fp);
+        for (int i=0; i<8; i++) buffer[i] = remoteData[i][row];
+        fwrite(buffer,1,8,fp);
         fprintf(fp, "\n\r");
         dataFileCheck();
 /* If we are hearing from this then it is a valid node */
