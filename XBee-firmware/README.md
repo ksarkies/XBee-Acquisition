@@ -2,6 +2,7 @@ XBee Data Acquisition Remote Firmware
 -------------------------------------
 
 This is the firmware for the remote unit. Written in C under avr-gcc.
+
 The unit must use the lowest possible power drain, so the XBee is turned off
 when not communicating, and the AVR is placed in power down sleep, to be woken
 when a counter event occurs or at regular intervals for communication with the

@@ -48,6 +48,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 
 #include <inttypes.h>
 #include <string.h>
+#include <stdbool.h>
 #include <avr/sfr_defs.h>
 #include <avr/io.h>
 #include <avr/wdt.h>
@@ -117,7 +118,8 @@ event. */
 
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
-This will avoid rapid wake/sleep cycles when counts are changing. */
+This will avoid rapid wake/sleep cycles when counts are changing.
+Counter is a global and is changed in the ISR. */
         uint32_t lastCount;
         do
         {
@@ -128,7 +130,7 @@ This will avoid rapid wake/sleep cycles when counts are changing. */
 until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
-/* Now ready to initiate a transmission */
+/* Now ready to initiate a data transmission. */
                 wdtCounter = 0; /* Reset the WDT counter for next time */
 /* Initiate contact with the base station. */
                 sendDataCommand('C',lastCount);
@@ -137,6 +139,9 @@ until enough such events have occurred. */
                 uint8_t repeat = 0;
                 uint8_t messageState = 0;
                 uint16_t timeout = 0;
+                bool txFinished = false;    /* Finish data part of transmission */
+                bool txComplete = false;    /* Complete protocol part of transmission */
+                bool stayAwake = false;     /* Keep awake in response to command */
                 do
                 {
                     uint8_t  messageStatus = receiveMessage(&rxMessage, &messageState);
@@ -149,7 +154,7 @@ until enough such events have occurred. */
                         if (messageStatus == COMPLETE)
                         {
                             messageState = 0;   /* Reset in case of a repeat */
-/* Respond only to an XBee receive packet. */
+/* Respond only to an XBee Receive packet. */
                             if (rxMessage.frameType == 0x90)
                             {
 /* The first character in the data field is an ACK, NAK or command. */
@@ -158,8 +163,8 @@ until enough such events have occurred. */
                                 if (command == 'N')
                                 {
 /* Resend up to 3 times then give up. */
-                                    if (repeat++ >= 3) break;
-                                    sendDataCommand('N',lastCount);
+                                    if (repeat++ >= 3) txFinished = true;
+                                    else sendDataCommand('N',lastCount);
                                 }
 /* Got an ACK: aaaah that feels good. */
                                 else if (command == 'A')
@@ -169,38 +174,63 @@ and go back to sleep. This will take us to the next outer loop so set lastCount
 to cause it to drop out immediately if the counts had not changed. */
                                     counter -= lastCount;
                                     lastCount = 0;
-                                    break;
+                                    txFinished = true;
+                                }
+/* Interpret a 'Parameter Change' command. */
+                                else if (command == 'P')
+                                {
+                                }
+/* Keep awake until further notice. */
+                                else if (command == 'W')
+                                {
+                                    stayAwake = true;
+                                }
+/* Send to sleep. */
+                                else if (command == 'S')
+                                {
+                                    stayAwake = false;
                                 }
                             }
 /* TODO At this point we can check other XBee incoming frames, particularly the
 transmit status frame to see if it was delivered OK. */
                         }
-/* Zero message status means it is part way through. This detects other errors
-(namely checksum or packet length wrong). */
+/* Zero message status means it is part way through. If nonzero then this
+detects other errors (namely checksum or packet length wrong). */
                         else if ((messageStatus > 0) && (rxMessage.frameType == 0x90))
                         {
-/* Clear message, resend up to 3 times then give up. */
-                            if (repeat++ >= 3) break;
-                            sendDataCommand('E',lastCount);
-                            timeout = 0;
-                            messageState = 0;
-                            rxMessage.frameType = 0;
+/* With these errors we need to clear the corrupted message. Resend up to 3
+times then give up. */
+                            if (repeat++ >= 3) txFinished = true;
+                            else
+                            {
+                                sendDataCommand('E',lastCount);
+                                timeout = 0;
+                                messageState = 0;
+                                rxMessage.frameType = 0;
+                            }
                         }
                     }
-/* Nothing received within the timeout period, resend up to 3 times */
+/* If nothing received within the timeout period, resend up to 3 times */
                     if (timeout > RESPONSE_DELAY)
                     {
-                        if (repeat++ >= 3) break;
-                        sendDataCommand('T',lastCount);
-                        timeout = 0;
+                        if (repeat++ >= 3) txFinished = true;
+                        else
+                        {
+                            sendDataCommand('T',lastCount);
+                            timeout = 0;
+                        }
+                    }
+/* If the repeats were exceeded, notify the base station of the abandonment of
+this communication attempt. */
+                    if (txFinished)
+                    {
+                        if (repeat >= 3) sendMessage("X");
+/* Otherwise notify acceptance */
+                        else  sendMessage("A");
+                        txComplete = true;
                     }
                 }
-                while (TRUE);   /* rely on breaks to get out. */
-/* If we arrive here because the repeats were exceeded, notify the base
-station of the abandonment of this communication attempt. */
-                if (repeat >= 3) sendMessage("X");
-/* Otherwise notify acceptance */
-                else  sendMessage("A");
+                while ((! txComplete) || stayAwake);
             }
 
             _delay_ms(1);
