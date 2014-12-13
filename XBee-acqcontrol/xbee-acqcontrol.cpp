@@ -1217,13 +1217,13 @@ string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-            printf("Count %lu Checksum %lu\n\r",count,checksum);
+//            printf("Count %lu Checksum %lu\n\r",count,checksum);
 #endif
         }
         if (error)
         {
 #ifdef DEBUG
-            printf("NAK: error %d\n\r",error);
+//            printf("NAK: error %d\n\r",error);
 #endif
 /* Negative Acknowledge */
             xbee_conTx(con, NULL, "N");
@@ -1231,7 +1231,7 @@ string */
         else
         {
 #ifdef DEBUG
-            printf("ACK\n\r");
+//            printf("ACK\n\r");
 #endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
@@ -1244,7 +1244,7 @@ has detected ongoing errors and will now not reset its count. */
     else if (command == 'X')
     {
 #ifdef DEBUG
-        printf("Remote Abandoned\n\r");
+//        printf("Remote Abandoned\n\r");
 #endif
         storeData = false;
     }
@@ -1252,7 +1252,7 @@ has detected ongoing errors and will now not reset its count. */
     else if (command == 'A')
     {
 #ifdef DEBUG
-        printf("Remote Accepted\n\r");
+//        printf("Remote Accepted\n\r");
 #endif
         storeData = true;
     }
