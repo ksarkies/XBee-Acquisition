@@ -74,17 +74,25 @@ typedef struct
     uint16_t length;
     uint8_t checksum;
     uint8_t frameType;
-    uint8_t frameId;
     union
     {
         uint8_t array[RF_PAYLOAD+13];
         struct
         {
-            uint8_t sourceAddress64[8];
+            uint8_t frameId;
+            uint8_t sourceAddress64[7];
             uint8_t sourceAddress16[2];
             uint8_t options;
             uint8_t data[RF_PAYLOAD];
         } rxRequest;
+        struct
+        {
+            uint8_t frameId;
+            uint8_t sourceAddress16[2];
+            uint8_t retryCount;
+            uint8_t deliveryStatus;
+            uint8_t discoveryStatus;
+        } txStatus;
     } message;
 } rxFrameType;
 
