@@ -78,8 +78,8 @@ uint8_t coordinatorAddress64[8];
 uint8_t coordinatorAddress16[2];
 uint8_t rxOptions;
 
-uint32_t counter;
-uint8_t wdtCounter;
+uint32_t counter;               /* Event Counter */
+uint8_t wdtCounter;             /* Data Transmission Timer */
 
 /*---------------------------------------------------------------------------*/
 /** @brief      Main Program
@@ -181,6 +181,7 @@ until enough such events have occurred. */
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
                 bool txDelivered = false;
+                bool txStatusReceived = false;
                 bool cycleComplete = false;
                 uint8_t txCommand = 'C';
                 bool transmit = true;
@@ -190,14 +191,14 @@ means of notifying the base station that the AVR is awake. */
                     if (transmit)
                     {
                         sendDataCommand(txCommand,lastCount);
-                        txDelivered = false;
+                        txDelivered = false;    /* Allow check for Tx Status frame */
+                        txStatusReceived = false;
                     }
                     transmit = false;   /* Prevent transmissions until told */
 
 /* Deal with incoming message assembly for Tx Status and base station response
 or command reception. */
                     bool timeout = false;
-                    bool txStatusReceived = false;
                     rxFrameType rxMessage;      /* Received frame */
                     rxFrameType inMessage;      /* Buffered data frame */
                     uint8_t messageState = 0;
@@ -658,18 +659,24 @@ inline void sleepXBee(void)
 /****************************************************************************/
 /** @brief Interrupt on Count Signal.
 
-Determine if a change in the count signal level has occurred. A downward
-change will require a count to be registered. An upward change is ignored.
+Determine if a change in the count signal level has occurred. An upward
+change will require a count to be registered. A downward change is ignored.
 
 Sample twice to ensure that this isn't a false alarm.
+
+The count is suppressed if the muteCounter is non zero. This is intended to
+follow a transmission. The specific phenomenon dealt with is the presence
+of a short positive pulse at the time of a transmission, when the counter
+input is at low level.
 */
 ISR(PCINT1_vect)
 {
     uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
-    if (countSignal == 0)
+    if (countSignal > 0)
     {
+        _delay_us(100);
         countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
-        if (countSignal == 0) counter++;
+        if (countSignal > 0) counter++;
     }
 }
 
