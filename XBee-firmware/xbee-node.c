@@ -82,6 +82,51 @@ uint32_t counter;
 uint8_t wdtCounter;
 
 /*---------------------------------------------------------------------------*/
+/** @brief      Main Program
+
+An interrupt service routine records a transition on the counter input. This
+wakes the AVR which is sent back to sleep when the counts have settled.
+
+The watchdog timer interrupt service routine provides a time tick of 8 seconds
+(maximum). This wakes the AVR which counts off a number of ticks to extend the
+sleep interval. Then the data transmission process begins within a loop.
+The XBee should return a delivery status frame and the base system should
+return a data frame indicating successful delivery or error.
+
+An inner loop checks the XBee for serial data and selects out the base station
+transmission and the delivery (Tx Status) frame.
+- If a valid frame is received and it is a base station response, packetReady
+  is set to signal the next stage of the protocol.
+- If an invalid frame is received but is verified as a data frame, packetError
+  is set.
+- If a valid frame is received and it is a Tx Status is received the txDelivered
+  is set from the delivery status field and txReceived is set.
+- If the frame is invalid but is verified as a Tx Status, the process continues
+  as if it were valid and delivered. the protocol is left to sort out the mess.
+- If a timeout occurs and a Tx Status frame was not delivered, again continues
+  as if it were valid and delivered.
+- If a second timeout occurs after this, timeout is set.
+
+Each of these sets of booleans are evaluated. In the event of errors, the
+original message is repeated up to 3 times. Then the communication is abandoned.
+- If txDelivered and packetReady, then we have a valid response. If it has the
+  N command then the base station got an error. Repeat with N response.
+- If it has the A command then all is well. Clear the count and sleep.
+- If not packetReady and packetError was set, repeat with E response.
+- If not txDelivered but txReceived then it is known certainly that a non
+  delivery occurred, and the message is repeated. To avoid duplicates this is
+  the only time that the original message is repeated.
+- If timeout was set then nothing came back from the XBee or base station and
+  the original message is repeated with T response.
+- Finally packetReady is checked again regardless of any Tx Status frames, as
+  an autonomous message may have come from the base station. This is interpreted
+  according to a list of predetemined base station commands.
+
+At the end, if the base station had responded positively and the protocol ended
+successfully, a Y response is sent back without any further checks. If all
+retries has passed without a positive response, an X response is returned.
+*/
+
 int main(void)
 {
 
