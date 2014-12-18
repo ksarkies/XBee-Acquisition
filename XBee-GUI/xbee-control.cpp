@@ -1,8 +1,8 @@
 /*       XBee Control and Display GUI Tool
 
-This provides a GUI interface to an XBee acquisition process running on the local
-or remote Internet connected PC or Linux based controller for the XBee acquisition
-network.
+This provides a GUI interface to an XBee coordinator process running on the
+local or a remote Internet connected PC or Linux based controller for the XBee
+acquisition network.
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -44,7 +44,8 @@ network.
 #include "local-dialog.h"
 
 // Local Prototypes
-QString convertNum(const QByteArray response, const uchar startIndex, const uchar length, const int base);
+QString convertNum(const QByteArray response, const uchar startIndex
+                   const uchar length, const int base);
 
 // Global data
 QByteArray dataReplyMessage;
@@ -60,7 +61,7 @@ XbeeControlTool::XbeeControlTool(QWidget* parent) : QDialog(parent)
 {
 // Build the User Interface display from the Ui class in ui_mainwindowform.h
     XbeeControlFormUi.setupUi(this);
-// Build the table view
+// Build the table view with basic details of each remote XBee
     table = new QStandardItemModel(20,5,this);
     table->setHorizontalHeaderItem(0, new QStandardItem(QString("Row")));
     table->setHorizontalHeaderItem(1, new QStandardItem(QString("Address 16")));
@@ -89,10 +90,14 @@ XbeeControlTool::~XbeeControlTool()
 //-----------------------------------------------------------------------------
 /** @brief Start loading AVR firmware.
 
-Open a selected file with the bootloader firmware, reset the AVr and
-download the iHex lines.
+This assumes the existence of an on-board bootloader in the AVR.
 
+Open a selected file with the new firmware, reset the AVR and download the iHex
+lines.
+
+@returns int: error number. 0=OK, 1=erase fail, 2=upload fail, 3=command fail.
 */
+
 int XbeeControlTool::on_firmwareButton_clicked()
 {
     QString errorMessage;
@@ -138,14 +143,14 @@ This sets up the progress bar and calls the loadHex method to do the actual GUI
 independent loading.
 
 The remote XBee uses ports DIO12 and DIO11 to reset and set the bootloader jump
-to application signal. A 0.5s delay is used to wait for the reset is complete. Then
-the entire memory is erased. Each line is then sent and a response awaited. If
-nothing comes back in a reasonable time, the line is resent. If the AVR is not
-present or responding the retransmits are limited.
+to application signal. A 0.5s delay is used to wait for the reset is complete.
+Then the entire memory is erased. Each line is then sent and a response awaited.
+If nothing comes back in a reasonable time, the line is resent. If the AVR is
+not present or responding the retransmits are limited.
 
-@param[in]  file File already opened for loading.
-@param[in]  row  Table row number for remote node to address.
-@returns    error code 0 if OK, 1 if erase timeout, 2 if resend program
+@param[in]  QFile file: already opened for loading.
+@param[in]  int row:  Table row number for remote node to address.
+@returns    int error code: 0 if OK, 1 if erase timeout, 2 if resend program
             line timeout, 3 if send command error.
 */
 
@@ -357,7 +362,11 @@ or abort if nothing comes back in a reasonable time. */
 //-----------------------------------------------------------------------------
 /** @brief Attempt to connect to the coordinator process.
 
+This opens a TCP socket for the specified address and port (58532) to connect to
+a remote coordinator process listening on another machine or the same machine
+(address 127.0.0.1). This remote process manages the XBee network.
 */
+
 void XbeeControlTool::on_connectButton_clicked()
 {
     if (tcpSocket != NULL) delete tcpSocket;
@@ -396,7 +405,11 @@ void XbeeControlTool::on_connectButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Send commands to bring in node information table.
 
+The node information table is managed in the remote coordinator process. It contains
+information for nodes already known to be on the network, and adds new nodes as
+they are connected.
 */
+
 bool XbeeControlTool::on_refreshListButton_clicked()
 {
 // Delete all items in all rows ready for a refresh
@@ -408,7 +421,7 @@ bool XbeeControlTool::on_refreshListButton_clicked()
             XbeeControlFormUi.nodeTable->setRowHidden(row,true);
         }
     }
-// Add the command and data characters to the array, then prepend it with the length.
+// Add command and data characters to the array, then prepend with the length.
 // Get the number of rows
     QByteArray numRowCommand;
     numRowCommand.append('N');
@@ -428,9 +441,10 @@ bool XbeeControlTool::on_refreshListButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Remove a selected node.
 
-If the remote checkbox is selected, find a selected row delete the corresponding node.
-The table must be refreshed otherwise it is out of sync.
+If the remote checkbox is selected, find a selected row and delete the
+corresponding node. The table must be refreshed otherwise it is out of sync.
 */
+
 void XbeeControlTool::on_removeNodeButton_clicked()
 {
     for (row = 0; row < tableLength; row++)
@@ -453,6 +467,7 @@ If a node is selected, reset the connections and query with a SM command.
 If no node selected, build an address from the edit box and try to connect.
 If successful, add a new entry to the table.
 */
+
 void XbeeControlTool::on_queryNodeButton_clicked()
 {
     findNode();                     // Just test if a row is selected.
@@ -554,16 +569,20 @@ void XbeeControlTool::on_queryNodeButton_clicked()
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Open a dialogue box for configuring local XBee.
+/** @brief Open a dialogue box for configuring an XBee.
 
-If the remote checkbox is selected, find a selected row and use the corresponding node.
+If the remote checkbox is selected, find a selected row and use the
+corresponding node. If no node is selected, use the coordinator XBee to
+configure.
 */
+
 void XbeeControlTool::on_configButton_clicked()
 {
     if (! findNode()) return;
     bool remote = true;
     if (row == tableLength) remote = false;
-// If nothing is selected, go to the local XBee. Row has no meaning in this case.
+/* If nothing is selected, go to the coordinator XBee. Row has no meaning in
+this case. */
     QString address = XbeeControlFormUi.connectAddress->text();
     LocalDialog* localDialogForm = new LocalDialog(address,row,remote,this);
     localDialogForm->exec();
@@ -571,15 +590,16 @@ void XbeeControlTool::on_configButton_clicked()
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Find a selected row if any, and check node responds.
+/** @brief Find a selected row if any, and check the node responds.
 
 The rows are searched to find one that is selected, then the node is queried.
 If no row is selected, this just returns.
 
 Globals: tableLength, row
 
-@return true if the node responds.
+@returns true if the node responds.
 */
+
 bool XbeeControlTool::findNode()
 {
 /* Search for a box checked. If none, row will equal tableLength */
@@ -613,13 +633,15 @@ Note that the row used is a global and is accessed by the sendAtCommand function
 //-----------------------------------------------------------------------------
 /** @brief Send a command via the Internet Socket.
 
-This will compute and fill the length, set the sync bytes, send the command and wait
-for a reply up to 5s. If no reply it will return false.
+This will compute and fill the length, set the sync bytes, send the command and
+wait for a reply up to 5s. If no reply it will return false.
 
-@parameter  QByteArray command: An array to send with length, command and any parameters.
+@parameter  QByteArray command: An array to send with length, command and any
+                                parameters if appropriate.
 @returns    0 if no error occurred.
             3 timeout waiting for response.
 */
+
 int XbeeControlTool::sendCommand(QByteArray command)
 {
     int errorCode = 0;
@@ -648,6 +670,7 @@ int XbeeControlTool::sendCommand(QByteArray command)
 //-----------------------------------------------------------------------------
 /** @brief Check if a socket is valid, that is, connected.
 */
+
 int XbeeControlTool::validTcpSocket()
 {
     if (tcpSocket == NULL)
@@ -668,6 +691,7 @@ int XbeeControlTool::validTcpSocket()
 This interprets the echoed commands and performs most of the processing.
 If no response within a time limit, returns a communication error code.
 */
+
 void XbeeControlTool::readXbeeProcess()
 {
     if (! validTcpSocket()) return;
@@ -783,6 +807,7 @@ void XbeeControlTool::readXbeeProcess()
 /** @brief Notify of connection failure.
 
 */
+
 void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
 {
     switch (socketError) {
@@ -806,9 +831,9 @@ void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
 //-----------------------------------------------------------------------------
 /** @brief Send an AT command and wait for response.
 
-The command must be formatted as for the XBee AT commands.
-When a response is checked, the result is returned in "response"
-with more detail provided in "replyBuffer".
+The command must be formatted as for the XBee AT commands. When a response is
+checked, the result is returned in "response" with more detail provided in
+"replyBuffer".
 
 Globals: row, response
 
@@ -820,6 +845,7 @@ Globals: row, response
         2 timeout waiting for response
         3 socket response error (usually timeout)
 */
+
 int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
 {
     int errorCode = 0;
@@ -862,6 +888,7 @@ int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countM
 
 @returns TRUE if the device gave no error
 */
+
 bool XbeeControlTool::success()
 {
     return (errorMessage.size() == 0);
@@ -872,6 +899,7 @@ bool XbeeControlTool::success()
 
 @returns a message when the device didn't respond.
 */
+
 QString XbeeControlTool::error()
 {
     return errorMessage;
