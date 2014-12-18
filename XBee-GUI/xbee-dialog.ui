@@ -587,8 +587,8 @@
   <widget class="QLabel" name="nodeIdentLabel_2">
    <property name="geometry">
     <rect>
-     <x>208</x>
-     <y>472</y>
+     <x>274</x>
+     <y>475</y>
      <width>81</width>
      <height>17</height>
     </rect>
@@ -600,7 +600,7 @@
     <string>Pin Change</string>
    </property>
   </widget>
-  <widget class="QLabel" name="sleepHoldoffLabel">
+  <widget class="QLabel" name="sleepNumberLabel">
    <property name="geometry">
     <rect>
      <x>148</x>
@@ -613,7 +613,7 @@
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after the last communication before entering sleep mode. From 0 to 65536 ms.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="text">
-    <string>Sleep Holdoff</string>
+    <string>Sleep Number</string>
    </property>
   </widget>
   <widget class="QComboBox" name="d12ComboBox">
@@ -681,9 +681,9 @@
   <widget class="QLabel" name="nodeIdentLabel_3">
    <property name="geometry">
     <rect>
-     <x>208</x>
-     <y>522</y>
-     <width>81</width>
+     <x>226</x>
+     <y>525</y>
+     <width>45</width>
      <height>17</height>
     </rect>
    </property>
@@ -969,22 +969,6 @@
    </property>
    <property name="text">
     <string>Disassociate</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="mslabel_3">
-   <property name="geometry">
-    <rect>
-     <x>328</x>
-     <y>347</y>
-     <width>31</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string/>
-   </property>
-   <property name="text">
-    <string>ms</string>
    </property>
   </widget>
   <widget class="QLabel" name="opPan">
@@ -1378,7 +1362,7 @@
     <string>10 ms</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="sleepHoldoff">
+  <widget class="QLineEdit" name="sleepNumber">
    <property name="geometry">
     <rect>
      <x>258</x>
@@ -1388,7 +1372,7 @@
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after the last communication before entering sleep mode. From 0 to 65536 ms.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of sleep period counts to extend sleep period 0 to 65535.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
   <widget class="QPushButton" name="closeButton">
@@ -1402,6 +1386,96 @@
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="mslabel_5">
+   <property name="geometry">
+    <rect>
+     <x>328</x>
+     <y>367</y>
+     <width>31</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string/>
+   </property>
+   <property name="text">
+    <string>ms</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="sleepHoldoffLabel">
+   <property name="geometry">
+    <rect>
+     <x>148</x>
+     <y>374</y>
+     <width>111</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after the last communication before entering sleep mode. From 0 to 65536 ms.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Sleep Holdoff</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="sleepHoldoff">
+   <property name="geometry">
+    <rect>
+     <x>258</x>
+     <y>370</y>
+     <width>61</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after the last communication before entering sleep mode. From 0 to 65534 ms.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="wakeHostDelayLabel">
+   <property name="geometry">
+    <rect>
+     <x>148</x>
+     <y>395</y>
+     <width>111</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after the last communication before entering sleep mode. From 0 to 65536 ms.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Wake Delay</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="wakeHostDelay">
+   <property name="geometry">
+    <rect>
+     <x>258</x>
+     <y>391</y>
+     <width>61</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the time to delay after waking to allow host to receive characters 0 to 65535 ms&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="mslabel_6">
+   <property name="geometry">
+    <rect>
+     <x>328</x>
+     <y>388</y>
+     <width>31</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string/>
+   </property>
+   <property name="text">
+    <string>ms</string>
    </property>
   </widget>
  </widget>

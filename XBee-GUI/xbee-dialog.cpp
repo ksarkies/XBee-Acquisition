@@ -71,16 +71,15 @@ XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
     sendCommand(rowGetCommand);
 
 /* Remote End Device nodes must be kept awake. One general way to do this
-is to read the sleep mode, then if it is greater that 1, change it back
-to 1 (pin sleep, as 0 is not possible in end devices). */
-    if (deviceType == 2)        // Coordinator and routers are never changed
+is to read the sleep time settings, then set them to the maximum. */
+    if (deviceType == 2)
     {
-/* First recover the actual setting. This requires an extra long delay
-and we setup a message box to warn of this. */
-        QByteArray sleepModeCommand;
-        sleepModeCommand.clear();
-        sleepModeCommand.append("SM");
-        if (sendAtCommand(sleepModeCommand, remote, 3000) > 0)
+/* First recover the actual setting. This may require an extra long delay
+so we setup a message box to warn of this. */
+        QByteArray sleepSettingCommand;
+        sleepSettingCommand.clear();
+        sleepSettingCommand.append("SM");
+        if (sendAtCommand(sleepSettingCommand, remote, 3000) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
@@ -94,10 +93,10 @@ and we setup a message box to warn of this. */
             qDebug() << "Original sleep mode" << (int)oldSleepMode << "changing to pin sleep";
 #endif
 // Set the sleep mode to 1 for the duration
-            sleepModeCommand.clear();
-            sleepModeCommand.append("SM");
-            sleepModeCommand.append("\1");
-            if (sendAtCommand(sleepModeCommand, remote,3000) > 0)
+            sleepSettingCommand.clear();
+            sleepSettingCommand.append("SM");
+            sleepSettingCommand.append("\1");
+            if (sendAtCommand(sleepSettingCommand, remote,3000) > 0)
             {
 #ifdef DEBUG
                 qDebug() << "Timeout setting remote node sleep mode";
@@ -303,6 +302,17 @@ void XBeeConfigWidget::on_writeValuesButton_clicked()
         atCommand.append(sleepPeriod & 0xFF);          // Lower byte
         sendAtCommand(atCommand,remote,10);
     }
+// Set sleep number of periods
+    if (XBeeConfigWidgetFormUi.sleepNumber->isModified())
+    {
+        changes = true;
+        atCommand.clear();
+        atCommand.append("SN");
+        int sleepNumber = XBeeConfigWidgetFormUi.sleepNumber->text().toInt();
+        atCommand.append((sleepNumber >> 8) & 0xFF);   // Upper byte
+        atCommand.append(sleepNumber & 0xFF);          // Lower byte
+        sendAtCommand(atCommand,remote,10);
+    }
 // Set sleep holdoff time
     if (deviceType == 2)
     {
@@ -316,6 +326,17 @@ void XBeeConfigWidget::on_writeValuesButton_clicked()
             atCommand.append(sleepHoldoff & 0xFF);          // Lower byte
             sendAtCommand(atCommand,remote,10);
         }
+    }
+// Set wake delay before sending characters to allow host to receive.
+    if (XBeeConfigWidgetFormUi.wakeHostDelay->isModified())
+    {
+        changes = true;
+        atCommand.clear();
+        atCommand.append("WH");
+        int wakeHostDelay = XBeeConfigWidgetFormUi.wakeHostDelay->text().toInt();
+        atCommand.append((wakeHostDelay >> 8) & 0xFF);   // Upper byte
+        atCommand.append(wakeHostDelay & 0xFF);          // Lower byte
+        sendAtCommand(atCommand,remote,10);
     }
 // Set D0
     if (d0Index != XBeeConfigWidgetFormUi.d0ComboBox->currentIndex())
@@ -559,12 +580,28 @@ void XBeeConfigWidget::on_refreshDisplay_clicked()
         XBeeConfigWidgetFormUi.sleepPeriod->setText(sleepPeriod);
     }
     atCommand.clear();
+    atCommand.append("SN");      // SP command to get sleep number
+    if (sendAtCommand(atCommand,remote,10) == 0)
+    {
+        QString sleepNumber = QString("%1")
+                    .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
+        XBeeConfigWidgetFormUi.sleepNumber->setText(sleepNumber);
+    }
+    atCommand.clear();
     atCommand.append("ST");      // ST command to get sleep holdoff time
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         QString sleepHoldoff = QString("%1")
                     .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
         XBeeConfigWidgetFormUi.sleepHoldoff->setText(sleepHoldoff);
+    }
+    atCommand.clear();
+    atCommand.append("WH");      // SP command to get wake delay time
+    if (sendAtCommand(atCommand,remote,10) == 0)
+    {
+        QString wakeHostDelay = QString("%1")
+                    .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
+        XBeeConfigWidgetFormUi.wakeHostDelay->setText(wakeHostDelay);
     }
     atCommand.clear();
     atCommand.append("OP");      // OP command to get operational PAN ID
