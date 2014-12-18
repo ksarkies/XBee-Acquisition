@@ -50,7 +50,7 @@ or remote XBee through reading and writing parameters via the XBee API.
 
 XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
                                    bool remoteNode, QWidget* parent)
-                    : row(nodeRow), remote(remoteNode)
+                    : QWidget(parent), row(nodeRow), remote(remoteNode)
 {
 // Create the TCP socket to the internet process
     tcpSocket = new QTcpSocket(this);
@@ -120,12 +120,20 @@ XBeeConfigWidget::~XBeeConfigWidget()
 //-----------------------------------------------------------------------------
 /** @brief Quit the window.
 
-This closes the window and restores the sleep setting if it was changed.
+This closes the window from the quit button and restores the sleep setting if
+it was changed.
 */
 void XBeeConfigWidget::on_closeButton_clicked()
 {
     accept();
     close();
+}
+
+/** Also deal the same way with the close window button */
+void XBeeConfigWidget::closeEvent(QCloseEvent *event)
+{
+    accept();
+    QWidget::closeEvent(event);
 }
 
 //-----------------------------------------------------------------------------

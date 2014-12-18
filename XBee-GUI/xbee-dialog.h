@@ -60,6 +60,7 @@ private slots:
     void on_disassociateButton_clicked();
     void on_writeValuesButton_clicked();
     void on_closeButton_clicked();
+    void closeEvent(QCloseEvent *event);
     void accept();
 signals:
     void terminated(int row);

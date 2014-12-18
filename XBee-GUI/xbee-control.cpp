@@ -579,22 +579,29 @@ configure.
 void XbeeControlTool::on_configButton_clicked()
 {
     if (! findNode()) return;
-    bool remote = true;
-    if (row == tableLength) remote = false;
+    bool remote = (row < tableLength);
 /* If nothing is selected, go to the coordinator XBee. Row has no meaning in
 this case. */
     QString address = XbeeControlFormUi.connectAddress->text();
     XBeeConfigWidget* XBeeConfigWidgetForm = new XBeeConfigWidget(address,row,remote,0);
     connect(XBeeConfigWidgetForm, SIGNAL(terminated(int)),this,SLOT(configDialogDone(int)));
     XBeeConfigWidgetForm->show();
-    table->item(row,6)->setEnabled(false);
+    if (remote)
+    {
+        table->item(row,6)->setEnabled(false);
+        table->item(row,6)->setCheckState(Qt::Unchecked);
+    }
 }
 
 /** @brief  Catch a signal from the dialogue when it is closed, and restore the
 table item for re-use */
 void XbeeControlTool::configDialogDone(int row)
 {
-    table->item(row,6)->setEnabled(true);
+    if (row < tableLength)
+    {
+        table->item(row,6)->setEnabled(true);
+        table->item(row,6)->setCheckState(Qt::Unchecked);
+    }
 }
 
 //-----------------------------------------------------------------------------
