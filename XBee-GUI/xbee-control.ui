@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>XbeeControlDialog</class>
- <widget class="QDialog" name="XbeeControlDialog">
+ <class>XBeeControlWidget</class>
+ <widget class="QWidget" name="XBeeControlWidget">
+  <property name="windowModality">
+   <enum>Qt::WindowModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,39 +13,14 @@
     <height>704</height>
    </rect>
   </property>
-  <property name="font">
-   <font>
-    <weight>50</weight>
-    <bold>false</bold>
-   </font>
-  </property>
   <property name="windowTitle">
-   <string>XBee Diagnostic Tool</string>
+   <string>XBee Acquisition</string>
   </property>
-  <widget class="QLabel" name="title">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>641</width>
-     <height>31</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Andale Mono</family>
-     <pointsize>18</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>XBEE Acquisition Network Control and Display</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="refreshListButton">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>132</y>
+     <x>36</x>
+     <y>133</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -54,53 +32,11 @@
     <string>Refresh Display</string>
    </property>
   </widget>
-  <widget class="QTableView" name="nodeTable">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>172</y>
-     <width>641</width>
-     <height>530</height>
-    </rect>
-   </property>
-   <attribute name="verticalHeaderVisible">
-    <bool>false</bool>
-   </attribute>
-  </widget>
-  <widget class="QLabel" name="nodeTableLabel">
-   <property name="geometry">
-    <rect>
-     <x>170</x>
-     <y>144</y>
-     <width>311</width>
-     <height>17</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Table of XBee Remote Nodes (* not Detected)</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="firmwareButton">
-   <property name="geometry">
-    <rect>
-     <x>270</x>
-     <y>92</y>
-     <width>111</width>
-     <height>28</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload Firmware to remote node. Select a node from the tabnle.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-   <property name="text">
-    <string>Firmware</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="configButton">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>93</y>
+     <x>36</x>
+     <y>94</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -115,8 +51,8 @@
   <widget class="QPushButton" name="remoteConfigButton">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>93</y>
+     <x>156</x>
+     <y>94</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -131,8 +67,8 @@
   <widget class="QProgressBar" name="uploadProgressBar">
    <property name="geometry">
     <rect>
-     <x>400</x>
-     <y>96</y>
+     <x>416</x>
+     <y>97</y>
      <width>111</width>
      <height>23</height>
     </rect>
@@ -141,103 +77,11 @@
     <number>24</number>
    </property>
   </widget>
-  <widget class="QPushButton" name="connectButton">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>44</y>
-     <width>111</width>
-     <height>28</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the remote coordinator process.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-   <property name="text">
-    <string>Connect</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="connectAddress">
-   <property name="geometry">
-    <rect>
-     <x>140</x>
-     <y>44</y>
-     <width>181</width>
-     <height>27</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="removeNodeButton">
-   <property name="geometry">
-    <rect>
-     <x>520</x>
-     <y>92</y>
-     <width>111</width>
-     <height>28</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-   <property name="text">
-    <string>Remove Node</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="nodeAddress">
-   <property name="geometry">
-    <rect>
-     <x>330</x>
-     <y>44</y>
-     <width>181</width>
-     <height>27</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="queryNodeButton">
-   <property name="geometry">
-    <rect>
-     <x>520</x>
-     <y>44</y>
-     <width>111</width>
-     <height>28</height>
-    </rect>
-   </property>
-   <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-   </property>
-   <property name="text">
-    <string>Query Node</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="connectAddressLabel">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>71</y>
-     <width>161</width>
-     <height>17</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>8</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>Coordinator Network Address</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="nodeAddressLabel">
    <property name="geometry">
     <rect>
-     <x>370</x>
-     <y>70</y>
+     <x>386</x>
+     <y>71</y>
      <width>111</width>
      <height>17</height>
     </rect>
@@ -251,11 +95,164 @@
     <string>XBee Address or ID</string>
    </property>
   </widget>
+  <widget class="QLineEdit" name="nodeAddress">
+   <property name="geometry">
+    <rect>
+     <x>346</x>
+     <y>45</y>
+     <width>181</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="connectAddressLabel">
+   <property name="geometry">
+    <rect>
+     <x>166</x>
+     <y>72</y>
+     <width>161</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>8</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Coordinator Network Address</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="connectButton">
+   <property name="geometry">
+    <rect>
+     <x>36</x>
+     <y>45</y>
+     <width>111</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the remote coordinator process.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Connect</string>
+   </property>
+  </widget>
+  <widget class="QTableView" name="nodeTable">
+   <property name="geometry">
+    <rect>
+     <x>36</x>
+     <y>173</y>
+     <width>641</width>
+     <height>530</height>
+    </rect>
+   </property>
+   <attribute name="verticalHeaderVisible">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QPushButton" name="removeNodeButton">
+   <property name="geometry">
+    <rect>
+     <x>536</x>
+     <y>93</y>
+     <width>111</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Remove Node</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="queryNodeButton">
+   <property name="geometry">
+    <rect>
+     <x>536</x>
+     <y>45</y>
+     <width>111</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Query Node</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="nodeTableLabel">
+   <property name="geometry">
+    <rect>
+     <x>186</x>
+     <y>145</y>
+     <width>311</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Table of XBee Remote Nodes (* not Detected)</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="firmwareButton">
+   <property name="geometry">
+    <rect>
+     <x>286</x>
+     <y>93</y>
+     <width>111</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload Firmware to remote node. Select a node from the tabnle.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Firmware</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="title">
+   <property name="geometry">
+    <rect>
+     <x>26</x>
+     <y>11</y>
+     <width>641</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Andale Mono</family>
+     <pointsize>18</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>XBEE Acquisition Network Control and Display</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="connectAddress">
+   <property name="geometry">
+    <rect>
+     <x>156</x>
+     <y>45</y>
+     <width>181</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
   <widget class="QPushButton" name="refreshListButton_2">
    <property name="geometry">
     <rect>
-     <x>520</x>
-     <y>130</y>
+     <x>536</x>
+     <y>131</y>
      <width>111</width>
      <height>28</height>
     </rect>

@@ -41,10 +41,10 @@ acquisition network.
 #include <iostream>
 #include <unistd.h>
 #include "xbee-control.h"
-#include "local-dialog.h"
+#include "xbee-dialog.h"
 
 // Local Prototypes
-QString convertNum(const QByteArray response, const uchar startIndex
+QString convertNum(const QByteArray response, const uchar startIndex,
                    const uchar length, const int base);
 
 // Global data
@@ -57,7 +57,7 @@ QByteArray replyBuffer;
 @param[in] parent Parent widget.
 */
 
-XbeeControlTool::XbeeControlTool(QWidget* parent) : QDialog(parent)
+XbeeControlTool::XbeeControlTool(QWidget* parent) : QWidget(parent)
 {
 // Build the User Interface display from the Ui class in ui_mainwindowform.h
     XbeeControlFormUi.setupUi(this);
@@ -584,9 +584,17 @@ void XbeeControlTool::on_configButton_clicked()
 /* If nothing is selected, go to the coordinator XBee. Row has no meaning in
 this case. */
     QString address = XbeeControlFormUi.connectAddress->text();
-    LocalDialog* localDialogForm = new LocalDialog(address,row,remote,this);
-    localDialogForm->exec();
-    delete localDialogForm;
+    XBeeConfigWidget* XBeeConfigWidgetForm = new XBeeConfigWidget(address,row,remote,0);
+    connect(XBeeConfigWidgetForm, SIGNAL(terminated(int)),this,SLOT(configDialogDone(int)));
+    XBeeConfigWidgetForm->show();
+    table->item(row,6)->setEnabled(false);
+}
+
+/** @brief  Catch a signal from the dialogue when it is closed, and restore the
+table item for re-use */
+void XbeeControlTool::configDialogDone(int row)
+{
+    table->item(row,6)->setEnabled(true);
 }
 
 //-----------------------------------------------------------------------------
@@ -949,11 +957,13 @@ void XbeeControlTool::popup(QString message)
 
 */
 
-QString convertNum(const QByteArray response, const uchar startIndex, const uchar length, const int base)
+QString convertNum(const QByteArray response, const uchar startIndex,
+                   const uchar length, const int base)
 {
     QString commandData = "";
     for (uchar i = startIndex; i < length+startIndex; i++)
-        commandData += QString("%1").arg(QString::number(response[i],base).toUpper().right(2),2,'0');
+        commandData += QString("%1").arg(QString::number(response[i],base)
+                                .toUpper().right(2),2,'0');
     return commandData;
 }
 //-----------------------------------------------------------------------------

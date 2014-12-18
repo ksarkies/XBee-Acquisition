@@ -1,8 +1,9 @@
-/*       XBee Control and Display GUI Tool
+/*       XBee Configuration Dialogue GUI Tool
 
-This provides a GUI interface to an XBee acquisition process running on the local
-or remote Internet connected PC or Linux based controller for the XBee acquisition
-network.
+This provides a GUI interface to an XBee coordinator process running on the
+local or remote Internet connected PC or Linux based controller for the XBee
+acquisition network. This file manages the configuration of the coordinator
+or remote XBee through reading and writing parameters via the XBee API.
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -22,7 +23,7 @@ network.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "local-dialog.h"
+#include "xbee-dialog.h"
 #include "xbee-control.h"
 #include <QApplication>
 #include <QString>
@@ -47,8 +48,9 @@ network.
 @parameter parent Parent widget.
 */
 
-LocalDialog::LocalDialog(QString address, int nodeRow, bool remoteNode, QWidget* parent)
-                    : QDialog(parent), row(nodeRow), remote(remoteNode)
+XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
+                                   bool remoteNode, QWidget* parent)
+                    : row(nodeRow), remote(remoteNode)
 {
 // Create the TCP socket to the internet process
     tcpSocket = new QTcpSocket(this);
@@ -68,17 +70,17 @@ LocalDialog::LocalDialog(QString address, int nodeRow, bool remoteNode, QWidget*
     rowGetCommand.append(char(row));
     sendCommand(rowGetCommand);
 
-/* Remote End Device nodes must be kept awake. The best way to do this
+/* Remote End Device nodes must be kept awake. One general way to do this
 is to read the sleep mode, then if it is greater that 1, change it back
 to 1 (pin sleep, as 0 is not possible in end devices). */
-    if (deviceType == 2)                // Coordinator and routers are never changed
+    if (deviceType == 2)        // Coordinator and routers are never changed
     {
 /* First recover the actual setting. This requires an extra long delay
 and we setup a message box to warn of this. */
         QByteArray sleepModeCommand;
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
-        if (sendAtCommand(sleepModeCommand, remote,3000) > 0)
+        if (sendAtCommand(sleepModeCommand, remote, 3000) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
@@ -104,26 +106,26 @@ and we setup a message box to warn of this. */
         }
     }
 // Build the User Interface display from the Ui class
-    localDialogFormUi.setupUi(this);
+    XBeeConfigWidgetFormUi.setupUi(this);
 // Setup the display with information from the addressed XBee
-    localDialogFormUi.perSampSpinBox->setMaximum(65);
+    XBeeConfigWidgetFormUi.perSampSpinBox->setMaximum(65);
     setIOBoxes();
     on_refreshDisplay_clicked();
 }
 
-LocalDialog::~LocalDialog()
+XBeeConfigWidget::~XBeeConfigWidget()
 {
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Quit the dialogue window.
+/** @brief Quit the window.
 
-This closes the dialogue window and restores the sleep setting if it was changed.
+This closes the window and restores the sleep setting if it was changed.
 */
-void LocalDialog::closeEvent(QCloseEvent *event)
+void XBeeConfigWidget::on_closeButton_clicked()
 {
     accept();
-    QDialog::closeEvent(event);
+    close();
 }
 
 //-----------------------------------------------------------------------------
@@ -131,7 +133,7 @@ void LocalDialog::closeEvent(QCloseEvent *event)
 
 This closes the dialogue window and restores the sleep setting if it was changed.
 */
-void LocalDialog::accept()
+void XBeeConfigWidget::accept()
 {
     if (deviceType == 2)        // Coordinator and routers never change sleep mode
     {
@@ -147,7 +149,7 @@ void LocalDialog::accept()
 
 /* Change back to the original version if currently different and if no change was made
 to the setting. */
-        char userSleepMode = localDialogFormUi.sleepModeComboBox->currentIndex();
+        char userSleepMode = XBeeConfigWidgetFormUi.sleepModeComboBox->currentIndex();
 #ifdef DEBUG
         qDebug() << "Current" << (int)currentSleepMode << "Setting" << (int)userSleepMode
                  << "Old" << (int)oldSleepMode;
@@ -179,13 +181,16 @@ to the setting. */
             sendAtCommand(wrCommand,remote,10);
         }
     }
+/* Emit the "terminated" signal with the row number so that the row status can
+be restored */
+    emit terminated(row);
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Reset the network Parameters.
 
 */
-void LocalDialog::on_netResetButton_clicked()
+void XBeeConfigWidget::on_netResetButton_clicked()
 {
     QByteArray atCommand;
     atCommand.append("NR");      // NR command to perform network reset
@@ -197,7 +202,7 @@ void LocalDialog::on_netResetButton_clicked()
 /** @brief Reset the Device Software.
 
 */
-void LocalDialog::on_softResetButton_clicked()
+void XBeeConfigWidget::on_softResetButton_clicked()
 {
     QByteArray atCommand;
     atCommand.append("FR");      // FR command to perform software reset
@@ -207,7 +212,7 @@ void LocalDialog::on_softResetButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Disassociate from the network and reassociate.
 */
-void LocalDialog::on_disassociateButton_clicked()
+void XBeeConfigWidget::on_disassociateButton_clicked()
 {
     QByteArray atCommand;
     atCommand.append("DA");      // DA command to disassociate
@@ -220,39 +225,39 @@ void LocalDialog::on_disassociateButton_clicked()
 If an entry widget was modified, write the new value and set in node permanent
 memory.
 */
-void LocalDialog::on_writeValuesButton_clicked()
+void XBeeConfigWidget::on_writeValuesButton_clicked()
 {
     bool ok;
     bool changes = false;
 // ID command to set the PAN ID
     QByteArray atCommand;
-    if (localDialogFormUi.pan->isModified())
+    if (XBeeConfigWidgetFormUi.pan->isModified())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("ID");
-        QString value = localDialogFormUi.pan->text();
+        QString value = XBeeConfigWidgetFormUi.pan->text();
         for (int i=0; i<16; i+=2) atCommand.append(value.mid(i,2).toUShort(&ok, 16));
         sendAtCommand(atCommand,remote,10);
     }
 // NI command to set the node identifier
-    if (localDialogFormUi.nodeIdent->isModified())
+    if (XBeeConfigWidgetFormUi.nodeIdent->isModified())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("NI");
-        atCommand.append(localDialogFormUi.nodeIdent->text());
+        atCommand.append(XBeeConfigWidgetFormUi.nodeIdent->text());
         sendAtCommand(atCommand,remote,10);
     }
 // Join Notification Checkbox changed
     if (deviceType != 0)        // Routers and end devices only
     {
-        if (joinNotificationCurrent != localDialogFormUi.joinNotificationCheckBox->checkState())
+        if (joinNotificationCurrent != XBeeConfigWidgetFormUi.joinNotificationCheckBox->checkState())
         {
             changes = true;
             atCommand.clear();
             atCommand.append("JN");
-            atCommand.append(localDialogFormUi.joinNotificationCheckBox->isChecked() ? 1 : 0);
+            atCommand.append(XBeeConfigWidgetFormUi.joinNotificationCheckBox->isChecked() ? 1 : 0);
             sendAtCommand(atCommand,remote,10);
         }
     }
@@ -260,32 +265,32 @@ void LocalDialog::on_writeValuesButton_clicked()
     if (deviceType == 1)        // Routers only
     {
 // NW command to set the network watchdog timer value
-        if (localDialogFormUi.watchdogTime->isModified())
+        if (XBeeConfigWidgetFormUi.watchdogTime->isModified())
         {
             changes = true;
             atCommand.clear();
             atCommand.append("NW");
-            int watchdogTime = localDialogFormUi.watchdogTime->text().toInt();
+            int watchdogTime = XBeeConfigWidgetFormUi.watchdogTime->text().toInt();
             atCommand.append((watchdogTime >> 8) & 0xFF);   // Upper byte
             atCommand.append(watchdogTime & 0xFF);          // Lower byte
             sendAtCommand(atCommand,remote,10);
         }
-        if (channelVerifyCurrent != localDialogFormUi.channelVerifyCheckBox->checkState())
+        if (channelVerifyCurrent != XBeeConfigWidgetFormUi.channelVerifyCheckBox->checkState())
         {
             changes = true;
             atCommand.clear();
             atCommand.append("JV");
-            atCommand.append(localDialogFormUi.channelVerifyCheckBox->isChecked() ? 1 : 0);
+            atCommand.append(XBeeConfigWidgetFormUi.channelVerifyCheckBox->isChecked() ? 1 : 0);
             sendAtCommand(atCommand,remote,10);
         }
     }
 // Set sleep period
-    if (localDialogFormUi.sleepPeriod->isModified())
+    if (XBeeConfigWidgetFormUi.sleepPeriod->isModified())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("SP");
-        int sleepPeriod = localDialogFormUi.sleepPeriod->text().toInt();
+        int sleepPeriod = XBeeConfigWidgetFormUi.sleepPeriod->text().toInt();
         atCommand.append((sleepPeriod >> 8) & 0xFF);   // Upper byte
         atCommand.append(sleepPeriod & 0xFF);          // Lower byte
         sendAtCommand(atCommand,remote,10);
@@ -293,120 +298,120 @@ void LocalDialog::on_writeValuesButton_clicked()
 // Set sleep holdoff time
     if (deviceType == 2)
     {
-        if (localDialogFormUi.sleepHoldoff->isModified())
+        if (XBeeConfigWidgetFormUi.sleepHoldoff->isModified())
         {
             changes = true;
             atCommand.clear();
             atCommand.append("ST");
-            int sleepHoldoff = localDialogFormUi.sleepHoldoff->text().toInt();
+            int sleepHoldoff = XBeeConfigWidgetFormUi.sleepHoldoff->text().toInt();
             atCommand.append((sleepHoldoff >> 8) & 0xFF);   // Upper byte
             atCommand.append(sleepHoldoff & 0xFF);          // Lower byte
             sendAtCommand(atCommand,remote,10);
         }
     }
 // Set D0
-    if (d0Index != localDialogFormUi.d0ComboBox->currentIndex())
+    if (d0Index != XBeeConfigWidgetFormUi.d0ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D0");
-        atCommand.append(localDialogFormUi.d0ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d0ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D1
-    if (d1Index != localDialogFormUi.d1ComboBox->currentIndex())
+    if (d1Index != XBeeConfigWidgetFormUi.d1ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D1");
-        atCommand.append(localDialogFormUi.d1ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d1ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D2
-    if (d2Index != localDialogFormUi.d2ComboBox->currentIndex())
+    if (d2Index != XBeeConfigWidgetFormUi.d2ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D2");
-        atCommand.append(localDialogFormUi.d2ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d2ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D3
-    if (d3Index != localDialogFormUi.d3ComboBox->currentIndex())
+    if (d3Index != XBeeConfigWidgetFormUi.d3ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D3");
-        atCommand.append(localDialogFormUi.d3ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d3ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D4
-    if (d4Index != localDialogFormUi.d4ComboBox->currentIndex())
+    if (d4Index != XBeeConfigWidgetFormUi.d4ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D4");
-        atCommand.append(localDialogFormUi.d4ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d4ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D5
-    if (d5Index != localDialogFormUi.d5ComboBox->currentIndex())
+    if (d5Index != XBeeConfigWidgetFormUi.d5ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D5");
-        atCommand.append(localDialogFormUi.d5ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d5ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D6
-    if (d6Index != localDialogFormUi.d6ComboBox->currentIndex())
+    if (d6Index != XBeeConfigWidgetFormUi.d6ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D6");
-        atCommand.append(localDialogFormUi.d6ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d6ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D7
-    if (d7Index != localDialogFormUi.d7ComboBox->currentIndex())
+    if (d7Index != XBeeConfigWidgetFormUi.d7ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("D7");
-        atCommand.append(localDialogFormUi.d7ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d7ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D10
-    if (d10Index != localDialogFormUi.d10ComboBox->currentIndex())
+    if (d10Index != XBeeConfigWidgetFormUi.d10ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("P0");
-        atCommand.append(localDialogFormUi.d10ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d10ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D11
-    if (d11Index != localDialogFormUi.d11ComboBox->currentIndex())
+    if (d11Index != XBeeConfigWidgetFormUi.d11ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("P1");
-        atCommand.append(localDialogFormUi.d11ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d11ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set D12
-    if (d12Index != localDialogFormUi.d12ComboBox->currentIndex())
+    if (d12Index != XBeeConfigWidgetFormUi.d12ComboBox->currentIndex())
     {
         changes = true;
         atCommand.clear();
         atCommand.append("P2");
-        atCommand.append(localDialogFormUi.d12ComboBox->currentIndex());
+        atCommand.append(XBeeConfigWidgetFormUi.d12ComboBox->currentIndex());
         sendAtCommand(atCommand,remote,10);
     }
 // Set sample period spinbox
-    if (samplePeriod != localDialogFormUi.perSampSpinBox->value()*1000)
+    if (samplePeriod != XBeeConfigWidgetFormUi.perSampSpinBox->value()*1000)
     {
-        samplePeriod = localDialogFormUi.perSampSpinBox->value()*1000;
+        samplePeriod = XBeeConfigWidgetFormUi.perSampSpinBox->value()*1000;
         changes = true;
         atCommand.clear();
         atCommand.append("IR");
@@ -432,32 +437,32 @@ The deviceType must be determined first by querying the coordinator process.
 If errors occur, typically timeouts, continue the process to the end.
 The user can try again.
 */
-void LocalDialog::on_refreshDisplay_clicked()
+void XBeeConfigWidget::on_refreshDisplay_clicked()
 {
     QByteArray atCommand;
     atCommand.append("ID");      // ID command to get PAN ID
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.pan->setText(replyBuffer.toHex());
+        XBeeConfigWidgetFormUi.pan->setText(replyBuffer.toHex());
     }
     else
-        localDialogFormUi.pan->setText("Error");
+        XBeeConfigWidgetFormUi.pan->setText("Error");
     atCommand.clear();
     atCommand.append("AI");      // AI command to get association indication
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.association->setText(replyBuffer.toHex());
+        XBeeConfigWidgetFormUi.association->setText(replyBuffer.toHex());
     }
     else
-        localDialogFormUi.association->setText("Error");
+        XBeeConfigWidgetFormUi.association->setText("Error");
     atCommand.clear();
     atCommand.append("NI");      // NI command to get association indication
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.nodeIdent->setText(replyBuffer);
+        XBeeConfigWidgetFormUi.nodeIdent->setText(replyBuffer);
     }
     else
-        localDialogFormUi.nodeIdent->setText("Error");
+        XBeeConfigWidgetFormUi.nodeIdent->setText("Error");
     atCommand.clear();
     atCommand.append("SH");      // SH command to get high serial number
     sendAtCommand(atCommand,remote,10);
@@ -466,40 +471,40 @@ void LocalDialog::on_refreshDisplay_clicked()
     atCommand.append("SL");      // SL command to get low serial number
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.serial->setText(serialHigh+' '+replyBuffer.toHex().toUpper());
+        XBeeConfigWidgetFormUi.serial->setText(serialHigh+' '+replyBuffer.toHex().toUpper());
     }
     else
-        localDialogFormUi.serial->setText("Error");
-    localDialogFormUi.children->setEnabled(false);
-    localDialogFormUi.childrenLabel->setEnabled(false);
+        XBeeConfigWidgetFormUi.serial->setText("Error");
+    XBeeConfigWidgetFormUi.children->setEnabled(false);
+    XBeeConfigWidgetFormUi.childrenLabel->setEnabled(false);
     if (deviceType != 2)            // Not end devices
     {
         atCommand.clear();
         atCommand.append("NC");      // NC command to get remaining children
         if (sendAtCommand(atCommand,remote,10) == 0)
         {
-            localDialogFormUi.children->setEnabled(true);
-            localDialogFormUi.childrenLabel->setEnabled(true);
-            localDialogFormUi.children->setText(QString("%1").arg((int)replyBuffer[0]));
+            XBeeConfigWidgetFormUi.children->setEnabled(true);
+            XBeeConfigWidgetFormUi.childrenLabel->setEnabled(true);
+            XBeeConfigWidgetFormUi.children->setText(QString("%1").arg((int)replyBuffer[0]));
         }
     }
-    localDialogFormUi.channelVerifyCheckBox->setEnabled(false);
-    localDialogFormUi.channelVerifyLabel->setEnabled(false);
-    localDialogFormUi.watchdogTime->setEnabled(false);
-    localDialogFormUi.watchdogTimeLabel->setEnabled(false);
+    XBeeConfigWidgetFormUi.channelVerifyCheckBox->setEnabled(false);
+    XBeeConfigWidgetFormUi.channelVerifyLabel->setEnabled(false);
+    XBeeConfigWidgetFormUi.watchdogTime->setEnabled(false);
+    XBeeConfigWidgetFormUi.watchdogTimeLabel->setEnabled(false);
     if (deviceType == 1)            // Routers only
     {
-        channelVerifyCurrent = localDialogFormUi.channelVerifyCheckBox->checkState();
+        channelVerifyCurrent = XBeeConfigWidgetFormUi.channelVerifyCheckBox->checkState();
         atCommand.clear();
         atCommand.append("JV");      // JV command to get channel verify setting
         if (sendAtCommand(atCommand,remote,10) == 0)
         {
-            localDialogFormUi.channelVerifyCheckBox->setEnabled(true);
-            localDialogFormUi.channelVerifyLabel->setEnabled(true);
+            XBeeConfigWidgetFormUi.channelVerifyCheckBox->setEnabled(true);
+            XBeeConfigWidgetFormUi.channelVerifyLabel->setEnabled(true);
             if (replyBuffer[0] == '\0')
-                localDialogFormUi.channelVerifyCheckBox->setCheckState(Qt::Unchecked);
-            else localDialogFormUi.channelVerifyCheckBox->setCheckState(Qt::Checked);
-            channelVerifyCurrent = localDialogFormUi.channelVerifyCheckBox->checkState();
+                XBeeConfigWidgetFormUi.channelVerifyCheckBox->setCheckState(Qt::Unchecked);
+            else XBeeConfigWidgetFormUi.channelVerifyCheckBox->setCheckState(Qt::Checked);
+            channelVerifyCurrent = XBeeConfigWidgetFormUi.channelVerifyCheckBox->checkState();
         }
         atCommand.clear();
         atCommand.append("NW");      // NW command to get network watchdog timeout
@@ -507,35 +512,35 @@ void LocalDialog::on_refreshDisplay_clicked()
         {
             QString networkWatchdog = QString("%1")
                     .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
-            localDialogFormUi.watchdogTime->setEnabled(true);
-            localDialogFormUi.watchdogTimeLabel->setEnabled(true);
-            localDialogFormUi.watchdogTime->setText(networkWatchdog);
+            XBeeConfigWidgetFormUi.watchdogTime->setEnabled(true);
+            XBeeConfigWidgetFormUi.watchdogTimeLabel->setEnabled(true);
+            XBeeConfigWidgetFormUi.watchdogTime->setText(networkWatchdog);
         }
     }
-    localDialogFormUi.joinNotificationCheckBox->setEnabled(false);
-    localDialogFormUi.joinNotificationLabel->setEnabled(false);
-    localDialogFormUi.sleepModeComboBox->setEnabled(false);
-    localDialogFormUi.sleepModeLabel->setEnabled(false);
+    XBeeConfigWidgetFormUi.joinNotificationCheckBox->setEnabled(false);
+    XBeeConfigWidgetFormUi.joinNotificationLabel->setEnabled(false);
+    XBeeConfigWidgetFormUi.sleepModeComboBox->setEnabled(false);
+    XBeeConfigWidgetFormUi.sleepModeLabel->setEnabled(false);
     if (deviceType != 0)                // Not coordinator or router. Leave options disabled
     {
         atCommand.clear();
         atCommand.append("JN");         // JN command to get Join Notification
         if (sendAtCommand(atCommand,remote,10) == 0)
         {
-            localDialogFormUi.joinNotificationCheckBox->setEnabled(true);
-            localDialogFormUi.joinNotificationLabel->setEnabled(true);
+            XBeeConfigWidgetFormUi.joinNotificationCheckBox->setEnabled(true);
+            XBeeConfigWidgetFormUi.joinNotificationLabel->setEnabled(true);
             if (replyBuffer[0] == '\0')
-                localDialogFormUi.joinNotificationCheckBox->setCheckState(Qt::Unchecked);
-            else localDialogFormUi.joinNotificationCheckBox->setCheckState(Qt::Checked);
-            joinNotificationCurrent = localDialogFormUi.joinNotificationCheckBox->checkState();
+                XBeeConfigWidgetFormUi.joinNotificationCheckBox->setCheckState(Qt::Unchecked);
+            else XBeeConfigWidgetFormUi.joinNotificationCheckBox->setCheckState(Qt::Checked);
+            joinNotificationCurrent = XBeeConfigWidgetFormUi.joinNotificationCheckBox->checkState();
         }
     }
     if (deviceType == 2)                // Not coordinator or router. Leave options disabled
     {
 // For routers and end devices, the sleep mode has already been read in as oldSleepMode.
-        localDialogFormUi.sleepModeComboBox->setEnabled(true);
-        localDialogFormUi.sleepModeLabel->setEnabled(true);
-        localDialogFormUi.sleepModeComboBox->setCurrentIndex(oldSleepMode);
+        XBeeConfigWidgetFormUi.sleepModeComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.sleepModeLabel->setEnabled(true);
+        XBeeConfigWidgetFormUi.sleepModeComboBox->setCurrentIndex(oldSleepMode);
     }
     atCommand.clear();
     atCommand.append("SP");      // SP command to get sleep period
@@ -543,7 +548,7 @@ void LocalDialog::on_refreshDisplay_clicked()
     {
         QString sleepPeriod = QString("%1")
                     .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
-        localDialogFormUi.sleepPeriod->setText(sleepPeriod);
+        XBeeConfigWidgetFormUi.sleepPeriod->setText(sleepPeriod);
     }
     atCommand.clear();
     atCommand.append("ST");      // ST command to get sleep holdoff time
@@ -551,287 +556,287 @@ void LocalDialog::on_refreshDisplay_clicked()
     {
         QString sleepHoldoff = QString("%1")
                     .arg((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)),0,10);
-        localDialogFormUi.sleepHoldoff->setText(sleepHoldoff);
+        XBeeConfigWidgetFormUi.sleepHoldoff->setText(sleepHoldoff);
     }
     atCommand.clear();
     atCommand.append("OP");      // OP command to get operational PAN ID
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.opPan->setText(replyBuffer.toHex());
+        XBeeConfigWidgetFormUi.opPan->setText(replyBuffer.toHex());
     }
     else
-        localDialogFormUi.opPan->setText("Error");
+        XBeeConfigWidgetFormUi.opPan->setText("Error");
     atCommand.clear();
     atCommand.append("PL");      // PL command to get power level
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.powerLevel->setText(replyBuffer.toHex());
+        XBeeConfigWidgetFormUi.powerLevel->setText(replyBuffer.toHex());
     }
     else
-        localDialogFormUi.powerLevel->setText("Error");
+        XBeeConfigWidgetFormUi.powerLevel->setText("Error");
     atCommand.clear();
     atCommand.append("PM");      // PM command to get power boost
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         if (replyBuffer.at(0) == 1)
-            localDialogFormUi.powerBoost->setText("Boost");
+            XBeeConfigWidgetFormUi.powerBoost->setText("Boost");
         else
-            localDialogFormUi.powerBoost->setText("");
+            XBeeConfigWidgetFormUi.powerBoost->setText("");
     }
     atCommand.clear();
     atCommand.append("DB");      // DB command to get RSS
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.rxLevel->setText(QString("-%1 dBm").arg((int)replyBuffer[0]));
+        XBeeConfigWidgetFormUi.rxLevel->setText(QString("-%1 dBm").arg((int)replyBuffer[0]));
     }
     else
-        localDialogFormUi.rxLevel->setText("Error");
+        XBeeConfigWidgetFormUi.rxLevel->setText("Error");
     atCommand.clear();
     atCommand.append("CH");      // CH command to get Channel
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
-        localDialogFormUi.channel->setText(replyBuffer.toHex().toUpper());
+        XBeeConfigWidgetFormUi.channel->setText(replyBuffer.toHex().toUpper());
     }
     else
-        localDialogFormUi.channel->setText("Error");
+        XBeeConfigWidgetFormUi.channel->setText("Error");
     atCommand.clear();
     atCommand.append("D0");      // D0 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d0Index = (int)replyBuffer[0];
-        localDialogFormUi.d0ComboBox->setEnabled(true);
-        localDialogFormUi.d0ComboBox->setCurrentIndex(d0Index);
+        XBeeConfigWidgetFormUi.d0ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d0ComboBox->setCurrentIndex(d0Index);
     }
     else
     {
-        localDialogFormUi.d0ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d0ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D1");      // D1 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d1Index = (int)replyBuffer[0];
-        localDialogFormUi.d1ComboBox->setEnabled(true);
-        localDialogFormUi.d1ComboBox->setCurrentIndex(d1Index);
+        XBeeConfigWidgetFormUi.d1ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d1ComboBox->setCurrentIndex(d1Index);
     }
     else
     {
-        localDialogFormUi.d1ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d1ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D2");      // D2 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d2Index = (int)replyBuffer[0];
-        localDialogFormUi.d2ComboBox->setEnabled(true);
-        localDialogFormUi.d2ComboBox->setCurrentIndex(d2Index);
+        XBeeConfigWidgetFormUi.d2ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d2ComboBox->setCurrentIndex(d2Index);
     }
     else
     {
-        localDialogFormUi.d2ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d2ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D3");      // D3 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d3Index = (int)replyBuffer[0];
-        localDialogFormUi.d3ComboBox->setEnabled(true);
-        localDialogFormUi.d3ComboBox->setCurrentIndex(d3Index);
+        XBeeConfigWidgetFormUi.d3ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d3ComboBox->setCurrentIndex(d3Index);
     }
     else
     {
-        localDialogFormUi.d3ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d3ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D4");      // D4 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d4Index = (int)replyBuffer[0];
-        localDialogFormUi.d4ComboBox->setEnabled(true);
-        localDialogFormUi.d4ComboBox->setCurrentIndex(d4Index);
+        XBeeConfigWidgetFormUi.d4ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d4ComboBox->setCurrentIndex(d4Index);
     }
     else
     {
-        localDialogFormUi.d4ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d4ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D5");      // D5 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d5Index = (int)replyBuffer[0];
-        localDialogFormUi.d5ComboBox->setEnabled(true);
-        localDialogFormUi.d5ComboBox->setCurrentIndex(d5Index);
+        XBeeConfigWidgetFormUi.d5ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d5ComboBox->setCurrentIndex(d5Index);
     }
     else
     {
-        localDialogFormUi.d5ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d5ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D6");      // D6 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d6Index = (int)replyBuffer[0];
-        localDialogFormUi.d6ComboBox->setEnabled(true);
-        localDialogFormUi.d6ComboBox->setCurrentIndex(d6Index);
+        XBeeConfigWidgetFormUi.d6ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d6ComboBox->setCurrentIndex(d6Index);
     }
     else
     {
-        localDialogFormUi.d6ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d6ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("D7");      // D7 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d7Index = (int)replyBuffer[0];
-        localDialogFormUi.d7ComboBox->setEnabled(true);
-        localDialogFormUi.d7ComboBox->setCurrentIndex(d7Index);
+        XBeeConfigWidgetFormUi.d7ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d7ComboBox->setCurrentIndex(d7Index);
     }
     else
     {
-        localDialogFormUi.d7ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d7ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("P0");      // D10 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d10Index = (int)replyBuffer[0];
-        localDialogFormUi.d10ComboBox->setEnabled(true);
-        localDialogFormUi.d10ComboBox->setCurrentIndex(d10Index);
+        XBeeConfigWidgetFormUi.d10ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d10ComboBox->setCurrentIndex(d10Index);
     }
     else
     {
-        localDialogFormUi.d10ComboBox->setEnabled(false);
-        localDialogFormUi.d10ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d10ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d10ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("P1");      // D11 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d11Index = (int)replyBuffer[0];
-        localDialogFormUi.d11ComboBox->setEnabled(true);
-        localDialogFormUi.d11ComboBox->setCurrentIndex(d11Index);
+        XBeeConfigWidgetFormUi.d11ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d11ComboBox->setCurrentIndex(d11Index);
     }
     else
     {
-        localDialogFormUi.d11ComboBox->setEnabled(false);
-        localDialogFormUi.d11ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d11ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d11ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("P2");      // D12 command to get GPIO port 0 setting
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         d12Index = (int)replyBuffer[0];
-        localDialogFormUi.d12ComboBox->setEnabled(true);
-        localDialogFormUi.d12ComboBox->setCurrentIndex(d12Index);
+        XBeeConfigWidgetFormUi.d12ComboBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.d12ComboBox->setCurrentIndex(d12Index);
     }
     else
     {
-        localDialogFormUi.d12ComboBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.d12ComboBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("IR");      // IR command to get sample period
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         samplePeriod = ((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF);
-        localDialogFormUi.perSampSpinBox->setEnabled(true);
-        localDialogFormUi.perSampSpinBox->setValue(samplePeriod/1000);
+        XBeeConfigWidgetFormUi.perSampSpinBox->setEnabled(true);
+        XBeeConfigWidgetFormUi.perSampSpinBox->setValue(samplePeriod/1000);
     }
     else
     {
-        localDialogFormUi.perSampSpinBox->setEnabled(false);
+        XBeeConfigWidgetFormUi.perSampSpinBox->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("IC");      // IC command to get change detection
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         changeDetect = ((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)) << 1);
-        localDialogFormUi.checkBoxC0->setEnabled(true);
-        localDialogFormUi.checkBoxC1->setEnabled(true);
-        localDialogFormUi.checkBoxC2->setEnabled(true);
-        localDialogFormUi.checkBoxC3->setEnabled(true);
-        localDialogFormUi.checkBoxC4->setEnabled(true);
-        localDialogFormUi.checkBoxC5->setEnabled(true);
-        localDialogFormUi.checkBoxC6->setEnabled(true);
-        localDialogFormUi.checkBoxC7->setEnabled(true);
-        localDialogFormUi.checkBoxC10->setEnabled(true);
-        localDialogFormUi.checkBoxC11->setEnabled(true);
-        localDialogFormUi.checkBoxC12->setEnabled(true);
-        localDialogFormUi.checkBoxC0->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC1->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC2->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC3->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC4->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC5->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC6->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC7->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC10->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC11->setChecked((changeDetect <<= 1) & 0x01);
-        localDialogFormUi.checkBoxC12->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC0->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC1->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC2->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC3->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC4->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC5->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC6->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC7->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC10->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC11->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC12->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxC0->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC1->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC2->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC3->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC4->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC5->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC6->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC7->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC10->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC11->setChecked((changeDetect <<= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxC12->setChecked((changeDetect <<= 1) & 0x01);
     }
     else
     {
-        localDialogFormUi.checkBoxC0->setEnabled(false);
-        localDialogFormUi.checkBoxC1->setEnabled(false);
-        localDialogFormUi.checkBoxC2->setEnabled(false);
-        localDialogFormUi.checkBoxC3->setEnabled(false);
-        localDialogFormUi.checkBoxC4->setEnabled(false);
-        localDialogFormUi.checkBoxC5->setEnabled(false);
-        localDialogFormUi.checkBoxC6->setEnabled(false);
-        localDialogFormUi.checkBoxC7->setEnabled(false);
-        localDialogFormUi.checkBoxC10->setEnabled(false);
-        localDialogFormUi.checkBoxC11->setEnabled(false);
-        localDialogFormUi.checkBoxC12->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC0->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC1->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC2->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC3->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC4->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC5->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC6->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC7->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC10->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC11->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxC12->setEnabled(false);
     }
     atCommand.clear();
     atCommand.append("PR");      // PR command to get pullup resistor
     if (sendAtCommand(atCommand,remote,10) == 0)
     {
         pullUp = ((((uint)replyBuffer[0] << 8) + ((uint)replyBuffer[1] & 0xFF)) << 1);
-        localDialogFormUi.checkBoxP0->setEnabled(true);
-        localDialogFormUi.checkBoxP1->setEnabled(true);
-        localDialogFormUi.checkBoxP2->setEnabled(true);
-        localDialogFormUi.checkBoxP3->setEnabled(true);
-        localDialogFormUi.checkBoxP4->setEnabled(true);
-        localDialogFormUi.checkBoxP5->setEnabled(true);
-        localDialogFormUi.checkBoxP6->setEnabled(true);
-        localDialogFormUi.checkBoxP7->setEnabled(true);
-        localDialogFormUi.checkBoxP8->setEnabled(true);
-        localDialogFormUi.checkBoxP9->setEnabled(true);
-        localDialogFormUi.checkBoxP10->setEnabled(true);
-        localDialogFormUi.checkBoxP11->setEnabled(true);
-        localDialogFormUi.checkBoxP12->setEnabled(true);
-        localDialogFormUi.checkBoxP13->setEnabled(true);
-        localDialogFormUi.checkBoxP4->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP3->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP2->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP1->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP0->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP6->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP8->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP13->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP5->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP9->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP12->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP10->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP11->setChecked((pullUp >>= 1) & 0x01);
-        localDialogFormUi.checkBoxP7->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP0->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP1->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP2->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP3->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP4->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP5->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP6->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP7->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP8->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP9->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP10->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP11->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP12->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP13->setEnabled(true);
+        XBeeConfigWidgetFormUi.checkBoxP4->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP3->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP2->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP1->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP0->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP6->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP8->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP13->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP5->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP9->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP12->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP10->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP11->setChecked((pullUp >>= 1) & 0x01);
+        XBeeConfigWidgetFormUi.checkBoxP7->setChecked((pullUp >>= 1) & 0x01);
     }
     else
     {
-        localDialogFormUi.checkBoxP0->setEnabled(false);
-        localDialogFormUi.checkBoxP1->setEnabled(false);
-        localDialogFormUi.checkBoxP2->setEnabled(false);
-        localDialogFormUi.checkBoxP3->setEnabled(false);
-        localDialogFormUi.checkBoxP4->setEnabled(false);
-        localDialogFormUi.checkBoxP5->setEnabled(false);
-        localDialogFormUi.checkBoxP6->setEnabled(false);
-        localDialogFormUi.checkBoxP7->setEnabled(false);
-        localDialogFormUi.checkBoxP8->setEnabled(false);
-        localDialogFormUi.checkBoxP9->setEnabled(false);
-        localDialogFormUi.checkBoxP10->setEnabled(false);
-        localDialogFormUi.checkBoxP11->setEnabled(false);
-        localDialogFormUi.checkBoxP12->setEnabled(false);
-        localDialogFormUi.checkBoxP13->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP0->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP1->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP2->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP3->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP4->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP5->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP6->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP7->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP8->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP9->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP10->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP11->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP12->setEnabled(false);
+        XBeeConfigWidgetFormUi.checkBoxP13->setEnabled(false);
     }
 }
 
@@ -839,87 +844,87 @@ void LocalDialog::on_refreshDisplay_clicked()
 /** @brief Setup I/O configuration comboboxes.
 
 */
-void LocalDialog::setIOBoxes()
+void XBeeConfigWidget::setIOBoxes()
 {
-    localDialogFormUi.d0ComboBox->addItem("Disabled");
-    localDialogFormUi.d0ComboBox->addItem("Commission");
-    localDialogFormUi.d0ComboBox->addItem("Analogue In");
-    localDialogFormUi.d0ComboBox->addItem("Digital In");
-    localDialogFormUi.d0ComboBox->addItem("Digital Low");
-    localDialogFormUi.d0ComboBox->addItem("Digital High");
-    localDialogFormUi.d0ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d1ComboBox->addItem("Disabled");
-    localDialogFormUi.d1ComboBox->addItem("Reserved");
-    localDialogFormUi.d1ComboBox->addItem("Analogue In");
-    localDialogFormUi.d1ComboBox->addItem("Digital In");
-    localDialogFormUi.d1ComboBox->addItem("Digital Low");
-    localDialogFormUi.d1ComboBox->addItem("Digital High");
-    localDialogFormUi.d1ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d2ComboBox->addItem("Disabled");
-    localDialogFormUi.d2ComboBox->addItem("Reserved");
-    localDialogFormUi.d2ComboBox->addItem("Analogue In");
-    localDialogFormUi.d2ComboBox->addItem("Digital In");
-    localDialogFormUi.d2ComboBox->addItem("Digital Low");
-    localDialogFormUi.d2ComboBox->addItem("Digital High");
-    localDialogFormUi.d2ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d3ComboBox->addItem("Disabled");
-    localDialogFormUi.d3ComboBox->addItem("Reserved");
-    localDialogFormUi.d3ComboBox->addItem("Analogue In");
-    localDialogFormUi.d3ComboBox->addItem("Digital In");
-    localDialogFormUi.d3ComboBox->addItem("Digital Low");
-    localDialogFormUi.d3ComboBox->addItem("Digital High");
-    localDialogFormUi.d3ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d4ComboBox->addItem("Disabled");
-    localDialogFormUi.d4ComboBox->addItem("Reserved");
-    localDialogFormUi.d4ComboBox->addItem("Reserved");
-    localDialogFormUi.d4ComboBox->addItem("Digital In");
-    localDialogFormUi.d4ComboBox->addItem("Digital Low");
-    localDialogFormUi.d4ComboBox->addItem("Digital High");
-    localDialogFormUi.d4ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d5ComboBox->addItem("Disabled");
-    localDialogFormUi.d5ComboBox->addItem("Association");
-    localDialogFormUi.d5ComboBox->addItem("Reserved");
-    localDialogFormUi.d5ComboBox->addItem("Digital In");
-    localDialogFormUi.d5ComboBox->addItem("Digital Low");
-    localDialogFormUi.d5ComboBox->addItem("Digital High");
-    localDialogFormUi.d5ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d6ComboBox->addItem("Disabled");
-    localDialogFormUi.d6ComboBox->addItem("RTS Flow");
-    localDialogFormUi.d6ComboBox->addItem("Reserved");
-    localDialogFormUi.d6ComboBox->addItem("Digital In");
-    localDialogFormUi.d6ComboBox->addItem("Digital Low");
-    localDialogFormUi.d6ComboBox->addItem("Digital High");
-    localDialogFormUi.d6ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d7ComboBox->addItem("Disabled");
-    localDialogFormUi.d7ComboBox->addItem("CTS Flow");
-    localDialogFormUi.d7ComboBox->addItem("Reserved");
-    localDialogFormUi.d7ComboBox->addItem("Digital In");
-    localDialogFormUi.d7ComboBox->addItem("Digital Low");
-    localDialogFormUi.d7ComboBox->addItem("Digital High");
-    localDialogFormUi.d7ComboBox->addItem("485 Tx Low En");
-    localDialogFormUi.d7ComboBox->addItem("485 Tx High En");
-    localDialogFormUi.d7ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d10ComboBox->addItem("Disabled");
-    localDialogFormUi.d10ComboBox->addItem("RSSI");
-    localDialogFormUi.d10ComboBox->addItem("Reserved");
-    localDialogFormUi.d10ComboBox->addItem("Digital In Mon");
-    localDialogFormUi.d10ComboBox->addItem("Digital Low");
-    localDialogFormUi.d10ComboBox->addItem("Digital High");
-    localDialogFormUi.d10ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d11ComboBox->addItem("Digital In Unmon");
-    localDialogFormUi.d11ComboBox->addItem("Reserved");
-    localDialogFormUi.d11ComboBox->addItem("Reserved");
-    localDialogFormUi.d11ComboBox->addItem("Digital In Mon");
-    localDialogFormUi.d11ComboBox->addItem("Digital Low");
-    localDialogFormUi.d11ComboBox->addItem("Digital High");
-    localDialogFormUi.d11ComboBox->setCurrentIndex((int)replyBuffer[0]);
-    localDialogFormUi.d12ComboBox->addItem("Digital In Unmon");
-    localDialogFormUi.d12ComboBox->addItem("Reserved");
-    localDialogFormUi.d12ComboBox->addItem("Reserved");
-    localDialogFormUi.d12ComboBox->addItem("Digital In Mon");
-    localDialogFormUi.d12ComboBox->addItem("Digital Low");
-    localDialogFormUi.d12ComboBox->addItem("Digital High");
-    localDialogFormUi.d12ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Commission");
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Analogue In");
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d0ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d0ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Analogue In");
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d1ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d1ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Analogue In");
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d2ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d2ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Analogue In");
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d3ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d3ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d4ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d4ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Association");
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d5ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d5ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("RTS Flow");
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d6ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d6ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("CTS Flow");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("Digital In");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("485 Tx Low En");
+    XBeeConfigWidgetFormUi.d7ComboBox->addItem("485 Tx High En");
+    XBeeConfigWidgetFormUi.d7ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("Disabled");
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("RSSI");
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("Digital In Mon");
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d10ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d10ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Digital In Unmon");
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Digital In Mon");
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d11ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d11ComboBox->setCurrentIndex((int)replyBuffer[0]);
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Digital In Unmon");
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Reserved");
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Digital In Mon");
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Digital Low");
+    XBeeConfigWidgetFormUi.d12ComboBox->addItem("Digital High");
+    XBeeConfigWidgetFormUi.d12ComboBox->setCurrentIndex((int)replyBuffer[0]);
 }
 
 //-----------------------------------------------------------------------------
@@ -932,7 +937,7 @@ for a reply up to 5s. If no reply it will return false.
 @returns    0 if no error occurred
             3 timeout waiting for response
 */
-int LocalDialog::sendCommand(QByteArray command)
+int XBeeConfigWidget::sendCommand(QByteArray command)
 {
     int errorCode = 0;
     command.prepend(command.size()+1);
@@ -961,7 +966,7 @@ int LocalDialog::sendCommand(QByteArray command)
 
 This interprets the echoed commands and performs most of the processing.
 */
-void LocalDialog::readXbeeProcess()
+void XBeeConfigWidget::readXbeeProcess()
 {
     QByteArray reply = tcpSocket->readAll();
     int length = reply[0];
@@ -1015,7 +1020,7 @@ void LocalDialog::readXbeeProcess()
 /** @brief Notify of connection failure.
 
 */
-void LocalDialog::displayError(QAbstractSocket::SocketError socketError)
+void XBeeConfigWidget::displayError(QAbstractSocket::SocketError socketError)
 {
     switch (socketError)
     {
@@ -1048,7 +1053,7 @@ with more detail provided in "replyBuffer".
         2 timeout waiting for response
         3 socket response error (usually timeout)
 */
-int LocalDialog::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
+int XBeeConfigWidget::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
 {
     int errorCode = 0;
     if (remote)

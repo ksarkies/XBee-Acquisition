@@ -46,7 +46,7 @@ Title:    XBee Control and Display GUI Tool
 
 */
 
-class XbeeControlTool : public QDialog
+class XbeeControlTool : public QWidget
 {
     Q_OBJECT
 public:
@@ -64,9 +64,10 @@ private slots:
     void on_connectButton_clicked();
     void on_removeNodeButton_clicked();
     void on_queryNodeButton_clicked();
+    void configDialogDone(int row);
 private:
 // User Interface object instance
-    Ui::XbeeControlDialog XbeeControlFormUi;
+    Ui::XBeeControlWidget XbeeControlFormUi;
 // Methods
     int sendCommand(QByteArray command);
     QString convertASCII(QString);

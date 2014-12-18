@@ -22,10 +22,10 @@ network.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef LOCAL_DIALOG_H
-#define LOCAL_DIALOG_H
+#ifndef XBEE_DIALOG_H
+#define XBEE_DIALOG_H
 
-#include "ui/ui_local-dialog.h"
+#include "ui/ui_xbee-dialog.h"
 #include <QTcpSocket>
 #include <QDialog>
 #include <QCloseEvent>
@@ -43,12 +43,12 @@ network.
 This class provides a dialogue window
 */
 
-class LocalDialog : public QDialog
+class XBeeConfigWidget : public QWidget
 {
     Q_OBJECT
 public:
-    LocalDialog(QString address, int row, bool remote, QWidget* parent = 0);
-    ~LocalDialog();
+    XBeeConfigWidget(QString address, int row, bool remote, QWidget* parent = 0);
+    ~XBeeConfigWidget();
 private slots:
     void readXbeeProcess();
     void displayError(QAbstractSocket::SocketError socketError);
@@ -59,11 +59,13 @@ private slots:
     void on_softResetButton_clicked();
     void on_disassociateButton_clicked();
     void on_writeValuesButton_clicked();
-    void closeEvent(QCloseEvent *event);
+    void on_closeButton_clicked();
     void accept();
+signals:
+    void terminated(int row);
 private:
 // Methods
-    Ui::LocalDialog localDialogFormUi;
+    Ui::XBeeConfigWidget XBeeConfigWidgetFormUi;
     void setIOBoxes();
 // Variables
     QTcpSocket *tcpSocket;
