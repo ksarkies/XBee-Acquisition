@@ -1,4 +1,4 @@
-update=Sat 06 Dec 2014 09:00:33 ACDT
+update=Sat 20 Dec 2014 18:07:52 ACDT
 version=1
 last_client=kicad
 [general]
@@ -10,26 +10,6 @@ version=1
 NetIExt=net
 [cvpcb/libraries]
 EquName1=devcms
-[pcbnew]
-version=1
-PageLayoutDescrFile=
-LastNetListRead=xbee-node-attiny841.net
-UseCmpFile=0
-PadDrill=0.6
-PadDrillOvalY=0.6
-PadSizeH=1.2
-PadSizeV=1.2
-PcbTextSizeV=1.5
-PcbTextSizeH=1.5
-PcbTextThickness=0.3
-ModuleTextSizeV=1
-ModuleTextSizeH=1
-ModuleTextSizeThickness=0.15
-SolderMaskClearance=0
-SolderMaskMinWidth=0
-DrawSegmentWidth=0.2
-BoardOutlineThickness=0.09999999999999999
-ModuleOutlineThickness=0.15
 [eeschema]
 version=1
 PageLayoutDescrFile=
@@ -80,3 +60,23 @@ LibName33=KB1LQC
 LibName34=MiscellaneousDevices
 LibName35=TransistorParts
 LibName36=Sensors
+[pcbnew]
+version=1
+PageLayoutDescrFile=
+LastNetListRead=xbee-node-attiny841.net
+UseCmpFile=1
+PadDrill=0.5
+PadDrillOvalY=0.5
+PadSizeH=0.7999999999999999
+PadSizeV=0.7999999999999999
+PcbTextSizeV=1.5
+PcbTextSizeH=1.5
+PcbTextThickness=0.3
+ModuleTextSizeV=1
+ModuleTextSizeH=1
+ModuleTextSizeThickness=0.15
+SolderMaskClearance=0
+SolderMaskMinWidth=0
+DrawSegmentWidth=0.2
+BoardOutlineThickness=0.09999999999999999
+ModuleOutlineThickness=0.15
