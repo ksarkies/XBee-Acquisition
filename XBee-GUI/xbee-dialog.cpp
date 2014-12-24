@@ -54,8 +54,8 @@ XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
 {
 // Create the TCP socket to the internet process
     tcpSocket = new QTcpSocket(this);
-// Setup QT signal/slots for reading and error handling
-// The readyRead signal from the QAbstractSocket is linked to the readXbeeProcess slot
+/* Setup QT signal/slots for reading and error handling. The readyRead signal
+from the QAbstractSocket is linked to the readXbeeProcess slot. */
     connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readXbeeProcess()));
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)),
              this, SLOT(displayError(QAbstractSocket::SocketError)));
@@ -78,8 +78,8 @@ is to read the sleep time settings, then set them to the maximum. */
 so we setup a message box to warn of this. */
         QByteArray sleepSettingCommand;
         sleepSettingCommand.clear();
-        sleepSettingCommand.append("SM");
-        if (sendAtCommand(sleepSettingCommand, remote, 3000) > 0)
+        sleepSettingCommand.append("ST");
+        if (sendAtCommand(sleepSettingCommand, remote, 0) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
@@ -88,20 +88,17 @@ so we setup a message box to warn of this. */
         else
         {
 // Keep old value.
-            oldSleepMode = replyBuffer[0];
+            oldSleepTime = (replyBuffer[0]<<8)+replyBuffer[1];
 #ifdef DEBUG
-            qDebug() << "Original sleep mode" << (int)oldSleepMode << "changing to pin sleep";
+            qDebug() << "Original sleep time" << (int)oldSleepMode
+                     << "changing to maximum";
 #endif
-// Set the sleep mode to 1 for the duration
+// Set the sleep time to maximum (about 1 minute)
             sleepSettingCommand.clear();
-            sleepSettingCommand.append("SM");
-            sleepSettingCommand.append("\1");
-            if (sendAtCommand(sleepSettingCommand, remote,3000) > 0)
-            {
-#ifdef DEBUG
-                qDebug() << "Timeout setting remote node sleep mode";
-#endif
-            }
+            sleepSettingCommand.append("ST");
+            sleepSettingCommand.append("(char)255");
+            sleepSettingCommand.append("(char)250");
+            if (sendAtCommand(sleepSettingCommand, remote,0) > 0)
         }
     }
 // Build the User Interface display from the Ui class
@@ -150,42 +147,44 @@ void XBeeConfigWidget::accept()
 #endif
         QByteArray sleepModeCommand;
         sleepModeCommand.clear();
-        sleepModeCommand.append("SM");
-        if (sendAtCommand(sleepModeCommand, remote,500) > 0) return;
-        char currentSleepMode = replyBuffer[0];
+        sleepModeCommand.append("ST");
+        if (sendAtCommand(sleepModeCommand, remote,0) > 0) return;
+        int currentSleepTime = (replyBuffer[0]<<8)+replyBuffer[1];
 
 /* Change back to the original version if currently different and if no change was made
 to the setting. */
-        char userSleepMode = XBeeConfigWidgetFormUi.sleepModeComboBox->currentIndex();
+        int userSleepTime = XBeeConfigWidgetFormUi.sleepTimeComboBox->currentIndex();
 #ifdef DEBUG
-        qDebug() << "Current" << (int)currentSleepMode << "Setting" << (int)userSleepMode
-                 << "Old" << (int)oldSleepMode;
+        qDebug() << "Current" << (int)currentSleepTime << "Setting" << (int)userSleepTime
+                 << "Old" << (int)oldSleepTime;
 #endif
-        if ((userSleepMode == oldSleepMode) && (currentSleepMode != oldSleepMode))
+        if ((userSleepTime == oldSleepTime) && (currentSleepTime != oldSleepTime))
         {
 #ifdef DEBUG
             qDebug() << "Revert to old";
 #endif
             sleepModeCommand.clear();
-            sleepModeCommand.append("SM");
-            sleepModeCommand.append(oldSleepMode);
-            sendAtCommand(sleepModeCommand,remote,10);
+            sleepModeCommand.append("ST");
+            sleepModeCommand.append((char)(oldSleepTime>>8));
+            sleepModeCommand.append((char)(oldSleepTime&0xFF));
+            sendAtCommand(sleepModeCommand,remote,0);
         }
 /* Change to the user version if it is different from both the current and the original. */
-        else if ((userSleepMode != oldSleepMode) && (userSleepMode != currentSleepMode))
+        else if ((userSleepTime != oldSleepTime) && (userSleepTime != currentSleepMode))
         {
 #ifdef DEBUG
             qDebug() << "Change to user setting";
 #endif
             sleepModeCommand.clear();
-            sleepModeCommand.append("SM");
-            sleepModeCommand.append(userSleepMode);
-            sendAtCommand(sleepModeCommand,remote,10);
+            sleepModeCommand.append("ST");
+            sleepModeCommand.append((char)(userSleepTime>>8));
+            sleepModeCommand.append((char)(userSleepTime&0xFF));
+            sendAtCommand(sleepModeCommand,remote,0);
 // Finally WR command to write the change to permanent memory
             QByteArray wrCommand;
             wrCommand.clear();
             wrCommand.append("WR");
-            sendAtCommand(wrCommand,remote,10);
+            sendAtCommand(wrCommand,remote,0);
         }
     }
 /* Emit the "terminated" signal with the row number so that the row status can
@@ -1089,16 +1088,22 @@ void XBeeConfigWidget::displayError(QAbstractSocket::SocketError socketError)
 //-----------------------------------------------------------------------------
 /** @brief Send an AT command and wait for response.
 
-The command must be formatted as for the XBee AT commands.
-When a response is checked, the result is returned in "response"
-with more detail provided in "replyBuffer".
+The command must be formatted as for the XBee AT commands. When a response is
+checked, the result is returned in "response" with more detail provided in
+"replyBuffer".
 
+@param[in] QByteArray atCommand: the command string.
+@param[in] bool remote: true if the XBee is remote, false if coordinator.
+@param[in] int countMax: Maximum attempts to get a response (0=indefinite).
 @return 0 no error
         1 socket command error (usually timeout)
         2 timeout waiting for response
         3 socket response error (usually timeout)
+
+Members: replyBuffer, row, response.
 */
-int XBeeConfigWidget::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
+int XBeeConfigWidget::sendAtCommand(QByteArray atCommand, bool remote,
+                                    int countMax)
 {
     int errorCode = 0;
     if (remote)
@@ -1124,9 +1129,9 @@ int XBeeConfigWidget::sendAtCommand(QByteArray atCommand, bool remote, int count
         atCommand.append(row);
         int count = 0;
         response = 0;
-        while((response == 0) && (errorCode == 0))
+        while(response == 0) && (errorCode == 0))
         {
-            if (count++ > countMax) errorCode = 2;
+            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;
             if (sendCommand(atCommand) > 0) errorCode = 3;
             if (remote) millisleep(10);
             qApp->processEvents();

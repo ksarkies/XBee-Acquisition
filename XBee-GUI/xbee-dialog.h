@@ -74,7 +74,7 @@ private:
     bool remote;
     Qt::CheckState channelVerifyCurrent;
     Qt::CheckState joinNotificationCurrent;
-    char oldSleepMode;
+    int oldSleepTime;
     char deviceType;
 // The commStatus is used to signal when data has arrived and what happened
     enum {comIdle, comSent, comReceived, comError, comXbeeError} comStatus;
