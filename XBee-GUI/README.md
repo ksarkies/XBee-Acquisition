@@ -6,7 +6,7 @@ interaction with the aqcuisition network for configuration and status
 monitoring.
 
 Refer to
-http://www.jiggerjuice.info/electronics/projects/networking/xbee-data-acquisition.html
+http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html
 for details on installation and usage.
 
 K. Sarkies

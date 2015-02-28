@@ -531,7 +531,7 @@ remains in interrupt mode.
 
 IMPORTANT: Disable the "WDT Always On" fuse.
 
-@param[in] uint8_t timeout: a register setting, 9 or less (see datasheet).
+@param[in] uint8_t waketime: a register setting, 9 or less (see datasheet).
 */
 void wdtInit(const uint8_t waketime)
 {
