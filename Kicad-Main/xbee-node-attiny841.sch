@@ -1,4 +1,5 @@
 EESchema Schematic File Version 2
+LIBS:xbee-node-attiny841-rescue
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -36,7 +37,7 @@ LIBS:MiscellaneousDevices
 LIBS:TransistorParts
 LIBS:Sensors
 LIBS:xbee-node-attiny841-cache
-EELAYER 24 0
+EELAYER 25 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
@@ -62,7 +63,7 @@ F 3 "" H 10250 1450 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L MOSFET_N Q3
+L MOSFET_N-RESCUE-xbee-node-attiny841 Q3
 U 1 1 53D32AE5
 P 9550 2700
 F 0 "Q3" H 9900 2750 60  0000 R CNN
@@ -73,7 +74,7 @@ F 3 "" H 9550 2700 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R7
+L R-RESCUE-xbee-node-attiny841 R7
 U 1 1 53D32AFA
 P 9650 2250
 F 0 "R7" V 9730 2250 40  0000 C CNN
@@ -84,7 +85,7 @@ F 3 "" H 9650 2250 30  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R8
+L R-RESCUE-xbee-node-attiny841 R8
 U 1 1 53D32B0E
 P 9650 3150
 F 0 "R8" V 9730 3150 40  0000 C CNN
@@ -95,7 +96,7 @@ F 3 "" H 9650 3150 30  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R6
+L R-RESCUE-xbee-node-attiny841 R6
 U 1 1 53D32B68
 P 2950 2900
 F 0 "R6" V 3030 2900 40  0000 C CNN
@@ -106,7 +107,7 @@ F 3 "" H 2950 2900 30  0000 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L CP C3
+L CP-RESCUE-xbee-node-attiny841 C3
 U 1 1 53D32BEA
 P 6150 1750
 F 0 "C3" H 6200 1850 40  0000 L CNN
@@ -117,7 +118,7 @@ F 3 "" H 6150 1750 300 0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR01
+L GND-RESCUE-xbee-node-attiny841 #PWR01
 U 1 1 53D32D54
 P 3850 3650
 F 0 "#PWR01" H 3850 3650 30  0001 C CNN
@@ -139,7 +140,7 @@ F 3 "" H 3850 2450 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L C C2
+L C-RESCUE-xbee-node-attiny841 C2
 U 1 1 53D32ECC
 P 5400 1750
 F 0 "C2" H 5400 1850 40  0000 L CNN
@@ -150,7 +151,7 @@ F 3 "" H 5400 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR03
+L GND-RESCUE-xbee-node-attiny841 #PWR03
 U 1 1 53D32F27
 P 5400 1950
 F 0 "#PWR03" H 5400 1950 30  0001 C CNN
@@ -161,7 +162,7 @@ F 3 "" H 5400 1950 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR04
+L GND-RESCUE-xbee-node-attiny841 #PWR04
 U 1 1 53D32F3B
 P 6150 1950
 F 0 "#PWR04" H 6150 1950 30  0001 C CNN
@@ -172,7 +173,7 @@ F 3 "" H 6150 1950 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR05
+L GND-RESCUE-xbee-node-attiny841 #PWR05
 U 1 1 53D33037
 P 2950 3550
 F 0 "#PWR05" H 2950 3550 30  0001 C CNN
@@ -194,7 +195,7 @@ F 3 "" H 2950 2650 60  0000 C CNN
 	-1   0    0    -1  
 $EndComp
 $Comp
-L GND #PWR07
+L GND-RESCUE-xbee-node-attiny841 #PWR07
 U 1 1 53D331C5
 P 9650 3400
 F 0 "#PWR07" H 9650 3400 30  0001 C CNN
@@ -227,7 +228,7 @@ F 3 "" H 5250 1300 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR09
+L GND-RESCUE-xbee-node-attiny841 #PWR09
 U 1 1 53D354FE
 P 6600 1900
 F 0 "#PWR09" H 6600 1900 30  0001 C CNN
@@ -238,7 +239,7 @@ F 3 "" H 6600 1900 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR010
+L GND-RESCUE-xbee-node-attiny841 #PWR010
 U 1 1 53D35512
 P 6900 1650
 F 0 "#PWR010" H 6900 1650 30  0001 C CNN
@@ -249,7 +250,7 @@ F 3 "" H 6900 1650 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L LM358 U2
+L LM358-RESCUE-xbee-node-attiny841 U2
 U 2 1 53D35B75
 P 5450 5250
 F 0 "U2" H 5400 5450 60  0000 L CNN
@@ -260,7 +261,7 @@ F 3 "" H 5450 5250 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR012
+L GND-RESCUE-xbee-node-attiny841 #PWR012
 U 1 1 53D35BB6
 P 5350 5650
 F 0 "#PWR012" H 5350 5650 30  0001 C CNN
@@ -271,7 +272,7 @@ F 3 "" H 5350 5650 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R5
+L R-RESCUE-xbee-node-attiny841 R5
 U 1 1 53D35C63
 P 5300 4500
 F 0 "R5" V 5380 4500 40  0000 C CNN
@@ -282,7 +283,7 @@ F 3 "" H 5300 4500 30  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L NPN Q2
+L NPN-RESCUE-xbee-node-attiny841 Q2
 U 1 1 53D35E04
 P 4000 6050
 F 0 "Q2" H 4000 5900 50  0000 R CNN
@@ -293,7 +294,7 @@ F 3 "" H 4000 6050 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R2
+L R-RESCUE-xbee-node-attiny841 R2
 U 1 1 53D35F1D
 P 4100 4700
 F 0 "R2" V 4180 4700 40  0000 C CNN
@@ -304,7 +305,7 @@ F 3 "" H 4100 4700 30  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR013
+L GND-RESCUE-xbee-node-attiny841 #PWR013
 U 1 1 53D35FD0
 P 4100 6250
 F 0 "#PWR013" H 4100 6250 30  0001 C CNN
@@ -315,7 +316,7 @@ F 3 "" H 4100 6250 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L C C4
+L C-RESCUE-xbee-node-attiny841 C4
 U 1 1 53D36D73
 P 7300 1600
 F 0 "C4" H 7300 1700 40  0000 L CNN
@@ -326,7 +327,7 @@ F 3 "" H 7300 1600 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR014
+L GND-RESCUE-xbee-node-attiny841 #PWR014
 U 1 1 53D36D79
 P 7300 1800
 F 0 "#PWR014" H 7300 1800 30  0001 C CNN
@@ -337,7 +338,7 @@ F 3 "" H 7300 1800 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR015
+L GND-RESCUE-xbee-node-attiny841 #PWR015
 U 1 1 53DCC533
 P 2950 6250
 F 0 "#PWR015" H 2950 6250 30  0001 C CNN
@@ -348,7 +349,7 @@ F 3 "" H 2950 6250 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L LED D1
+L LED-RESCUE-xbee-node-attiny841 D1
 U 1 1 53DCC508
 P 2950 5350
 F 0 "D1" H 2950 5450 50  0000 C CNN
@@ -359,7 +360,7 @@ F 3 "" H 2950 5350 60  0000 C CNN
 	0    -1   1    0   
 $EndComp
 $Comp
-L R R1
+L R-RESCUE-xbee-node-attiny841 R1
 U 1 1 53DCC4A4
 P 2950 4700
 F 0 "R1" V 3030 4700 40  0000 C CNN
@@ -407,7 +408,7 @@ Reset
 Text Label 7000 4650 2    60   ~ 0
 Reset
 $Comp
-L C C1
+L C-RESCUE-xbee-node-attiny841 C1
 U 1 1 53DF7E14
 P 2950 3350
 F 0 "C1" H 2950 3450 40  0000 L CNN
@@ -429,7 +430,7 @@ F 3 "" H 7250 5700 60  0000 C CNN
 	-1   0    0    -1  
 $EndComp
 $Comp
-L GND #PWR016
+L GND-RESCUE-xbee-node-attiny841 #PWR016
 U 1 1 53E0741A
 P 7000 5900
 F 0 "#PWR016" H 7000 5900 30  0001 C CNN
@@ -453,7 +454,7 @@ F 3 "" H 10050 1400 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L LM358 U2
+L LM358-RESCUE-xbee-node-attiny841 U2
 U 1 1 53E22CCA
 P 5450 6350
 F 0 "U2" H 5400 6550 60  0000 L CNN
@@ -464,7 +465,7 @@ F 3 "" H 5450 6350 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR018
+L GND-RESCUE-xbee-node-attiny841 #PWR018
 U 1 1 53E22E2A
 P 5350 6750
 F 0 "#PWR018" H 5350 6750 30  0001 C CNN
@@ -475,7 +476,7 @@ F 3 "" H 5350 6750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR019
+L GND-RESCUE-xbee-node-attiny841 #PWR019
 U 1 1 53E22E4B
 P 4950 6450
 F 0 "#PWR019" H 4950 6450 30  0001 C CNN
@@ -487,7 +488,7 @@ F 3 "" H 4950 6450 60  0000 C CNN
 $EndComp
 NoConn ~ 5950 6350
 $Comp
-L GND #PWR020
+L GND-RESCUE-xbee-node-attiny841 #PWR020
 U 1 1 53E232E1
 P 4950 6250
 F 0 "#PWR020" H 4950 6250 30  0001 C CNN
@@ -511,7 +512,7 @@ $EndComp
 Text Label 5950 3650 0    60   ~ 0
 Reset
 $Comp
-L GND #PWR021
+L GND-RESCUE-xbee-node-attiny841 #PWR021
 U 1 1 53E22A19
 P 7000 4950
 F 0 "#PWR021" H 7000 4950 30  0001 C CNN
@@ -522,7 +523,7 @@ F 3 "" H 7000 4950 60  0000 C CNN
 	0    1    -1   0   
 $EndComp
 $Comp
-L GND #PWR022
+L GND-RESCUE-xbee-node-attiny841 #PWR022
 U 1 1 53E26458
 P 9950 1500
 F 0 "#PWR022" H 9950 1500 30  0001 C CNN
@@ -558,7 +559,7 @@ MOSI
 NoConn ~ 7000 4450
 NoConn ~ 7500 4850
 $Comp
-L C C6
+L C-RESCUE-xbee-node-attiny841 C6
 U 1 1 53E234F0
 P 4150 1750
 F 0 "C6" H 4150 1850 40  0000 L CNN
@@ -569,7 +570,7 @@ F 3 "" H 4150 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR024
+L GND-RESCUE-xbee-node-attiny841 #PWR024
 U 1 1 53E234F6
 P 4150 1950
 F 0 "#PWR024" H 4150 1950 30  0001 C CNN
@@ -580,7 +581,7 @@ F 3 "" H 4150 1950 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L C C7
+L C-RESCUE-xbee-node-attiny841 C7
 U 1 1 53E2395C
 P 5900 1750
 F 0 "C7" H 5900 1850 40  0000 L CNN
@@ -591,7 +592,7 @@ F 3 "" H 5900 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR025
+L GND-RESCUE-xbee-node-attiny841 #PWR025
 U 1 1 53E2398F
 P 5900 1950
 F 0 "#PWR025" H 5900 1950 30  0001 C CNN
@@ -708,7 +709,7 @@ F 3 "" H 8050 1950 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L GND #PWR026
+L GND-RESCUE-xbee-node-attiny841 #PWR026
 U 1 1 53F32D83
 P 7900 2150
 F 0 "#PWR026" H 7900 2150 30  0001 C CNN
@@ -719,7 +720,7 @@ F 3 "" H 7900 2150 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR027
+L GND-RESCUE-xbee-node-attiny841 #PWR027
 U 1 1 53F32DAC
 P 8050 2150
 F 0 "#PWR027" H 8050 2150 30  0001 C CNN
@@ -778,7 +779,7 @@ F 3 "" H 8000 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L GND #PWR028
+L GND-RESCUE-xbee-node-attiny841 #PWR028
 U 1 1 53F2D923
 P 7550 2550
 F 0 "#PWR028" H 7550 2550 30  0001 C CNN
@@ -789,7 +790,7 @@ F 3 "" H 7550 2550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR029
+L GND-RESCUE-xbee-node-attiny841 #PWR029
 U 1 1 53F2D950
 P 7700 2550
 F 0 "#PWR029" H 7700 2550 30  0001 C CNN
@@ -800,7 +801,7 @@ F 3 "" H 7700 2550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR030
+L GND-RESCUE-xbee-node-attiny841 #PWR030
 U 1 1 53F2D99F
 P 7850 2550
 F 0 "#PWR030" H 7850 2550 30  0001 C CNN
@@ -811,7 +812,7 @@ F 3 "" H 7850 2550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR031
+L GND-RESCUE-xbee-node-attiny841 #PWR031
 U 1 1 53F2D9CC
 P 8000 2550
 F 0 "#PWR031" H 8000 2550 30  0001 C CNN
@@ -844,7 +845,7 @@ F 3 "" H 8350 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L GND #PWR032
+L GND-RESCUE-xbee-node-attiny841 #PWR032
 U 1 1 53F2DC2E
 P 8200 2550
 F 0 "#PWR032" H 8200 2550 30  0001 C CNN
@@ -855,7 +856,7 @@ F 3 "" H 8200 2550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR033
+L GND-RESCUE-xbee-node-attiny841 #PWR033
 U 1 1 53F2DC5D
 P 8350 2550
 F 0 "#PWR033" H 8350 2550 30  0001 C CNN
@@ -877,7 +878,7 @@ F 3 "" H 8500 2350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L GND #PWR034
+L GND-RESCUE-xbee-node-attiny841 #PWR034
 U 1 1 53F2DFE3
 P 8500 2550
 F 0 "#PWR034" H 8500 2550 30  0001 C CNN
@@ -888,7 +889,7 @@ F 3 "" H 8500 2550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR035
+L GND-RESCUE-xbee-node-attiny841 #PWR035
 U 1 1 53FEF658
 P 8950 5100
 F 0 "#PWR035" H 8950 5100 30  0001 C CNN
@@ -914,7 +915,7 @@ F 3 "" H 3800 5350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L R R9
+L R-RESCUE-xbee-node-attiny841 R9
 U 1 1 54823620
 P 7000 3000
 F 0 "R9" V 7080 3000 40  0000 C CNN
@@ -925,7 +926,7 @@ F 3 "" H 7000 3000 30  0000 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L GND #PWR036
+L GND-RESCUE-xbee-node-attiny841 #PWR036
 U 1 1 5482395B
 P 7000 3250
 F 0 "#PWR036" H 7000 3250 30  0001 C CNN
@@ -949,7 +950,7 @@ F 3 "" H 4800 1550 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L C C8
+L C-RESCUE-xbee-node-attiny841 C8
 U 1 1 548D0F6B
 P 5100 1750
 F 0 "C8" H 5100 1850 40  0000 L CNN
@@ -960,7 +961,7 @@ F 3 "" H 5100 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR037
+L GND-RESCUE-xbee-node-attiny841 #PWR037
 U 1 1 548D0F71
 P 5100 1950
 F 0 "#PWR037" H 5100 1950 30  0001 C CNN
@@ -971,7 +972,7 @@ F 3 "" H 5100 1950 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L C C9
+L C-RESCUE-xbee-node-attiny841 C9
 U 1 1 548D1179
 P 4450 1750
 F 0 "C9" H 4450 1850 40  0000 L CNN
@@ -982,7 +983,7 @@ F 3 "" H 4450 1750 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L GND #PWR038
+L GND-RESCUE-xbee-node-attiny841 #PWR038
 U 1 1 548D117F
 P 4450 1950
 F 0 "#PWR038" H 4450 1950 30  0001 C CNN

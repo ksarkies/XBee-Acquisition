@@ -10,7 +10,7 @@ Due to space constraints the XBee is mounted on a separate board that sits at
 right angles to the PCB. The XBee connects to an external aerial through an RF
 cable. For measurement of battery voltage, a switched divider circuit is
 provided for the case that the batteries provide a higher voltage than the
-circuit power supply (which is sourced via a voltage regulator). The LED is
+circuit power supply (which is sourced via a 3.3V voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
