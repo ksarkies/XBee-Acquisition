@@ -110,11 +110,6 @@ int main(void)
 /* Main loop forever. */
     for(;;)
     {
-sendDataCommand('X',1234);
-sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
-_delay_ms(100);
-cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
-_delay_ms(100);
 /* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
@@ -129,12 +124,22 @@ Counter is a global and is changed in the ISR. */
         {
             lastCount = counter;
 
+/* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
+1 second will be too short to do anything useful, so go back to sleep again
+until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
 /* Now ready to initiate a data transmission. */
                 wdtCounter = 0; /* Reset the WDT counter for next time */
-/* Transmit the count value */
-                sendDataCommand('X',lastCount);
+/* Transmit the count value preceded by 7 blank csv fields. */
+                sendch(',');
+                sendch(',');
+                sendch(',');
+                sendch(',');
+                sendch(',');
+                sendch(',');
+                sendDataCommand(',',lastCount);
+                sendch('\n');
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. */
                 counter -= lastCount;

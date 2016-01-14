@@ -92,7 +92,7 @@ include) */
 #define DI_DR0                  DIDR0
 #define DI_DR1                  DIDR1
 
-/* definitions for interrupt control */
+/* definitions for interrupt control. PCMSK1 bit 1 sets PCINT9. */
 #define IMSK                    GIMSK
 #define INT_CR                  MCUCR
 #define WDT_CSR                 WDTCSR

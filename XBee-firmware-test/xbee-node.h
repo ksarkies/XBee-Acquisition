@@ -34,9 +34,10 @@ Tested:     ATtint4313 at 1MHz internal clock.
 
 /* Timeout setting for WDT to give 1 second ticks */
 #define WDT_TIME                0x05
+//#define WDT_TIME                0x09
 
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-#define ACTION_COUNT            1
+#define ACTION_COUNT            0
 
 /* Time to wait for a response from the base station. Time units depend on
 the code execution time needed to check for a received character, and F_CPU.
