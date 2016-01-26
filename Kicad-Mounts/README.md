@@ -1,7 +1,7 @@
 XBee Data Acquisition XBee/LED Mountings
 ----------------------------------------
 
-This board provides a mounting PCB for the LED and a mounting PCb for the XBee
+This board provides a mounting PCB for the LED and a mounting PCB for the XBee
 with matching connector for right-angle mount to the main PCB.
 
 XBee footprint is taken from Ian McInerney's library:
@@ -12,6 +12,9 @@ the board and facing through a cutout) and a top mounted LED SFH4258.
 
 27 November 2014: Flip XBee over, adjust XBee footprint, reduce size the of the
                   two boards, interchange Rx and Tx.
+
+A separate regulated supply was added to provide 3.3V power for the XBee as the
+XBee can pull a relatively heavy current pulse on transmission.
 
 K. Sarkies
 27 November 2014

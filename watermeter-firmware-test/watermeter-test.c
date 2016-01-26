@@ -58,7 +58,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include "../libs/defines.h"
 #include "../libs/serial.h"
 #include <util/delay.h>
-#include "xbee-node.h"
+#include "watermeter-test.h"
 
 #define TRUE 1
 #define FALSE 0

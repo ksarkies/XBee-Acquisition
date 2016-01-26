@@ -26,6 +26,9 @@
 *.lib
 Kicad-XBee/symbols/
 Kicad-XBee/footprints/
+*.bak
+*.cmp
+*.net
 auxiliary/
 moc_*
 ui_*

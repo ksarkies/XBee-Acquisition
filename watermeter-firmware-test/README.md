@@ -1,9 +1,10 @@
-XBee Data Acquisition Remote Firmware Test Version
---------------------------------------------------
+Watermeter Firmware Test Version
+--------------------------------
 
-This is the firmware for the remote unit. Written in C under avr-gcc.
+This is a test firmware for the AVR in the watermeter. Written in C under
+avr-gcc.
 
-The test version transmits the count of the photointerrupter at regular
+This test version transmits the count of the photointerrupter at regular
 intervals (1 sec) via the serial port in csv format for capture and analysis
 off-line.
 

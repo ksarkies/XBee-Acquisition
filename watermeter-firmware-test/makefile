@@ -56,7 +56,7 @@ OPT = 1
 
 
 # Target file name (without extension).
-TARGET = xbee-node
+TARGET = watermeter-test
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c ../libs/serial.c
