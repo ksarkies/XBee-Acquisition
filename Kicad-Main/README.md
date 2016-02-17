@@ -1,6 +1,16 @@
 XBee Data Acquisition PCB
 -------------------------
 
+NOTE 17/2/2016. Regret having chosen KiCad EDA for this job. Although it has
+an excellent user interface and is very comprehensive, the configuration of
+KiCad changes over time and older files don't load correctly. On machines with
+identical files and KiCad version, problems are different and reinstallation
+doesn't help, indicating that there are configuration files hidden away
+somewhere that are not removed or replaced between reinstalls. Many forum posts
+echo similar sentiments. We need an EDA that will handle all files with local
+symbol and footprint libraries and that do not invalidate older work.
+--------------------------
+
 PCB for a remote unit, including XBee with battery monitor and photodiode
 counter. A major requirement for this circuit is ultra-low power to allow the
 selected batteries to last for over a year.

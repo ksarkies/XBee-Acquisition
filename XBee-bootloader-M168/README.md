@@ -2,14 +2,14 @@ XBee Data Acquisition Remote Bootloader
 ---------------------------------------
 
 This provides a means to upload firmware updates through the XBee network to
-a remote unit. Written in C under avr-gcc.
+a remote unit. Written in C under avr-gcc. Written for ATMega168. 
 
 This bootloader works only with AVR microcontrollers that have a bootloader
 block in high memory that can be entered on reset.
 
-If the bootloader pin tests high the bootloader will load firmware to FLASH and
-jump to the application start address 0x0000. If the bootload enable is low it
-will simply jump to the application start address. The size of the bootload
+If the bootload enable pin is high the bootloader will load firmware to FLASH
+and jump to the application start address 0x0000. If the bootload enable is low
+it will simply jump to the application start address. The size of the bootload
 block must be programmed into the fuse bits and the microcontroller configured
 to jump to the bootloader start address. The start of the bootload block can be
 found in the datasheets and must be set in the makefile along with the
