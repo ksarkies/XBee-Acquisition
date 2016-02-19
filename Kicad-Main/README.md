@@ -1,14 +1,9 @@
 XBee Data Acquisition PCB
 -------------------------
 
-NOTE 17/2/2016. Regret having chosen KiCad EDA for this job. Although it has
-an excellent user interface and is very comprehensive, the configuration of
-KiCad changes over time and older files don't load correctly. On machines with
-identical files and KiCad version, problems are different and reinstallation
-doesn't help, indicating that there are configuration files hidden away
-somewhere that are not removed or replaced between reinstalls. Many forum posts
-echo similar sentiments.
---------------------------
+Refer to [Kicad-setup](https://github.com/ksarkies/XBee-Acquisition/blob/master/Documentation/Kicad-Setup.md) in the Documentation directory for usage information.
+
+TDB: At this time the PCB has missing footprints.
 
 PCB for a remote unit, including XBee with battery monitor and photodiode
 counter. A major requirement for this circuit is ultra-low power to allow the
@@ -34,6 +29,8 @@ http://edge.rit.edu/edge/P13271/public/KiCad/Libraries KB1LQC.lib
 A photodiode symbol was taken from:
 http://vkoeppel.free.fr/files/diy/kicad_diy_libraries.zip
 
+Other symbols and footprints except one are provided by KiCad developers.
+
 The provided Photodiode.pretty footprint library should contain all necessary
 footprints. Place any legacy footprint mod files into the modules directory. In
 CvPcb go to "Library Tables", then select the tab "Project Specific Libraries".
@@ -53,5 +50,5 @@ are some 2mm pin spacing header footprints.
                   circuit.
 
 K. Sarkies
-27 November 2014
+19 February 2016
 

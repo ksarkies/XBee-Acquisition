@@ -1,10 +1,23 @@
 KiCad Installation and Setup
 ----------------------------
 
-Refer to http://kicad-pcb.org/help/documentation/ for all instructions.
+GRUMBLE 17/2/2016. Rather regret having chosen KiCad EDA for this job. Although
+it has an excellent user interface and is very comprehensive, the configuration
+of KiCad can change over time and older files don't load correctly. There appear
+to be configuration files hidden away that are not removed or replaced between
+reinstalls, making the correction of problems difficult. The developers seem
+too ready to make changes without warning that adversely affect users. Many
+forum posts echo similar sentiments.
 
-KiCad can be a bit (very) obtuse when it comes to setting up. Beware that
-libraries on GitHub change from time to time.
+POLICY
+------
+
+The best way to use KiCad it seems is not to rely on the provided footprint
+or symbol libraries, but to keep all footprints and symbols in local libraries,
+stored with the job, that will remain static over time and between different
+installations.
+
+Refer to http://kicad-pcb.org/help/documentation/ for all instructions on setup.
 
 INSTALL KICAD
 -------------
@@ -17,10 +30,13 @@ installed but the unstable versions may be OK. From the current documentation
 (check that these are still valid) this installs the stable release 4:
 
 $ sudo add-apt-repository --yes ppa:js-reynaud/kicad-4
+
 $ sudo apt-get update
+
 $ sudo apt-get install kicad
 
-This installed 4.0.2-4+6225~38~ubuntu14.04.1
+This installed 4.0.2-4+6225~38~ubuntu14.04.1. Ubuntu has at this time a stable
+version from 2013 that predates a major change to the way libraries are managed.
 
 Starting KiCad directly sets up some default environment variables, but these
 can be invalid depending on the history of how KiCad was installed in the past.

@@ -23,7 +23,6 @@
 *.lss
 *.sym
 *.csv
-*.lib
 Kicad-XBee/symbols/
 Kicad-XBee/footprints/
 *.bak

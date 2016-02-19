@@ -20,27 +20,27 @@ uses a TCP/IP sockets interface.
 
 Subdirectories:
 
-* **Kicad-Main:              Schematic and PCB for watermeter unit
+* Kicad-Main:              Schematic and PCB for watermeter unit
 
-* **Kicad-Mounts:            Schematic and PCB for XBee and LED mounts
+* Kicad-Mounts:            Schematic and PCB for XBee and LED mounts
 
-* **XBee-acqcontrol:         Control software for the coordinator, C++
+* XBee-acqcontrol:         Control software for the coordinator, C++
 
-* **XBee-bootloader-M168:    Bootloader for a remote unit with ATMega168
+* XBee-bootloader-M168:    Bootloader for a remote unit with ATMega168
 
-* **XBee-experimental-T4313: Bootloader for a remote unit with ATTiny4313
+* XBee-experimental-T4313: Bootloader for a remote unit with ATTiny4313
 
-* **XBee-firmware:           Firmware for remote unit ATTiny481, in C
+* XBee-firmware:           Firmware for remote unit ATTiny481, in C
 
-* **XBee-firmware-NARTOS:    Firmware for remote unit ATTiny481 using NARTOS scheduler
+* XBee-firmware-NARTOS:    Firmware for remote unit ATTiny481 using NARTOS scheduler
 
-* **XBee-GUI:                Linux PC based GUI for network control, C++ and QT
+* XBee-GUI:                Linux PC based GUI for network control, C++ and QT
 
-* **XBee-node-example-M168:  Example to send dummy message via XBee
+* XBee-node-example-M168:  Example to send dummy message via XBee
 
-* **XBee-utility:            Some tools for direct interaction with XBee
+* XBee-utility:            Some tools for direct interaction with XBee
 
-* **watermeter-test:         Firmware for use with flow bench testing
+* watermeter-test:         Firmware for use with flow bench testing
 
 K. Sarkies
 29 January 2016
