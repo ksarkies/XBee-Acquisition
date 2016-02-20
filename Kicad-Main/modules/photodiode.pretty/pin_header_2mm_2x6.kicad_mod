@@ -1,4 +1,4 @@
-(module pin_header_2mm_2x6 (layer F.Cu) (tedit 53FEA4F5)
+(module pin_header_2mm_2x6 (layer F.Cu) (tedit 53FEA76A)
   (fp_text reference P2 (at 0 -5.1) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )

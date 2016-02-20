@@ -38,15 +38,19 @@ $ sudo apt-get install kicad
 This installed 4.0.2-4+6225~38~ubuntu14.04.1. Ubuntu has at this time a stable
 version from 2013 that predates a major change to the way libraries are managed.
 
+This is normally all that is needed for new installations. Download the KiCad
+project files and open the .pro file in KiCad.
+
 Starting KiCad directly sets up some default environment variables, but these
 can be invalid depending on the history of how KiCad was installed in the past.
 In Preferences/Configure Paths the default variables can be set.
 
 The following script kicad-start will setup the environment variables needed to
-access the existing libraries for cvpcb. Use this if the libraries aren't
-correctly set by default. In cvpcb Preferences/Configure Paths the default
-variables can be set. However these don't seem to be used, so the script is
-likely to be essential.
+access the existing libraries for CvPcb. Use this if the libraries aren't
+correctly set by default (this may happen if past history has had configuration
+problems). In CvPcb Preferences/Configure Paths the default variables can also
+be set. Sometimes these don't seem to be used, so the script may be essential
+in some cases.
 
 	KIGITHUB=https://github.com/KiCad
 	export KIGITHUB
@@ -54,33 +58,47 @@ likely to be essential.
 	export KISYSMOD
 	kicad
 
-SETUP CVPCB
+SETUP CvPcb
 -----------
 
 This utility provides linking of schematic symbols with footprints. It must be
-setup correctly to be able to access libraries.
+setup correctly to be able to access footprint libraries.
 
 The documentation states that a fp-lib-table file should be present in the home
 directory, containing references to all footprint libraries. However this
-doesn't now seem to be necessary, nor is it accessed. The location of the
-library definitions is unknown.
+doesn't seem to be necessary during normal use. It may be accessed when CvPcb is
+first started and is used to define the libraries. If not present some default
+file will be created. The location of the working library definitions is
+unknown.
 
 Invoke from EESCHEMA in Tools/Assign Component Footprint.
 
-If an error window appears, take note of all the mentioned libraries that were
-"not found". Close the window and in cvpcb open Preferences/Footprint Libraries.
-The window should have all the libraries that are defined. Delete those that
-were not found (if they were on GitHub) or correct the library entry otherwise.
-Other GitHub libraries can be added directly or via the wizard.
+If old GitHub libraries had been defined and do not match the existing GitHub
+library names, then an error window appears. Take note of all the mentioned
+libraries that were "not found". Close the window and in CvPcb open
+Preferences/Footprint Libraries. The window should show all the libraries that
+are defined. Delete those that were not found (if they were on GitHub) or
+correct the library entry otherwise. Other GitHub libraries can be added
+directly or via the wizard.
 
-Any other entries may be deleted as desired if they are not needed. Note this
-seems to be a setting for all projects.
+Any other entries may be deleted as desired if they are not needed.
+
+On a new installation the wizard can be used to access the GitHub or locally
+stored libraries. The GitHub libraries may be downloaded to a local directory
+for use with the current project or for all projects. This avoids the need to
+access Internet. Select Preferences/Footprint Libraries and select "Append with
+Wizard". Remove any previous GitHub entries.
+
+Footprints can be copied directly from the GitHub libraries to the local
+library. If a PCB is provided, then the footprints in that file can be saved to
+a local library. Right-click on each footprint, select the footprint menu and
+select "Edit with Footprint Editor". It can then be edited and/or saved to the
+desired local library.
 
 PORTABILITY
 -----------
 
-The schematic file .sch, the board file .kicad_pcb, the project file .pro and
-the netlist file .net, the schematic parts file .lib and the footprints file
-.kicad_mod are all that is needed.
-
+The schematic file .sch, the board file .kicad_pcb, the project file .pro,
+the netlist file .net, the schematic parts files .lib and the footprints
+files .kicad_mod are all that is needed.
 

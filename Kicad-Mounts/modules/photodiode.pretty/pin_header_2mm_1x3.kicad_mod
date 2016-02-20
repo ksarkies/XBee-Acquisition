@@ -1,11 +1,11 @@
-(module pin_header_2mm_1x3 (layer F.Cu) (tedit 53F2A6C1)
-  (fp_text reference Ref** (at 0 2.54) (layer F.SilkS)
+(module pin_header_2mm_1x3 (layer F.Cu) (tedit 53FED0A2)
+  (fp_text reference P4 (at 0 2.54) (layer F.SilkS) hide
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (fp_text value Val** (at 0 0) (layer F.SilkS)
+  (fp_text value CONN_3 (at 0 -1.5) (layer F.SilkS) hide
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (pad 3 thru_hole circle (at 2 0) (size 1.2 1.2) (drill 0.6) (layers *.Cu *.Mask F.SilkS))
-  (pad 2 thru_hole circle (at 0 0) (size 1.2 1.2) (drill 0.6) (layers *.Cu *.Mask F.SilkS))
-  (pad 1 thru_hole circle (at -2 0) (size 1.2 1.2) (drill 0.6) (layers *.Cu *.Mask F.SilkS))
+  (pad 3 thru_hole circle (at 2 0) (size 1.4 1.4) (drill 0.8) (layers *.Cu *.Mask B.SilkS))
+  (pad 2 thru_hole circle (at 0 0) (size 1.4 1.4) (drill 0.8) (layers *.Cu *.Mask B.SilkS))
+  (pad 1 thru_hole circle (at -2 0) (size 1.4 1.4) (drill 0.8) (layers *.Cu *.Mask B.SilkS))
 )
