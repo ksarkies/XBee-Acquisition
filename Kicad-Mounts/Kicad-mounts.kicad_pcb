@@ -1,4 +1,4 @@
-(kicad_pcb (version 4) (host pcbnew "(2014-08-05 BZR 5054)-product")
+(kicad_pcb (version 4) (host pcbnew 4.0.2-4+6225~38~ubuntu14.04.1-stable)
 
   (general
     (links 49)
@@ -523,7 +523,7 @@
     )
   )
 
-  (gr_line (start 184.9 121.5) (end 184.9 126.5) (angle 90) (layer Edge.Cuts) (width 0.1))
+  (gr_line (start 184.9 121.5) (end 184.9 126) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 182 123.2) (end 182 125.2) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 180 123.2) (end 180 125.2) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 180 125.2) (end 182 125.2) (angle 90) (layer Edge.Cuts) (width 0.1))
@@ -539,9 +539,9 @@
   (gr_line (start 183.3 121.5) (end 170 121.5) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 184.9 121.5) (end 193 121.5) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 193 90) (end 193 121.5) (angle 90) (layer Edge.Cuts) (width 0.1))
-  (gr_line (start 168 126.5) (end 184.9 126.5) (angle 90) (layer Edge.Cuts) (width 0.1))
+  (gr_line (start 168 126) (end 184.9 126) (angle 90) (layer Edge.Cuts) (width 0.1))
   (gr_line (start 168 90) (end 193 90) (angle 90) (layer Edge.Cuts) (width 0.1))
-  (gr_line (start 168 90) (end 168 126.5) (angle 90) (layer Edge.Cuts) (width 0.1))
+  (gr_line (start 168 90) (end 168 126) (angle 90) (layer Edge.Cuts) (width 0.1))
 
   (segment (start 172 124.2) (end 169.46 124.2) (width 0.3) (layer F.Cu) (net 1))
   (segment (start 173.4 125.7) (end 172 124.2) (width 0.17) (layer B.Cu) (net 1) (tstamp 53FC439A) (status 20))
