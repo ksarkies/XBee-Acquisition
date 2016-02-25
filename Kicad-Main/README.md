@@ -3,8 +3,6 @@ XBee Data Acquisition PCB
 
 Refer to [Kicad-setup](https://github.com/ksarkies/XBee-Acquisition/blob/master/Documentation/Kicad-Setup.md) in the Documentation directory for usage information.
 
-TDB: At this time the PCB has missing footprints.
-
 PCB for a remote unit, including XBee with battery monitor and photodiode
 counter. A major requirement for this circuit is ultra-low power to allow the
 selected batteries to last for over a year.
@@ -48,7 +46,12 @@ are some 2mm pin spacing header footprints.
 
 27 November 2014: Add missing ground points. Correct error in battery voltage
                   circuit.
+24 February 2016: Changed position of connectors to avoid housing structures.
 
 K. Sarkies
 19 February 2016
+
+Note; pin 1 of the XBee connector links to CTS on the XBee mount, but is not
+connected on this board.
+
 

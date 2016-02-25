@@ -250,7 +250,7 @@ Text Label 3000 3600 2    60   ~ 0
 Tx
 Text Label 3000 3500 2    60   ~ 0
 Rx
-Text Label 5200 5250 2    60   ~ 0
+Text Label 3450 4800 2    60   ~ 0
 CTS
 Text Label 5100 3800 0    60   ~ 0
 RTS
@@ -285,7 +285,6 @@ F 3 "" H 3450 5300 60  0000 C CNN
 	1    3450 5300
 	-1   0    0    1   
 $EndComp
-NoConn ~ 3450 4800
 Text Label 3950 5200 0    60   ~ 0
 RTS
 $Comp
@@ -421,4 +420,6 @@ V3
 Connection ~ 5000 6200
 Connection ~ 4600 6200
 Connection ~ 2800 6050
+Text Label 5200 5250 2    60   ~ 0
+CTS
 $EndSCHEMATC
