@@ -482,7 +482,7 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         {
             for (int i=0; i<16; i++)
             {
-                char hexchar = addressParm.at(i).toAscii();
+                char hexchar = addressParm.at(i).toLatin1();
                 if (! (((hexchar - '0') <= 9) || ((hexchar - 'A') <= 5)))
                     validAddress = false;
             }
@@ -686,7 +686,7 @@ int XbeeControlTool::sendCommand(QByteArray command)
 /** @brief Check if a socket is valid, that is, connected.
 */
 
-int XbeeControlTool::validTcpSocket()
+bool XbeeControlTool::validTcpSocket()
 {
     if (tcpSocket == NULL)
     {
@@ -695,9 +695,9 @@ int XbeeControlTool::validTcpSocket()
         msgBox.setText("Not yet connected. Please click connect button.");
         ssleep(20);
         msgBox.close();
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
 
 //-----------------------------------------------------------------------------

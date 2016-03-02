@@ -2,11 +2,11 @@ PROJECT =       XBee Control and Display GUI Tool
 TEMPLATE =      app
 TARGET          += 
 DEPENDPATH      += .
+QT              += widgets
 
 OBJECTS_DIR     = obj
 MOC_DIR         = moc
-UI_HEADERS_DIR  = ui
-UI_SOURCES_DIR  = ui
+UI_DIR          = ui
 LANGUAGE        = C++
 CONFIG          += qt warn_on release
 QT              += network

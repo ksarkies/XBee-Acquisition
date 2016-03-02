@@ -75,7 +75,7 @@ private:
     int loadHexGUI(QFile* file, int row);
     void updateProgress(int progress);
     int sendAtCommand(QByteArray atCommand, bool remote, int countMax);
-    int validTcpSocket();
+    bool validTcpSocket();
     bool findNode();
     void ssleep(int seconds);
     void popup(QString message);
