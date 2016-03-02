@@ -1,19 +1,29 @@
 XBee Data Acquisition Control
 -----------------------------
 
-A background control process written in C++. Its purpose is to manage the XBee
+A background control process written in C. Its purpose is to manage the XBee
 acquisition network and interface to an externally or locally running user
 interface. This allows a small low-power on-site Linux machine to monitor the
 system and communicate over LAN or WAN to a GUI running on a separate PC.
 
-Download and compile libxbee according to the included instructions. The
-latest version at this time is 3.0.9. Install the libraries. Then make
-the program.
+[Download libxbee](https://github.com/attie/libxbee3) from GitHub. This can be done with 'git clone' or downloading
+the provided zip file.
 
-More information is available at:
+The latest stable version at this time is 3.0.11. Compile libxbee according to
+the included instructions. Install the libraries. Then compile the program.
 
-http://www.jiggerjuice.info/electronics/projects/networking/xbee-data-acquisition.html
+The program when run will announce the results filename and loop waiting for
+communication from the network. Debug information is written to /var/log/syslog.
+Command line options are:
+
+-d _directory_ to store results file
+
+-P _port_ (default is /dev/ttyUSB0)
+
+-b _baudrate_ (default 38400 baud)
+
+More information is available on [Jiggerjuice](http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html)
 
 K. Sarkies
-7 July 2014
+2 March 2016
 

@@ -8,8 +8,10 @@ TDB: At this time the PCB has missing footprints.
 This board provides a mounting PCB for the LED and a mounting PCB for the XBee
 with matching connector for right-angle mount to the main PCB.
 
-XBee footprint is taken from Ian McInerney's library:
-https://github.com/imciner2/KiCad-Libraries RF_OEM_PARTS.lib and footprints.mod
+An XBee footprint was taken from RF_OEM_PARTS.lib and footprints.mod in Ian
+McInerney's library (https://github.com/imciner2/KiCad-Libraries)
+The legacy footprint has been modified to the newer kicad_mod format and solder
+mask has been added to the pads.
 
 The LED mount provides for two LEDs VSMY2850 and SFH4056 reverse mounted (under
 the board and facing through a cutout) and a top mounted LED SFH4258.

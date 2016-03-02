@@ -16,16 +16,11 @@ circuit power supply (which is sourced via a 3.3V voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
-An XBee footprint was taken from Ian McInerney's library:
-https://github.com/imciner2/KiCad-Libraries RF_OEM_PARTS.lib and footprints.mod
-The legacy footprint has been modified to the newer kicad_mod format and solder
-mask has been added to the pads.
+The TPS77033 symbol from KB1LQC.lib at Rochester Institute of technology
+(http://edge.rit.edu/edge/P13271/public/KiCad/Libraries).
 
-The TPS77033 symbol from Rochester Institute of technology:
-http://edge.rit.edu/edge/P13271/public/KiCad/Libraries KB1LQC.lib
-
-A photodiode symbol was taken from:
-http://vkoeppel.free.fr/files/diy/kicad_diy_libraries.zip
+A photodiode symbol was taken from
+(http://vkoeppel.free.fr/files/diy/kicad_diy_libraries.zip)
 
 Other symbols and footprints except one are provided by KiCad developers.
 
@@ -44,9 +39,9 @@ hole pins. In CvPcb append a new KiCad entry and add the library path to the
 .pretty directory (not the file, which is a single footprint). Also included
 are some 2mm pin spacing header footprints.
 
-27 November 2014: Add missing ground points. Correct error in battery voltage
-                  circuit.
-24 February 2016: Changed position of connectors to avoid housing structures.
+* 27 November 2014: Add missing ground points. Correct error in battery voltage
+  circuit.
+* 24 February 2016: Changed position of connectors to avoid housing structures.
 
 K. Sarkies
 19 February 2016
