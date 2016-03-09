@@ -11,7 +11,7 @@
 DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 
 # MCU name
-MCU ?= atmega168
+MCU ?= atmega48
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
 ifeq ($(MCU),atmega168)
@@ -29,7 +29,7 @@ FORMAT = ihex
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-OPT = 1
+OPT = s
 
 
 # Target file name (without extension).

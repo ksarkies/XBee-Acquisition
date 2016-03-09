@@ -66,6 +66,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define TRUE 1
 #define FALSE 0
 
+#define  _BV(bit) (1 << (bit))
 #define inb(sfr) _SFR_BYTE(sfr)
 #define inw(sfr) _SFR_WORD(sfr)
 #define outb(sfr, val) (_SFR_BYTE(sfr) = (val))
@@ -274,6 +275,8 @@ void hardwareInit(void)
     sbi(TEST_PORT_DIR,TEST_PIN);
     sbi(TEST_PORT,TEST_PIN);
 #endif
+/* Set PC4 direction to output for transmission verification */
+    sbi(DDRC,4);
 }
 
 /****************************************************************************/
@@ -295,19 +298,23 @@ void resetTimer(void)
 /****************************************************************************/
 /** @brief Timer 0 ISR.
 
-This ISR sends a dummy data record to the coordinator.
+This ISR sends a dummy data record to the coordinator and toggles PC4
+where there should be an LED.
 */
 
 ISR(TIMER0_OVF_vect)
 {
-    if ((inb(PORTB) & 0x01) == 0) sbi(PORTB,0);
-    else cbi(PORTB,0);
     uint8_t data[7] = "DHello";
     time.timeValue++;
-    counter--;
+    counter++;
     if (counter == 0)
     {
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,6,data);
+        sbi(PORTC,4);
+    }
+    if (counter == 26)
+    {
+        cbi(PORTC,4);
     }
 }
 /****************************************************************************/
