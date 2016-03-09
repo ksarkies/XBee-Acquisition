@@ -3,6 +3,7 @@
 @version 1.0
 @author Ken Sarkies (www.jiggerjuice.net)
 @date 16 December 2012
+@adte 9 March 2016
 
 A utility to assemble and send API commands to an XBee on a serial or
 USB-serial port.
@@ -10,9 +11,9 @@ USB-serial port.
 The responses are collected and interpreted.
 
 @note
-Compiler: gcc (Ubuntu 4.4.1-4ubuntu9) 4.4.1
+Compiler: gcc
 @note
-Uses: Qt version 4.5.2
+Uses: Qt version 5
 */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *

@@ -1,5 +1,4 @@
-/*
-Title:    Atmel Microcontroller Serial Port FLASH loader
+/*               XBee AP Mode Command Tool
 */
 
 /****************************************************************************
@@ -20,8 +19,8 @@ Title:    Atmel Microcontroller Serial Port FLASH loader
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef SERIAL_DEBUG_TOOL_H
-#define SERIAL_DEBUG_TOOL_H
+#ifndef XBEE_AP_TOOL_H
+#define XBEE_AP_TOOL_H
 
 #include "xbeep.h"
 #include "ui_xbee-ap.h"
@@ -29,6 +28,12 @@ Title:    Atmel Microcontroller Serial Port FLASH loader
 #include <QListWidgetItem>
 #include <QDialog>
 #include <QCloseEvent>
+
+// Default remote node address
+#define DEFAULT_ADDRESS         "0013A200408B4B82"
+#define SERIAL_PORT             "/dev/ttyUSB0"
+// Default baud rate at 38400
+#define BAUD_RATE               5
 
 // Serial Port Parameters
 

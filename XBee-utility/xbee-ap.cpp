@@ -33,12 +33,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-// Default remote node address
-#define DEFAULT_ADDRESS "0013A200408B4B82"
-
 // Local Prototypes
-QString convertNum(const QString response, const uchar startIndex, const uchar length, const int base);
-void showResponse(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt, void **data);
+QString convertNum(const QString response, const uchar startIndex,
+                   const uchar length, const int base);
+void showResponse(struct xbee *xbee, struct xbee_con *con,
+                  struct xbee_pkt **pkt, void **data);
 
 //-----------------------------------------------------------------------------
 /** XBee-AP-Tool Constructor
@@ -49,8 +48,8 @@ void showResponse(struct xbee *xbee, struct xbee_con *con, struct xbee_pkt **pkt
 XbeeApTool::XbeeApTool(QWidget* parent) : QDialog(parent)
 {
 	xbee_err ret;
-    port.device = "/dev/ttyUSB0";
-    port.baudRate = 5;
+    port.device = SERIAL_PORT;
+    port.baudRate = BAUD_RATE;
     port.flowControl = FLOW_OFF;
     port.parity = PAR_NONE;
     port.dataBits = DATA_8;
@@ -72,16 +71,17 @@ XbeeApTool::XbeeApTool(QWidget* parent) : QDialog(parent)
 // Initialise xbee instance and serial port first
     struct stat st;
     if(stat("/dev/ttyUSB0",&st) == 0)       /* Check if USB0 exists */
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB0", 38400);
+        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB0", BAUD_RATE);
     else
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB1", 38400);
+        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB1", BAUD_RATE);
     if (ret != XBEE_ENONE)
     {
-        errorMessage = QString("Unable to access the serial port\n"
+        errorMessage = QString("XBee on USB0 or USB1 serial port not contactable.\n"
                     "\nCheck the connections and power.");
         return;
     }
 // Attempt to send an AP command to revert to mode 1 (in case set to mode 2)
+// This assumes the XBee is found on the port with the given baud rate.
     uchar parm = 1;
     QString commandAP = "AP" + (QString)parm;
     QString packetData;
@@ -546,8 +546,8 @@ void XbeeApTool::on_sendQuery_clicked()
 		        qDebug() << "New Send-Data Connection error " << retStatus;
                 break;
         	}
-            qDebug() << XbeeApFormUi.dataEntry->text().toAscii().data();
-    		if ((retStatus = xbee_conTx(con, NULL, XbeeApFormUi.dataEntry->text().toAscii().data())) != XBEE_ENONE)
+            qDebug() << XbeeApFormUi.dataEntry->text().toLatin1().data();
+    		if ((retStatus = xbee_conTx(con, NULL, XbeeApFormUi.dataEntry->text().toLatin1().data())) != XBEE_ENONE)
             {
 		        qDebug() << "Data Tx error " << retStatus;
 		        break;
@@ -728,7 +728,7 @@ void XbeeApTool::on_sendButton_clicked()
     if (retStatus != XBEE_ENONE)
     {   qDebug() << "New Connection error " << retStatus; return; }
 // Transmit command and wait for the response.
-    if ((retStatus=xbee_conTx(con, &txRet, message.toAscii().data())) != XBEE_ENONE)
+    if ((retStatus=xbee_conTx(con, &txRet, message.toLatin1().data())) != XBEE_ENONE)
     {   qDebug() << "Tx error " << retStatus; }
 // Wait up to 1 second for return packet regardless of Tx errors.
 // In the ND case we need over 5 seconds to get the packets back.
@@ -794,7 +794,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
         char atrc[2];
         atrc[0] = (*pkt)->atCommand[0];
         atrc[1] = (*pkt)->atCommand[1];
-        QString atResponseCommand = QString::fromAscii(atrc).left(2);
+        QString atResponseCommand = QString::fromLatin1(atrc).left(2);
         XbeeApFormUi.atCommand->setText(atResponseCommand);
         uchar commandStatus = (*pkt)->status;
         XbeeApFormUi.commandStatus->setText((commandStatus == 0) ? "OK" : "Err");
@@ -844,7 +844,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             commandData = convertNum(packetData,i,2,16);
             i += 2;
             XbeeApFormUi.commandData_4->setText(commandData);
-            switch (packetData[i++].toAscii())
+            switch (packetData[i++].toLatin1())
             {
                 case 0:
                     commandData = "Coordinator"; break;
@@ -856,7 +856,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
                     commandData = "Unknown"; break;
             }
             XbeeApFormUi.commandData_5->setText(commandData);
-            commandData = QString::number(packetData[i++].toAscii(),16).toUpper().right(2);
+            commandData = QString::number(packetData[i++].toLatin1(),16).toUpper().right(2);
             XbeeApFormUi.commandData_6->setText(commandData);
             commandData = convertNum(packetData,i,2,16);
             i += 2;
@@ -890,7 +890,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            commandData = QString::number(packetData[0].toAscii(),10);
+            commandData = QString::number(packetData[0].toLatin1(),10);
             XbeeApFormUi.commandData_1->setText(commandData);
         }
         else if (atResponseCommand == "NI")
@@ -910,8 +910,8 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
             uint i = 0;                  // Start of data block
-            uint payloadBytes = (uchar)packetData[i++].toAscii() << 8;
-            payloadBytes += (uchar)packetData[i++].toAscii();
+            uint payloadBytes = (uchar)packetData[i++].toLatin1() << 8;
+            payloadBytes += (uchar)packetData[i++].toLatin1();
             commandData = QString::number(payloadBytes,10);
             XbeeApFormUi.commandData_1->setText(commandData);
         }
@@ -922,7 +922,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            commandData = "-"+QString::number((uchar)packetData[0].toAscii(),10) + "dBm";
+            commandData = "-"+QString::number((uchar)packetData[0].toLatin1(),10) + "dBm";
             XbeeApFormUi.commandData_1->setText(commandData);
         }
         else if (atResponseCommand == "CH")
@@ -932,7 +932,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            uchar channel = (uchar)packetData[0].toAscii();
+            uchar channel = (uchar)packetData[0].toLatin1();
             if (channel > 0)
                 commandData = QString::number(channel,10);
             else
@@ -967,7 +967,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
             commandData = "";
-            uchar options = packetData[0].toAscii();
+            uchar options = packetData[0].toLatin1();
             if (options == 0) commandData += "None";
             if ((options & 0x01) > 0) commandData += "Append Device ID ";
             if ((options & 0x02) > 0) commandData += "Send also local ND results";
@@ -984,7 +984,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             commandData = "";
             for (uchar i = 0; i < 16; i++)
             {
-                if (((packetData[0].toAscii() + (packetData[1].toAscii() << 8)) & (1 << i)) > 0)
+                if (((packetData[0].toLatin1() + (packetData[1].toLatin1() << 8)) & (1 << i)) > 0)
                     commandData += QString::number(11+i,10).toUpper().right(2)+" ";
             }
             XbeeApFormUi.commandData_1->setText(commandData);
@@ -996,7 +996,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            commandData = QString::number((uchar)packetData[0].toAscii(),10) + "dBm";
+            commandData = QString::number((uchar)packetData[0].toLatin1(),10) + "dBm";
             XbeeApFormUi.commandData_1->setText(commandData);
         }
         else if (atResponseCommand == "PL")
@@ -1006,7 +1006,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            commandData = QString::number((uchar)packetData[0].toAscii(),10);
+            commandData = QString::number((uchar)packetData[0].toLatin1(),10);
             XbeeApFormUi.commandData_1->setText(commandData);
         }
         else if (atResponseCommand == "DN")
@@ -1054,7 +1054,7 @@ void XbeeApTool::showResponse(struct xbee_pkt **pkt)
             XbeeApFormUi.commandData_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setVisible(true);
             XbeeApFormUi.commandDataLabel_1->setText("");
-            commandData = QString::number((uchar)packetData[0].toAscii(),10);
+            commandData = QString::number((uchar)packetData[0].toLatin1(),10);
             XbeeApFormUi.commandData_1->setText(commandData);
         }
     }
@@ -1078,7 +1078,7 @@ xbee_err XbeeApTool::sendLocalATCommand(QString command, QString *packetData)
         return retStatus;
     }
     qDebug() << "Command " << convertNum(command, 0, command.size(), 16);
-    if ((retStatus = xbee_conTx(con, &txRet, command.toAscii().data())) != XBEE_ENONE)
+    if ((retStatus = xbee_conTx(con, &txRet, command.toLatin1().data())) != XBEE_ENONE)
     {
         qDebug() << "Tx error " << retStatus;
     }
@@ -1162,7 +1162,7 @@ xbee_err XbeeApTool::sendRemoteATCommand(QString command, QString *packetData)
         return retStatus;
     }
     qDebug() << "Command " << convertNum(command, 0, command.size(), 16);
-     if ((retStatus = xbee_conTx(con, &txRet, command.toAscii().data())) != XBEE_ENONE)
+     if ((retStatus = xbee_conTx(con, &txRet, command.toLatin1().data())) != XBEE_ENONE)
     {
         qDebug() << "Tx error " << retStatus;
     }
@@ -1227,7 +1227,7 @@ QString convertNum(const QString response, const uchar startIndex, const uchar l
 {
     QString commandData = "";
     for (uchar i = startIndex; i < length+startIndex; i++)
-        commandData += QString("%1").arg(QString::number(response[i].toAscii(),base).toUpper().right(2),2,'0');
+        commandData += QString("%1").arg(QString::number(response[i].toLatin1(),base).toUpper().right(2),2,'0');
     return commandData;
 }
 //-----------------------------------------------------------------------------
