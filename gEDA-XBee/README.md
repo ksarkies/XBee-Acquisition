@@ -13,6 +13,8 @@ xbee-node-attint4313
 This board is similar to the above but analogue input is taken to the XBee as
 the ATTiny4313 doesn't have analogue capability.
 
+The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-example-M168) for ATMega48 series is provided for a test transmission.
+
 K. Sarkies
 24 July 2014
 
