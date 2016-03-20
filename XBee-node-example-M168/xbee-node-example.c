@@ -12,8 +12,9 @@ measurements for communication to a base controller.
 This application works with AVRs having a bootloader block or for situations
 where a bootloader is not required. It has no code referring to a bootloader.
 
-Currently optimization level 1 only works with this code. Other optimization
-levels create faulty code.
+The board targetted is the test board developed for the project using the
+ATMega48 series microcontrollers. See the hardwareInit() function for
+documented I/O ports.
 
 @note
 Software: AVR-GCC 4.8.2
@@ -266,7 +267,7 @@ Send preamble, then data block, followed by computed checksum */
 }
 
 /****************************************************************************/
-/** @brief Initialize the hardware for process measurement
+/** @brief Initialize the hardware for process measurement and XBee control
 
 */
 void hardwareInit(void)
@@ -275,8 +276,23 @@ void hardwareInit(void)
     sbi(TEST_PORT_DIR,TEST_PIN);
     sbi(TEST_PORT,TEST_PIN);
 #endif
-/* Set PC4 direction to output for transmission verification */
+/* PB2 is bootloader control input. */
+/* PB3 is Sleep Request output. Hold low for permanent awake state. */
+    sbi(DDRB,3);
+    cbi(PORTB,3);
+/* PB4 is XBee Asleep input. */
+/* PB5 is XBee reset output. Pulse low to reset. */
+    sbi(DDRB,5);
+    sbi(PORTB,5);
+/* PC0 is the board analogue input. */
+/* PC1 is the battery monitor analogue input. */
+/* Set PC4 direction to output for microntroller activity LED. */
     sbi(DDRC,4);
+    cbi(PORTC,4);
+/* PC5 is the battery monitor control output. Hold low for lower power drain. */
+    sbi(DDRC,4);
+    cbi(PORTC,4);
+/* PD5 is the Board Digital Input. */
 }
 
 /****************************************************************************/
