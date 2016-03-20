@@ -64,7 +64,9 @@ Compiler: gcc 4.8.2
 #include <netdb.h>
 #include <syslog.h>
 
-/* Global Structures */
+#define TIMEOUT 5
+
+/* Global Structures and Data */
 struct xbee *xbee;
 struct xbee_con *localATCon;    /* Connection for local AT commands */
 struct xbee_con *identifyCon;   /* Connection for identify packets */
@@ -86,6 +88,7 @@ int fileCount;                  /* Number of records close file and open new. */
 char dirname[40];
 char inPort[40];
 uint baudrate;
+char debug;
 
 /* Callback Prototypes for libxbee */
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
@@ -108,11 +111,13 @@ int min(int x, int y) {if (x>y) return y; else return x;}
 
 int main(int argc,char ** argv)
 {
+    debug = false;
 /*--------------------------------------------------------------------------*/
 /* Parse the command line arguments.
 P - serial port to use, default /dev/ttyUSB0
 b - baud rate, default 38400 baud.
-d - directory for results file.
+D - directory for results file.
+d - Debug mode.
  */
     strcpy(inPort,SERIAL_PORT);
     baudrate = BAUDRATE;
@@ -121,12 +126,15 @@ d - directory for results file.
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "d:P:b:")) != -1)
+    while ((c = getopt (argc, argv, "P:b:D:d")) != -1)
     {
         switch (c)
         {
-        case 'd':
+        case 'D':
             strcpy(dirname,optarg);
+            break;
+        case 'd':
+            debug = true;
             break;
         case 'P':
             strcpy(inPort,optarg);
@@ -164,26 +172,52 @@ log file */
 
     openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
     syslog(LOG_INFO, "Starting XBee Instance\n");
+#ifdef DEBUG
+    if (debug)
+        printf("Starting XBee Instance\n");
+#endif
 
 /*--------------------------------------------------------------------------*/
 /* Initialise the configuration file and fill the node table.*/
 
     fpd = NULL;
-    if (! configFillNodeTable()) return 1;
+    if (! configFillNodeTable())
+    {
+        closelog();
+        return 1;
+    }
 
 /*--------------------------------------------------------------------------*/
 /* Initialise the results storage. Abort the program if this fails. */
 
     fp = NULL;
-    if (! dataFileCheck()) return 1;
+    if (! dataFileCheck())
+    {
+        closelog();
+        return 1;
+    }
 
 /*--------------------------------------------------------------------------*/
-/* Initialise the xbee instance and probe for any new nodes on the network. */
+/* Initialise the xbee instance and probe for any new nodes on the network.
+If failed to contact XBee, abort. */
 
-    setupXbeeInstance();
+    if (setupXbeeInstance())
+    {
+        closelog();
+        return 1;
+    }
+
+#ifdef DEBUG
+    if (debug)
+        printf("XBee Instance Started\n");
+#endif
     openRemoteConnections();
     nodeProbe();
     openGlobalConnections();
+#ifdef DEBUG
+    if (debug)
+        printf("Connections probed and opened\n");
+#endif
 
 /*--------------------------------------------------------------------------*/
 /* Setup the Internet command interface socket. */
@@ -291,7 +325,7 @@ int command_handler(const int listener, unsigned char *buf)
     int row = buf[2];
     if (row > numberNodes) return false;
 #ifdef DEBUG
-    if ((command != 'r') && (command != 'l') && (command != 's'))
+    if ((command != 'r') && (command != 'l') && (command != 's') && debug)
     {
         printf("Command from GUI: length %d", commandLength);
         if ((command == 'L') || (command == 'R'))
@@ -327,9 +361,12 @@ misinterpreted as end of string. */
         case 'R':
             for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
 #ifdef DEBUG
-            printf("Remote AT Command sent: %c%c ", str[0], str[1]);
-            for (j=2; j<commandLength-3; j++) printf("%02X ",str[j]);
-            printf("\n");
+            if (debug)
+            {
+                printf("Remote AT Command sent: %c%c ", str[0], str[1]);
+                for (j=2; j<commandLength-3; j++) printf("%02X ",str[j]);
+                printf("\n");
+            }
 #endif
             replyLength = 3;
             ret = xbee_connTx(nodeInfo[row].atCon, NULL, str, commandLength-3);
@@ -362,9 +399,12 @@ misinterpreted as end of string. */
         case 'L':
             for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
 #ifdef DEBUG
-            printf("Local AT Command sent: ");
-            for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
-            printf("\n");
+            if (debug)
+            {
+                printf("Local AT Command sent: ");
+                for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
+                printf("\n");
+            }
 #endif
             replyLength = 3;
             ret = xbee_connTx(localATCon, NULL, str, commandLength-3);
@@ -402,9 +442,12 @@ to send to the AVR. */
                 strLength++;
             }
 #ifdef DEBUG
-            printf("Data String sent: ");
-            for (j=0; j<strLength; j++) printf("%c",str[j]);
-            printf("\n");
+            if (debug)
+            {
+                printf("Data String sent: ");
+                for (j=0; j<strLength; j++) printf("%c",str[j]);
+                printf("\n");
+            }
 #endif
             replyLength = 3;
             reply[2] = xbee_connTx(nodeInfo[row].dataCon, NULL, str, strLength);
@@ -466,7 +509,8 @@ If no response was received, a short message is sent back without data.*/
             reply[2] = 'Q';
             closeRemoteConnection(row);
 #ifdef DEBUG
-            printf("Restarting Connection for node %d\n",row);
+            if (debug)
+                printf("Restarting Connection for node %d\n",row);
 #endif
             openRemoteConnection(row);
             break;
@@ -540,7 +584,7 @@ If no response was received, a short message is sent back without data.*/
     reply[0] = replyLength;
     reply[1] = command;
 #ifdef DEBUG
-    if ((command != 'r') && (reply[2] != 0))
+    if ((command != 'r') && (reply[2] != 0) && debug)
     {
         printf("Reply sent to GUI %02X %c ", reply[0], reply[1]);
         for (int i=2; i<replyLength; i++) printf("%02X ", reply[i]);
@@ -577,12 +621,21 @@ the one actually allocated to the XBee. Abort if the attempted setup fails. */
         {
             syslog(LOG_INFO, "Unable to open XBee port: %d (%s)", ret,
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Unable to open XBee port: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
             return ret;
         }
     }
     else
     {
         syslog(LOG_INFO, "Serial Port %s not available.", inPort);
+#ifdef DEBUG
+        if (debug)
+            printf("Serial Port %s not available.");
+#endif
         return -1;
     }
     
@@ -592,17 +645,30 @@ the one actually allocated to the XBee. Abort if the attempted setup fails. */
     {
         syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Local AT connection failed: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
         return ret;
     }
-/* Attempt to send an AP command to cahnge the coordinator to mode 1 (in case
+/* Attempt to send an AP command to change the coordinator to mode 1 (in case
 it was set to mode 2).
 For some reason the XBee needs a command like this before sending out the ND,
-otherwise it doesn't pick up the responses. */
-    ret = xbee_conTx(localATCon, &txRet, "AP\x01");
+otherwise it doesn't pick up the responses.
+Try several times if a timeout occurs. */
+    unsigned char timeCounter = TIMEOUT;
+    while ((ret == XBEE_ENONE) && timeCounter--)
+        ret = xbee_conTx(localATCon, &txRet, "AP\x01");
     if (ret != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Unable to change mode of XBee: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Unable to change mode of XBee: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
     }
 /* Close off the local AT connection to destroy unwanted responses that
 could get mixed up with the ND responses. */
@@ -779,7 +845,8 @@ polled for all responding nodes */
                     {
                         nodeIDCallback(xbee, probeATCon, &pkt, NULL);
 #ifdef DEBUG
-                        printf("Node found %d return %d\n",i,ret);
+                        if (debug)
+                            printf("Node found %d return %d\n",i,ret);
 #endif
                     }
                     usleep(500000);
@@ -787,11 +854,14 @@ polled for all responding nodes */
             }
             xbee_pktFree(pkt);
 #ifdef DEBUG
-            printf("ND Ready\n");
-            int i;
-            for (i=0; i<numberNodes; i++)
-                printf("\nNode ID %s Address %d Valid %d\n",
-                       nodeInfo[i].nodeIdent,nodeInfo[i].adr,nodeInfo[i].valid);
+            if (debug)
+            {
+                printf("ND Ready\n");
+                int i;
+                for (i=0; i<numberNodes; i++)
+                    printf("\nNode ID %s Address %d Valid %d\n",
+                           nodeInfo[i].nodeIdent,nodeInfo[i].adr,nodeInfo[i].valid);
+            }
 #endif
         }
 /* Close off local AT connection */
@@ -1044,12 +1114,15 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    printf("Identify Packet: length %d, data ", (*pkt)->dataLen);
-    for (int i=0; i<10; i++) printf("%02X ", (*pkt)->data[i]);
-    for (int i=10; i<(*pkt)->dataLen-9; i++) printf("%c", (*pkt)->data[i]);
-    for (int i=(*pkt)->dataLen-9; i<(*pkt)->dataLen; i++)
-        printf(" %02X", (*pkt)->data[i]);
-    printf("\n");
+    if (debug)
+    {
+        printf("Identify Packet: length %d, data ", (*pkt)->dataLen);
+        for (int i=0; i<10; i++) printf("%02X ", (*pkt)->data[i]);
+        for (int i=10; i<(*pkt)->dataLen-9; i++) printf("%c", (*pkt)->data[i]);
+        for (int i=(*pkt)->dataLen-9; i<(*pkt)->dataLen; i++)
+            printf(" %02X", (*pkt)->data[i]);
+        printf("\n");
+    }
 #endif
     int i=0;
     uint32_t temp;
@@ -1170,11 +1243,14 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
     int writeLength = (*pkt)->dataLen;
     if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
 #ifdef DEBUG
-    if (row == numberNodes) printf("Node Unknown ");
-    else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf("Data Packet: Time %s length %d, data ",timeString,writeLength);
-    for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
-    printf("\n");
+    if (debug)
+    {
+        if (row == numberNodes) printf("Node Unknown ");
+        else printf("Node %s ", nodeInfo[row].nodeIdent);
+        printf("Data Packet: Time %s length %d, data ",timeString,writeLength);
+        for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
+        printf("\n");
+    }
 #endif
 /* Determine if the packet received is a data packet and check for errors */
     char command = (*pkt)->data[0];
@@ -1295,9 +1371,12 @@ void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
                       struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    printf("Remote AT Response: length %d, data ",(*pkt)->dataLen);
-    for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
-    printf("\n");
+    if (debug)
+    {
+        printf("Remote AT Response: length %d, data ",(*pkt)->dataLen);
+        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
+        printf("\n");
+    }
 #endif
     remoteATResponseRcvd = true;
     remoteATLength = (*pkt)->dataLen;
@@ -1319,9 +1398,12 @@ void localATCallback(struct xbee *xbee, struct xbee_con *con,
                      struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    printf("Local AT Response: length %d, data ",(*pkt)->dataLen);
-    for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
-    printf("\n");
+    if (debug)
+    {
+        printf("Local AT Response: length %d, data ",(*pkt)->dataLen);
+        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
+        printf("\n");
+    }
 #endif
     localATResponseRcvd = true;
     localATLength = (*pkt)->dataLen;
@@ -1380,10 +1462,13 @@ write the next word field directly as the set of digitial ports. */
 /* Write to the disk now to ensure it is available */
     dataFileCheck();
 #ifdef DEBUG
-    if (row == numberNodes) printf("Node Unknown ");
-    else printf("Node %s ", nodeInfo[row].nodeIdent);
-    printf("%s ", timeString);
-    printf("I/O ");
+    if (debug)
+    {
+        if (row == numberNodes) printf("Node Unknown ");
+        else printf("Node %s ", nodeInfo[row].nodeIdent);
+        printf("%s ", timeString);
+        printf("I/O ");
+    }
 /* Compute the analogue data fields from the response */
     int jindex = 4;
     int xBitMask = 0;
@@ -1444,7 +1529,7 @@ name. */
         if (time_string != NULL) strcat(str,time_string);
         strcat(str,".dat");
 #ifdef DEBUG
-        printf("New results file created: %s\n",str);
+        if (debug) printf("New results file created: %s\n",str);
 #endif
         fp = fopen(str, "a");
         if (fp == NULL)
