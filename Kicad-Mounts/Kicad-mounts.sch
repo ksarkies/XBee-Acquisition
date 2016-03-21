@@ -59,28 +59,6 @@ F 3 "" H 4050 3850 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L CONN_01X03 P4
-U 1 1 53F674B3
-P 5400 4750
-F 0 "P4" V 5350 4750 50  0000 C CNN
-F 1 "CONN_3" V 5450 4750 40  0000 C CNN
-F 2 "Photodiode:pin_header_2mm_1x3" H 5400 4750 60  0001 C CNN
-F 3 "" H 5400 4750 60  0000 C CNN
-	1    5400 4750
-	1    0    0    -1  
-$EndComp
-$Comp
-L CONN_01X03 P5
-U 1 1 53F6753C
-P 5400 5250
-F 0 "P5" V 5350 5250 50  0000 C CNN
-F 1 "CONN_3" V 5450 5250 40  0000 C CNN
-F 2 "Photodiode:pin_header_2mm_1x3" H 5400 5250 60  0001 C CNN
-F 3 "" H 5400 5250 60  0000 C CNN
-	1    5400 5250
-	1    0    0    -1  
-$EndComp
-$Comp
 L CONN_02X06 P3
 U 1 1 53F67592
 P 3700 5050
@@ -221,14 +199,6 @@ F 3 "" H 3950 4800 60  0000 C CNN
 	1    3950 4800
 	0    1    1    0   
 $EndComp
-Text Label 5200 4650 2    60   ~ 0
-Rx
-Text Label 5200 4750 2    60   ~ 0
-Reset
-Text Label 5200 4850 2    60   ~ 0
-On/Sleep
-Text Label 5200 5350 2    60   ~ 0
-Bootloader
 Text Label 3000 3800 2    60   ~ 0
 XBee-Reset
 Text Label 3000 4200 2    60   ~ 0
@@ -286,18 +256,7 @@ F 3 "" H 3450 5300 60  0000 C CNN
 	-1   0    0    1   
 $EndComp
 Text Label 3950 5200 0    60   ~ 0
-RTS
-$Comp
-L GND #PWR06
-U 1 1 53FEF8A0
-P 5200 5150
-F 0 "#PWR06" H 5200 5150 30  0001 C CNN
-F 1 "GND" H 5200 5080 30  0001 C CNN
-F 2 "" H 5200 5150 60  0000 C CNN
-F 3 "" H 5200 5150 60  0000 C CNN
-	1    5200 5150
-	0    1    1    0   
-$EndComp
+Association
 $Comp
 L TPS77033 U2
 U 1 1 549A2F0F
@@ -420,6 +379,6 @@ V3
 Connection ~ 5000 6200
 Connection ~ 4600 6200
 Connection ~ 2800 6050
-Text Label 5200 5250 2    60   ~ 0
-CTS
+Text Label 5100 3900 0    60   ~ 0
+Association
 $EndSCHEMATC

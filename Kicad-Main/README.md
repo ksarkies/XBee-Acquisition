@@ -16,6 +16,20 @@ circuit power supply (which is sourced via a 3.3V voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
+The board has a 10-pin debug connector for testing purposes:
+
+1. Battery power or board power (if a battery is present take extreme care not
+to short or connect any other power source).
+2. Count signal from board comparator.
+3. Reset for microcontroller.
+4. MOSI microcontroller programming pin.
+5. SCK microcontroller programming pin.
+6. MISO microcontroller programming pin.
+7. Tx from microcontroller to XBee Rx (monitor this only unless XBee is removed).
+8. Rx to microcontroller from XBee Tx (monitor this only unless XBee is removed).
+9. On/Sleep (high if XBee is awake, low if asleep).
+10. Ground.
+
 The TPS77033 symbol from KB1LQC.lib at Rochester Institute of technology
 (http://edge.rit.edu/edge/P13271/public/KiCad/Libraries).
 
