@@ -30,6 +30,23 @@ to short or connect any other power source).
 9. On/Sleep (high if XBee is awake, low if asleep).
 10. Ground.
 
+The microcontroller has the following I/O pin allocations:
+
+* PA0 (in) XBee Asleep (inv)
+* PA1 (out) Tx to XBee
+* PA2 (in) Rx to XBee
+* PA3 (out) Sleep Request
+* PA4 (in) SCK
+* PA5 (in) MISO
+* PA6 (out) MOSI
+* PA7 (out) Battery Monitor Control
+* PB0 (in) Bootloader Enable
+* PB1 (in) Board Digital Input
+* PB2 (out) XBee Reset (inv)
+
+The battery monitor voltage is passed directly to the XBee as the ATTiny841 has
+insufficient pins.
+
 The TPS77033 symbol from KB1LQC.lib at Rochester Institute of technology
 (http://edge.rit.edu/edge/P13271/public/KiCad/Libraries).
 
