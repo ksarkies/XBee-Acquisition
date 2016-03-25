@@ -20,7 +20,7 @@ K. Sarkies
 
 CHANGES
 -------
-* 9 March 2016. Change to installed libxbee3 rather than explicitly reference
+* 9 March 2016. Change to installed libxbee3 rather than explicit reference
 to libraries. Change to QT5. The .pro file is now independent of the location of
 all libraries.
 

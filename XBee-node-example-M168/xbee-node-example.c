@@ -114,7 +114,6 @@ uint8_t counter;
 
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
-static void resetTimer(void);
 static uint16_t timer0Read(void);
 void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
                         uint8_t radius, uint8_t length, uint8_t data[]);
@@ -280,7 +279,7 @@ void hardwareInit(void)
 /* PB3 is Sleep Request output. Hold low for permanent awake state. */
     sbi(DDRB,3);
     cbi(PORTB,3);
-/* PB4 is XBee Asleep input. */
+/* PB4 is XBee On/Sleep input. */
 /* PB5 is XBee reset output. Pulse low to reset. */
     sbi(DDRB,5);
     sbi(PORTB,5);
@@ -293,22 +292,6 @@ void hardwareInit(void)
     sbi(DDRC,4);
     cbi(PORTC,4);
 /* PD5 is the Board Digital Input. */
-}
-
-/****************************************************************************/
-/** @brief Initialise the timer
-
-*/
-void timerInit(void)
-{
-}
-
-/****************************************************************************/
-/** @brief Reset the timer
-
-*/
-void resetTimer(void)
-{
 }
 
 /****************************************************************************/

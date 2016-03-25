@@ -5,8 +5,8 @@ This is an example firmware for the remote unit. Written in C under avr-gcc.
 The node hardware is based on the ATMega168. The hardware is defined in
 [gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/gEDA-XBee).
 
-A dummy message is sent to the coordinator at timed intervals and PORTC4 is
-toggled in the timer ISR. This shoudl flash an LED on the board.
+A dummy message is sent to the coordinator at timed intervals and PORT PC4 is
+toggled in the timer ISR. The program will flash an LED on the board.
 
 The MCU variable is passed to the source in various places to allow compiling
 for that MCU:

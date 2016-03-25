@@ -14,33 +14,44 @@ recharge in practice.
 In addition to the board design and firmware, a number of tools are provided
 to manage the network and collect data using Linux based hardware. These include
 an acquisition coordination process that is intended to run on a small headless
-Linux box such as a Raspberry Pi or BeagleBone Board. This manages the network
-and connects to a user interface either on the same machine or separately. It
-uses a TCP/IP sockets interface.
+Linux box such as a Raspberry Pi or BeagleBone. This manages the network and
+connects to a user interface program running either on the same machine or
+at another location. It uses a TCP/IP sockets interface that will allow remote
+connections over the Internet.
+
+A number of test and debug firmwares are available as well as schematics for
+prototyping boards used as test nodes.
 
 Subdirectories:
 
-* Kicad-Main:              Schematic and PCB for watermeter unit
+* **Documentation**:           A set of documents relevant to design and implementation.
 
-* Kicad-Mounts:            Schematic and PCB for XBee and LED mounts
+* **gEDA-XBee-Test**:          Schematics for prototype boards for testing purposes.
 
-* XBee-acqcontrol:         Control software for the coordinator, C++
+* **Kicad-Main**:              Schematic and PCB for watermeter unit main board.
 
-* XBee-bootloader-M168:    Bootloader for a remote unit with ATMega168
+* **Kicad-Mounts**:            Schematic and PCB for XBee and LED mount boards.
 
-* XBee-experimental-T4313: Bootloader for a remote unit with ATTiny4313
+* **watermeter-test**:         Firmware for the remote unit ATTiny481, in C, for use
+ with flow bench testing over a serial interface. XBee is not used.
 
-* XBee-firmware:           Firmware for remote unit ATTiny481, in C
+* **XBee-acqcontrol**:         Control software for the coordinator; in C++.
 
-* XBee-firmware-NARTOS:    Firmware for remote unit ATTiny481 using NARTOS scheduler
+* **XBee-bootloader-M168**:    Bootloader for a remote unit with ATMega168.
 
-* XBee-GUI:                Linux PC based GUI for network control, C++ and QT
+* **XBee-experimental-T4313**: Bootloader for a remote unit with ATTiny4313.
 
-* XBee-node-example-M168:  Example to send dummy message via XBee
+* **XBee-firmware**:           Firmware for the remote unit ATTiny481, in C.
 
-* XBee-utility:            Some tools for direct interaction with XBee
+* **XBee-firmware-NARTOS**:    Firmware for remote unit ATTiny481 using the NARTOS
+scheduler.
 
-* watermeter-test:         Firmware for use with flow bench testing
+* **XBee-GUI**:                Linux PC based GUI for network control; C++ and QT.
+
+* **XBee-node-example-M168**:  Example to send dummy message via XBee for testing.
+
+* **XBee-utility**:            Some tools for direct interaction with XBee over a
+serial interface.
 
 K. Sarkies
 29 January 2016
