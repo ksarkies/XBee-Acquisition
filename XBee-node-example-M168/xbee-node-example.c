@@ -16,6 +16,8 @@ The board targetted is the test board developed for the project using the
 ATMega48 series microcontrollers. See the hardwareInit() function for
 documented I/O ports.
 
+Count interrupt via PCINT2 is handled.
+
 @note
 Software: AVR-GCC 4.8.2
 @note
@@ -47,17 +49,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-#if (MCU_TYPE==168)
-#include "../libs/defines-M168.h"
-#elif (MCU_TYPE==48)
-#include "../libs/defines-M168.h"
-#elif (MCU_TYPE==4313)
-#include "../libs/defines-T4313.h"
-#elif (MCU_TYPE==841)
-#include "../libs/defines-T841.h"
-#else
-#error "Processor not defined"
-#endif
+#include "../libs/defines.h"
 #include <util/delay.h>
 #include "../libs/serial.h"
 #include "../libs/timer.h"
@@ -89,6 +81,7 @@ volatile union timeUnion
   volatile uint8_t  timeByte[4];
 } time;
 
+uint8_t timeCount;
 uint8_t counter;
 
 /*****************************************************************************/
@@ -123,6 +116,7 @@ void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
 
 int main(void)
 {
+    timeCount = 0;
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
@@ -271,27 +265,64 @@ Send preamble, then data block, followed by computed checksum */
 */
 void hardwareInit(void)
 {
+/* General output for a LED to be activated by the mirocontroller as desired. */
 #ifdef TEST_PORT_DIR
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);
+    sbi(TEST_PORT,TEST_PIN);            /* Set pullup */
 #endif
-/* PB2 is bootloader control input. */
-/* PB3 is Sleep Request output. Hold low for permanent awake state. */
-    sbi(DDRB,3);
-    cbi(PORTB,3);
-/* PB4 is XBee On/Sleep input. */
+/* PB3 is XBee sleep request output. */
+#ifdef SLEEP_RQ_PIN
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on */
+#endif
+/* PB4 is XBee on/sleep input. High is XBee on, low is asleep. */
+#ifdef ON_SLEEP_PIN
+    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+#endif
 /* PB5 is XBee reset output. Pulse low to reset. */
-    sbi(DDRB,5);
-    sbi(PORTB,5);
+#ifdef XBEE_RESET_PIN
+    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Sleep Request */
+    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Set to keep XBee on */
+#endif
 /* PC0 is the board analogue input. */
 /* PC1 is the battery monitor analogue input. */
-/* Set PC4 direction to output for microntroller activity LED. */
-    sbi(DDRC,4);
-    cbi(PORTC,4);
 /* PC5 is the battery monitor control output. Hold low for lower power drain. */
-    sbi(DDRC,4);
-    cbi(PORTC,4);
-/* PD5 is the Board Digital Input. */
+    cbi(VBAT_PORT_DIR,VBAT_PIN);
+    cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
+/* PD5 is the counter input. */
+#ifdef COUNT_PIN
+    cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
+    sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
+#endif
+
+/* Counter: Use PCINT for the asynchronous pin change interrupt on the
+count signal line. */
+    sbi(PC_MSK,PC_INT);
+    sbi(IMSK,PC_IE);
+}
+
+/****************************************************************************/
+/** @brief Interrupt on Count Signal.
+
+Determine if a change in the count signal level has occurred. An upward
+change will require a count to be registered. A downward change is ignored.
+
+Sample twice to ensure that this isn't a false alarm.
+
+The count is suppressed if the muteCounter is non zero. This is intended to
+follow a transmission. The specific phenomenon dealt with is the presence
+of a short positive pulse at the time of a transmission, when the counter
+input is at low level.
+*/
+ISR(PCINT2_vect)
+{
+    uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+    if (countSignal > 0)
+    {
+        _delay_us(100);
+        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+        if (countSignal > 0) counter++;
+    }
 }
 
 /****************************************************************************/
@@ -303,22 +334,33 @@ where there should be an LED.
 
 ISR(TIMER0_OVF_vect)
 {
-    uint8_t data[7] = "DHello";
-    time.timeValue++;
-    counter++;
-    if (counter == 0)
+    uint8_t buffer[12];
+    uint8_t i;
+    char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
+    uint32_t value = counter;
+    for (i = 0; i < 10; i++)
     {
-        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,6,data);
-        sbi(PORTC,4);
+        if (i == 8) value = checksum;
+        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
     }
-    if (counter == 26)
+    buffer[11] = 0;             /* String terminator */
+    buffer[0] = 'D';            /* Data Command */
+    time.timeValue++;
+    timeCount++;
+    if (timeCount == 0)
     {
-        cbi(PORTC,4);
+        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
+        sbi(TEST_PORT,TEST_PIN);
+        counter = 0;            /* Reset counter value */
+    }
+    if (timeCount == 26)
+    {
+        cbi(TEST_PORT,TEST_PIN);
     }
 }
 /****************************************************************************/
-/**
-    @brief   Initialise Timer 0
+/** @brief   Initialise Timer 0
 
 This function will initialise the timer with the mode of operation and the
 clock rate to be used. An error will be returned if the timer is busy.
@@ -371,8 +413,7 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
 }
 
 /****************************************************************************/
-/**
-    @brief   Read Timer 0
+/** @brief   Read Timer 0
 
 This function will return the current timer value as a 16 bit unsigned integer
 even if the timer is only 8 bit. This allows for a possibility of a 16 bit

@@ -139,6 +139,7 @@ void sendMessage(const uint8_t* data);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
 void sleepXBee(void);
+void wakeXBee(void);
 
 /* XBee related prototypes */
 

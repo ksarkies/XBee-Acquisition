@@ -1,4 +1,6 @@
-/* AVR/XBee Bootloader Defines
+/* AVR/XBee Defines for the ATTiny441-ATTiny841 series
+
+This uses the watermeter board described in Kicad-main.
 
 For AVR microcontrollers without bootloader section.
 
@@ -140,6 +142,12 @@ These are defined from avr-libc io.h based on processor choice. */
 #define SLEEP_RQ_PORT_DIR       DDRA
 #define SLEEP_RQ_PORT           PORTA
 #define SLEEP_RQ_PIN            3
+
+/* Output to force XBee reset */
+/* XBee Reset */
+#define XBEE_RESET_PORT_DIR     DDRB
+#define XBEE_RESET_PORT         PORTB
+#define XBEE_RESET_PIN          2
 
 /* On/Sleep Status */
 #define ON_SLEEP_PORT_DIR       DDRA

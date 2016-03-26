@@ -512,7 +512,6 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 count signal line. */
     sbi(PC_MSK,PC_INT);
     sbi(IMSK,PC_IE);
-
 }
 
 /****************************************************************************/
@@ -630,30 +629,57 @@ void sendDataCommand(const uint8_t command, const uint32_t datum)
 }
 
 /****************************************************************************/
-/** @brief Wake the XBee and send a string message
+/** @brief Send a string message
 
-If XBee is not awake, wake it and wait for a bit. Send a string message.
-The Sleep_Rq pin is active low.
+Wake the XBee and send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
 void sendMessage(const uint8_t* data)
 {
-    if ((inb(SLEEP_RQ_PORT) & SLEEP_RQ_PIN) > 0)
-    {
-        cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Wakeup XBee */
-        _delay_ms(PIN_WAKE_PERIOD);
-    }
-    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,strlen(data),data);
+    wakeXBee();
+    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
+                       strlen(data),data);
 }
 
 /****************************************************************************/
 /** @brief Sleep the XBee
 
+This sets the Sleep_RQ pin high. If the XBee is in pin hibernate mode, it will
+hold it asleep indefinitely until the Sleep_RQ pin is set low again. If the XBee
+is in cyclic/pin wake mode, this will have no effect.
+
+The XBee may take some time before sleeping, however no operations are dependent
+on this time.
 */
 inline void sleepXBee(void)
 {
     sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
+}
+
+/****************************************************************************/
+/** @brief Wake the XBee
+
+If the XBee is asleep, toggle the Sleep_RQ pin high then low. If the XBee is in
+pin hibernate mode, this will hold it awake indefinitely until the Sleep_RQ pin
+is set high again. This is the mode the XBee should be using.
+
+If the XBee is in cyclic/pin wake mode, this will wake it up for a period as set
+in the XBee preprogrammed wake time.
+
+The XBee should wake in a very short time.
+*/
+inline void wakeXBee(void)
+{
+/* If the XBee is asleep: */
+    if ((inb(ON_SLEEP_PORT) & ON_SLEEP_PIN) == 0)
+    {
+/* Set Sleep_RQ high in case the XBee is in cyclic/pin wake mode. */
+        sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
+        _delay_ms(PIN_WAKE_PERIOD);
+    }
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request or set XBee Wake */
+    _delay_ms(PIN_WAKE_PERIOD);
 }
 
 /****************************************************************************/

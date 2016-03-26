@@ -1,4 +1,6 @@
-/* AVR/XBee Defines
+/* AVR/XBee Defines for the ATMega48 series
+
+This uses the prototype board described in gEDA-XBee-Test.
 
 For AVR microcontrollers with a bootloader section.
 The bootloader start address BASEADDR must be given in the makefile.
@@ -101,13 +103,13 @@ to an undesired level during programming. */
 #define DI_DR0                  DIDR0
 #define DI_DR1                  DIDR1
 
-/* definitions for interrupt control */
+/* definitions for interrupt control. PCMSK2 bit 5 sets PCINT21 on PD5. */
 #define IMSK                    EIMSK
 #define INT_CR                  EICRA
 #define WDT_CSR                 WDTCSR
-#define PC_MSK                  PCMSK1
-#define PC_INT                  1
-#define PC_IE                   PCIE1
+#define PC_MSK                  PCMSK2
+#define PC_INT                  5
+#define PC_IE                   PCIE2
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR
@@ -129,9 +131,9 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PAGE_FLAGS              (PAGES >> 3)
 
 /* Count Signal pin */
-#define COUNT_PORT_DIR          DDRB
-#define COUNT_PORT              PINB
-#define COUNT_PIN               1
+#define COUNT_PORT_DIR          DDRD
+#define COUNT_PORT              PIND
+#define COUNT_PIN               5
 
 /* define pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
@@ -139,18 +141,40 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PROG_PIN                2
 
 /* Battery Measurement Control */
-#define VBAT_PORT_DIR           DDRD
-#define VBAT_PORT               PORTD
-#define VBAT_PIN                5
+#define VBATCON_PORT_DIR        DDRC
+#define VBATCON_PORT            PORTC
+#define VBATCON_PIN             5
 
-/* Define pin for forcing the XBee to stay awake */
+/* Battery Measurement Input ADC1 */
+#define VBAT_PORT_DIR           DDRC
+#define VBAT_PORT               PORTC
+#define VBAT_PIN                1
+
+/* Analogue Measurement Input ADC0 */
+#define V_PORT_DIR              DDRC
+#define V_PORT                  PORTC
+#define V_PIN                   0
+
+/* Input to indicate XBee is awake (on) */
+/* On/Sleep */
+#define ON_SLEEP_PORT_DIR       DDRB
+#define ON_SLEEP_PORT           PORTB
+#define ON_SLEEP_PIN            4
+
+/* Pin for forcing the XBee to stay awake */
 /* Sleep request Control */
 #define SLEEP_RQ_PORT_DIR       DDRB
 #define SLEEP_RQ_PORT           PORTB
 #define SLEEP_RQ_PIN            3
 
-/* Test pin */
-#define TEST_PORT_DIR           DDRD
-#define TEST_PORT               PORTD
-#define TEST_PIN                0
+/* Output to force XBee reset */
+/* XBee Reset */
+#define XBEE_RESET_PORT_DIR     DDRB
+#define XBEE_RESET_PORT         PORTB
+#define XBEE_RESET_PIN          5
+
+/* Test pin PC4 */
+#define TEST_PORT_DIR           DDRC
+#define TEST_PORT               PORTC
+#define TEST_PIN                4
 

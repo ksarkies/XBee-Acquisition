@@ -23,7 +23,7 @@ repeat the transmission up to three times before giving up. Only when no errors
 have been detected will it reset the watermeter count. The base station is
 responsible for its own involvement in this protocol.
 
-Options are provided for the base station to send commands to change
+Provision is made for the base station to send commands to change
 parameters in the remote unit. This must be sent BEFORE the acknowledgement
 otherwise the remote unit will return to sleep once it has received a good
 response.

@@ -1,22 +1,20 @@
 /**
-@mainpage AVR XBee Node Firmware
+@mainpage AVR Watermeter Node Firmware
 @version 0.0
 @author Ken Sarkies (www.jiggerjuice.net)
 @date 18 July 2014
 
-@brief Code for an AVR with an XBee in a Remote Low Power Node
+@brief Code for the watermeter board without XBee for count tests
 
-This code forms the interface between an XBee networking device using ZigBee
-stack, and a counter signal providing count and battery voltage
-measurements for communication to a base controller.
+This code forms the interface between an extermal serial terminal (PC), and a
+counter signal providing count and battery voltage measurements.
 
 The code is written to make use of sleep modes and other techniques to
 minimize power consumption. The AVR is woken by a count signal, updates the
 running total, and sleeps.
 
 The watchdog timer is used to wake the AVR at intervals to transmit the count
-and battery voltage to the XBee. The XBee is then woken again after a short
-interval to pass on any base station messages to the AVR.
+and battery voltage to the serial interface.
 
 @note
 Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.

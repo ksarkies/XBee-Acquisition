@@ -1,11 +1,11 @@
-/*        XBee AVR Node Firmware
+/*        AVR Watermeter Node Firmware
        Ken Sarkies ksarkies@internode.on.net
             21 July 2014
 
 version     0.0
 Software    AVR-GCC 4.8.2
 Target:     Any AVR with sufficient output ports and a timer
-Tested:     ATtint4313 at 1MHz internal clock.
+Tested:     ATtiny4313 at 1MHz internal clock.
 
 */
 /****************************************************************************
