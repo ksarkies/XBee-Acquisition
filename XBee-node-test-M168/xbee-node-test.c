@@ -1,9 +1,9 @@
 /**
-@mainpage XBee AVR Node Example
+@mainpage XBee AVR Node Test
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 25 September 2014
-@brief Code for an AVR with an XBee in a Remote Low Power Node
+@brief Code for an ATMega48 AVR with an XBee in a Remote Low Power Node 
 
 This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
@@ -53,7 +53,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <util/delay.h>
 #include "../libs/serial.h"
 #include "../libs/timer.h"
-#include "xbee-node-example.h"
+#include "xbee-node-test.h"
 
 /** Convenience macros (we don't use them all) */
 #define TRUE 1

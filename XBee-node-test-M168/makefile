@@ -33,7 +33,7 @@ OPT = s
 
 
 # Target file name (without extension).
-TARGET = xbee-node-example
+TARGET = xbee-node-test
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c ../libs/serial.c
