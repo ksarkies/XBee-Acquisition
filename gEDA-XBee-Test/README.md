@@ -11,15 +11,17 @@ for the electronics.
 
 The microcontroller has the following I/O pin allocations:
 
-* PB2 (in) Bootloader Enable
-* PB3 (out) Sleep Request
-* PB4 (in) XBee Asleep (inv)
-* PB5 (out) XBee Reset (inv)
-* PC0 (in) Board Analogue Input
-* PC1 (in) Battery Monitor Analogue Input
-* PC4 (out) Microcontroller Activity LED
-* PC5 (out) Battery Monitor Control
-* PD5 (in) Board Digital Input
+* PB2 (in) Bootloader Enable taken from XBee DIO11 pin..
+* PB3 (out) XBee Sleep Request.
+* PB4 (in) XBee Asleep (inv).
+* PB5 (out) XBee Reset (inv) taken to the XBee reset pin.
+* PC0 (in) Board Analogue Input also taken to XBee AD2 pin.
+* PC1 (in) Battery Monitor Analogue Input also taken to XBee AD1 pin.
+* PC4 (out) Microcontroller Activity LED.
+* PC5 (out) Battery Monitor Control.
+* PD2 (in) taken from XBee CTS pin.
+* PD5 (in) Board Digital Input.
+* Microcontroller Reset taken from XBee DIO12 pin.
 
 Three LEDs are provided:
 * Green     PC4 Microcontroller Activity from ATMega48.
