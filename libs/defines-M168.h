@@ -107,6 +107,7 @@ to an undesired level during programming. */
 #define IMSK                    EIMSK
 #define INT_CR                  EICRA
 #define WDT_CSR                 WDTCSR
+#define PC_IER                  PCICR
 #define PC_MSK                  PCMSK2
 #define PC_INT                  5
 #define PC_IE                   PCIE2

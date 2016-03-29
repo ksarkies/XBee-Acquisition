@@ -81,7 +81,10 @@ volatile union timeUnion
   volatile uint8_t  timeByte[4];
 } time;
 
+/* timeCount measures off timer interrupt ticks to provide an extended time
+between transmissions */
 uint8_t timeCount;
+/* Counter keep track of external transitions on the digital input */
 uint8_t counter;
 
 /*****************************************************************************/
@@ -297,8 +300,8 @@ void hardwareInit(void)
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
 count signal line. */
-    sbi(PC_MSK,PC_INT);
-    sbi(IMSK,PC_IE);
+    sbi(PC_MSK,PC_INT);                 /* Mask */
+    sbi(PC_IER,PC_IE);                  /* Enable */
 }
 
 /****************************************************************************/
@@ -334,30 +337,28 @@ where there should be an LED.
 
 ISR(TIMER0_OVF_vect)
 {
-    uint8_t buffer[12];
-    uint8_t i;
-    char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
-    uint32_t value = counter;
-    for (i = 0; i < 10; i++)
-    {
-        if (i == 8) value = checksum;
-        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-        value >>= 4;
-    }
-    buffer[11] = 0;             /* String terminator */
-    buffer[0] = 'D';            /* Data Command */
     time.timeValue++;
     timeCount++;
     if (timeCount == 0)
     {
+        uint8_t buffer[12];
+        uint8_t i;
+        char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
+        uint32_t value = counter;
+        for (i = 0; i < 10; i++)
+        {
+            if (i == 8) value = checksum;
+            buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+            value >>= 4;
+        }
+        buffer[11] = 0;             /* String terminator */
+        buffer[0] = 'D';            /* Data Command */
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
         sbi(TEST_PORT,TEST_PIN);
         counter = 0;            /* Reset counter value */
     }
     if (timeCount == 26)
-    {
         cbi(TEST_PORT,TEST_PIN);
-    }
 }
 /****************************************************************************/
 /** @brief   Initialise Timer 0
