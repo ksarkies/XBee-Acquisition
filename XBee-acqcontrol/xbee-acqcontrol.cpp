@@ -631,10 +631,10 @@ the one actually allocated to the XBee. Abort if the attempted setup fails. */
     }
     else
     {
-        syslog(LOG_INFO, "Serial Port %s not available.", inPort);
+        syslog(LOG_INFO, "Serial Port %s not available.\n", inPort);
 #ifdef DEBUG
         if (debug)
-            printf("Serial Port %s not available.");
+            printf("Serial Port %s not available.\n", inPort);
 #endif
         return -1;
     }
