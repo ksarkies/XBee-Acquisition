@@ -1468,21 +1468,21 @@ write the next word field directly as the set of digitial ports. */
         else printf("Node %s ", nodeInfo[row].nodeIdent);
         printf("%s ", timeString);
         printf("I/O ");
-    }
 /* Compute the analogue data fields from the response */
-    int jindex = 4;
-    int xBitMask = 0;
-    for (int i=0; i<4; i++)
-    {
-        if (((*pkt)->data[3] & (1<<(xBitMask++))) > 0)
+        int jindex = 4;
+        int xBitMask = 0;
+        for (int i=0; i<4; i++)
         {
-            printf("A%01d ",i);
-            printf("%04d ",
-                    ((*pkt)->data[jindex] << 8) + (*pkt)->data[jindex+1]);
-            jindex += 2;
+            if (((*pkt)->data[3] & (1<<(xBitMask++))) > 0)
+            {
+                printf("A%01d ",i);
+                printf("%04d ",
+                        ((*pkt)->data[jindex] << 8) + (*pkt)->data[jindex+1]);
+                jindex += 2;
+            }
         }
+        printf("\n");
     }
-    printf("\n");
 #endif
 /* If we are hearing from this then it is a valid node */
     if (row < numberNodes) nodeInfo[row].valid = TRUE;
