@@ -111,6 +111,7 @@ to an undesired level during programming. */
 #define PC_MSK                  PCMSK2
 #define PC_INT                  5
 #define PC_IE                   PCIE2
+#define COUNT_ISR               PCINT2_vect
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR

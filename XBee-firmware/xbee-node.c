@@ -512,6 +512,7 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 count signal line. */
     sbi(PC_MSK,PC_INT);
     sbi(IMSK,PC_IE);
+
 }
 
 /****************************************************************************/
@@ -695,7 +696,7 @@ follow a transmission. The specific phenomenon dealt with is the presence
 of a short positive pulse at the time of a transmission, when the counter
 input is at low level.
 */
-ISR(PCINT1_vect)
+ISR(COUNT_ISR)
 {
     uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
     if (countSignal > 0)

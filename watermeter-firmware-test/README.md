@@ -14,9 +14,9 @@ the ATTiny841. Change the DIRAVR environment variable in Makefile to suit the
 location chosen.
 
 The defines used are placed in the libs directory under each processor. The
-makefile target is the ATMega168 by default. To use another target eg ATTiny841
+makefile target is the ATTiny841 by default. To use another target eg ATMega48
 
-$ make MCU=attiny841
+$ make MCU=atmega48
 
 The environment variable MCU_TYPE is passed to the source.
 

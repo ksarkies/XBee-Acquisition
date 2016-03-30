@@ -98,9 +98,11 @@ include) */
 #define IMSK                    GIMSK
 #define INT_CR                  MCUCR
 #define WDT_CSR                 WDTCSR
+#define PC_IER                  GIMSK
 #define PC_MSK                  PCMSK1
 #define PC_INT                  1
 #define PC_IE                   PCIE1
+#define COUNT_ISR               PCINT1_vect
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR0A

@@ -23,7 +23,7 @@ Software: AVR-GCC 4.8.2
 @note
 Target:   AVR with sufficient output ports and a USART (USI not supported)
 @note
-Tested:   ATTiny4313 at 1MHz internal clock.
+Tested:   ATTiny841 at 1MHz internal clock.
 
 */
 /****************************************************************************

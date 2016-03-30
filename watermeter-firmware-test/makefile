@@ -23,11 +23,13 @@
 #
 
 # MCU name
-MCU ?= atmega168
+MCU ?= attiny841
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
 ifeq ($(MCU),atmega168)
 MCU_TYPE = 168
+else ifeq ($(MCU),atmega48)
+MCU_TYPE = 48
 else ifeq ($(MCU),attiny4313)
 MCU_TYPE = 4313
 else ifeq ($(MCU),attiny841)

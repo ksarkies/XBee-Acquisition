@@ -85,7 +85,7 @@ volatile union timeUnion
 between transmissions */
 uint8_t timeCount;
 /* Counter keep track of external transitions on the digital input */
-uint8_t counter;
+uint32_t counter;
 
 /*****************************************************************************/
 /* Global Variables */
@@ -317,7 +317,7 @@ follow a transmission. The specific phenomenon dealt with is the presence
 of a short positive pulse at the time of a transmission, when the counter
 input is at low level.
 */
-ISR(PCINT2_vect)
+ISR(COUNT_ISR)
 {
     uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
     if (countSignal > 0)
@@ -354,11 +354,15 @@ ISR(TIMER0_OVF_vect)
         buffer[11] = 0;             /* String terminator */
         buffer[0] = 'D';            /* Data Command */
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-        sbi(TEST_PORT,TEST_PIN);
         counter = 0;            /* Reset counter value */
+#ifdef TEST_PORT_DIR
+        sbi(TEST_PORT,TEST_PIN);
     }
     if (timeCount == 26)
         cbi(TEST_PORT,TEST_PIN);
+#else
+    }
+#endif
 }
 /****************************************************************************/
 /** @brief   Initialise Timer 0
@@ -402,7 +406,8 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
 #endif
   outb(TIMER_CONT_REG0,((inb(TIMER_CONT_REG0) & 0xF8)|(timerClock & 0x07)));
 #if defined (TCNT0L)
-  outw(TCNT0,0);                    /* 16 bit - clear both registers */
+  outb(TCNT0L,0);                    /* 16 bit - clear both registers */
+  outb(TCNT0H,0);
 #else
   outb(TCNT0,0);                    /* Clear the register */
 #endif
@@ -429,7 +434,7 @@ high byte first. The avr-gcc compiler does this automatically.
 uint16_t timer0Read()
 {
 #if defined (TCNT0L)
-  return inw(TCNT0);
+  return (int16_t)inb(TCNT0L)+((int16_t)inb(TCNT0H)<<8);
 #else
   return (int16_t) inb(TCNT0);
 #endif
