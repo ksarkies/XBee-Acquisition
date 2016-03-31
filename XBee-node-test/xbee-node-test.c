@@ -123,9 +123,9 @@ int main(void)
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
+    uartInit();
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* reset timer */
-    uartInit();
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -284,7 +284,7 @@ void hardwareInit(void)
 #endif
 /* PB5 is XBee reset output. Pulse low to reset. */
 #ifdef XBEE_RESET_PIN
-    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Sleep Request */
+    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Reset */
     sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Set to keep XBee on */
 #endif
 /* PC0 is the board analogue input. */
@@ -406,7 +406,7 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
 #endif
   outb(TIMER_CONT_REG0,((inb(TIMER_CONT_REG0) & 0xF8)|(timerClock & 0x07)));
 #if defined (TCNT0L)
-  outb(TCNT0L,0);                    /* 16 bit - clear both registers */
+  outb(TCNT0L,0);                   /* 16 bit - clear both registers */
   outb(TCNT0H,0);
 #else
   outb(TCNT0,0);                    /* Clear the register */
