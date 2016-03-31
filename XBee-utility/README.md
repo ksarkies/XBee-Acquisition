@@ -5,7 +5,7 @@ This is a GUI application written in C++ and using QT5. This allows user
 interaction at a low level with an XBee. Assembles and sends API commands to an
 XBee on a serial port (or USB-serial port via an adapter).
 
-Download [libxbee](https://github.com/attie/libxbee3/archive/master.zip) from the zip file. Unpack to a suitable directory and
+Download [libxbee](https://github.com/attie/libxbee3/archive/master.zip) zip file. Unpack to a suitable directory and
 compile according to the included instructions. The latest version at this time
 is 3.0.11. Install the libraries.
 
