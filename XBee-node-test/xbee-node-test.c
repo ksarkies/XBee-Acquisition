@@ -53,6 +53,7 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <util/delay.h>
 #include "../libs/serial.h"
 #include "../libs/timer.h"
+#include "../libs/xbee.h"
 #include "xbee-node-test.h"
 
 /** Convenience macros (we don't use them all) */
@@ -111,8 +112,6 @@ uint32_t counter;
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
 static uint16_t timer0Read(void);
-void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                        uint8_t radius, uint8_t length, uint8_t data[]);
 
 /*****************************************************************************/
 /** @brief Main Program */
@@ -212,54 +211,6 @@ event. */
             }
         }
     }
-}
-
-/****************************************************************************/
-/** @brief Build and transmit a Tx Request frame
-
-A data message for the XBee API is formed and transmitted.
-
-@param[in]:   uint8_t sourceAddress64[]. Address of parent or 0 for coordinator.
-@param[in]:   uint8_t sourceAddress16[].
-@param[in]:   uint8_t radius. Broadcast radius or 0 for maximum network value.
-@param[in]:   uint8_t dataLength. Length of data array.
-@param[in]:   uint8_t data[]. Define array size to be greater than length.
-*/
-void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
-                         uint8_t radius, uint8_t dataLength, uint8_t data[])
-{
-    txFrameType txMessage;
-    txMessage.frameType = TX_REQUEST;
-    txMessage.message.txRequest.frameID = 0x02;
-    txMessage.length = dataLength+14;
-    for (uint8_t i=0; i < 8; i++)
-    {
-        txMessage.message.txRequest.sourceAddress64[i] = sourceAddress64[i];
-    }
-    for (uint8_t i=0; i < 2; i++)
-    {
-        txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
-    }
-    txMessage.message.txRequest.radius = radius;
-    txMessage.message.txRequest.options = 0;
-    for (uint8_t i=0; i < dataLength; i++)
-    {
-        txMessage.message.txRequest.data[i] = data[i];
-    }
-/* Build and transmit a basic frame.
-Send preamble, then data block, followed by computed checksum */
-    sendch(0x7E);
-    sendch(high(txMessage.length));
-    sendch(low(txMessage.length));
-    sendch(txMessage.frameType);
-    txMessage.checksum = txMessage.frameType;
-    for (uint8_t i=0; i < txMessage.length-1; i++)
-    {
-        uint8_t txData = txMessage.message.array[i];
-        sendch(txData);
-        txMessage.checksum += txData;
-    }
-    sendch(0xFF-txMessage.checksum);
 }
 
 /****************************************************************************/
@@ -364,6 +315,7 @@ ISR(TIMER0_OVF_vect)
     }
 #endif
 }
+
 /****************************************************************************/
 /** @brief   Initialise Timer 0
 
@@ -415,28 +367,6 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
   sbi(TIMER_FLAG_REG0, TOV0);       /* Force clear the interrupt flag */
   sbi(TIMER_MASK_REG0, TOIE0);      /* Enable the overflow interrupt */
   sei();
-#endif
-}
-
-/****************************************************************************/
-/** @brief   Read Timer 0
-
-This function will return the current timer value as a 16 bit unsigned integer
-even if the timer is only 8 bit. This allows for a possibility of a 16 bit
-timer being at timer 0 (so far this is not the case in any MCU).
-
-In the event of a 16 bit register, the hardware registers must be accessed
-high byte first. The avr-gcc compiler does this automatically.
-
-    @return Timer Value.
-*/
-
-uint16_t timer0Read()
-{
-#if defined (TCNT0L)
-  return (int16_t)inb(TCNT0L)+((int16_t)inb(TCNT0H)<<8);
-#else
-  return (int16_t) inb(TCNT0);
 #endif
 }
 

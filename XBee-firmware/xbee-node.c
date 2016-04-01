@@ -57,8 +57,9 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 
 #include "../libs/defines.h"
 #include "../libs/serial.h"
-#include <util/delay.h>
+#include "../libs/xbee.h"
 #include "xbee-node.h"
+#include <util/delay.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -442,6 +443,47 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 }
 
 /****************************************************************************/
+/** @brief Convert a 32 bit value to ASCII hex form and send with a command.
+
+Also compute an 8-bit modular sum checksum from the data and convert to hex
+for transmission. This is sent at the beginning of the string.
+
+@param[in] int8_t command: ASCII command character to prepend to message.
+@param[in] int32_t datum: integer value to be sent.
+*/
+
+void sendDataCommand(const uint8_t command, const uint32_t datum)
+{
+    uint8_t buffer[12];
+    uint8_t i;
+    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
+    uint32_t value = datum;
+    for (i = 0; i < 10; i++)
+    {
+        if (i == 8) value = checksum;
+        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
+    }
+    buffer[11] = 0;             /* String terminator */
+    buffer[0] = command;
+    sendMessage(buffer);
+}
+
+/****************************************************************************/
+/** @brief Send a string message
+
+Wake the XBee and send a string message.
+
+@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
+*/
+void sendMessage(const uint8_t* data)
+{
+    wakeXBee();
+    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
+                       strlen(data),data);
+}
+
+/****************************************************************************/
 /** @brief Initialize the hardware for process measurement
 
 Set unused ports to inputs and disable power to all unused peripherals.
@@ -541,106 +583,6 @@ void wdtInit(const uint8_t waketime)
     uint8_t wdtcsrSetting = (timeout & 0x07);
     if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
     outb(WDT_CSR,wdtcsrSetting | _BV(WDIE));
-}
-
-/****************************************************************************/
-/** @brief Build and transmit a basic frame
-
-Send preamble, then message block, followed by computed checksum.
-
-@param[in]  txFrameType txMessage
-*/
-void sendBaseFrame(const txFrameType txMessage)
-{
-    sendch(0x7E);
-    sendch(high(txMessage.length));
-    sendch(low(txMessage.length));
-    sendch(txMessage.frameType);
-    uint8_t checksum = txMessage.frameType;
-    for (uint8_t i=0; i < txMessage.length-1; i++)
-    {
-        uint8_t txData = txMessage.message.array[i];
-        sendch(txData);
-        checksum += txData;
-    }
-    sendch(0xFF-checksum);
-}
-
-/****************************************************************************/
-/** @brief Build and transmit a Tx Request frame
-
-A data message for the XBee API is formed and transmitted.
-
-@param[in]:   uint8_t sourceAddress64[]. Address of parent or 0 for coordinator.
-@param[in]:   uint8_t sourceAddress16[].
-@param[in]:   uint8_t radius. Broadcast radius or 0 for maximum network value.
-@param[in]:   uint8_t dataLength. Length of data array.
-@param[in]:   uint8_t data[]. Define array size to be greater than length.
-*/
-void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAddress16[],
-                        const uint8_t radius, const uint8_t dataLength,
-                        const uint8_t data[])
-{
-    txFrameType txMessage;
-    txMessage.frameType = TX_REQUEST;
-    txMessage.message.txRequest.frameID = 0x02;
-    txMessage.length = dataLength+14;
-    for (uint8_t i=0; i < 8; i++)
-    {
-        txMessage.message.txRequest.sourceAddress64[i] = sourceAddress64[i];
-    }
-    for (uint8_t i=0; i < 2; i++)
-    {
-        txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
-    }
-    txMessage.message.txRequest.radius = radius;
-    txMessage.message.txRequest.options = 0;
-    for (uint8_t i=0; i < dataLength; i++)
-    {
-        txMessage.message.txRequest.data[i] = data[i];
-    }
-    sendBaseFrame(txMessage);
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Convert a 32 bit value to ASCII hex form and send with a command.
-
-Also compute an 8-bit modular sum checksum from the data and convert to hex
-for transmission. This is sent at the beginning of the string.
-
-@param[in] int8_t command: ASCII command character to prepend to message.
-@param[in] int32_t datum: integer value to be sent.
-*/
-
-void sendDataCommand(const uint8_t command, const uint32_t datum)
-{
-    uint8_t buffer[12];
-    uint8_t i;
-    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
-    uint32_t value = datum;
-    for (i = 0; i < 10; i++)
-    {
-        if (i == 8) value = checksum;
-        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-        value >>= 4;
-    }
-    buffer[11] = 0;             /* String terminator */
-    buffer[0] = command;
-    sendMessage(buffer);
-}
-
-/****************************************************************************/
-/** @brief Send a string message
-
-Wake the XBee and send a string message.
-
-@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
-*/
-void sendMessage(const uint8_t* data)
-{
-    wakeXBee();
-    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
-                       strlen(data),data);
 }
 
 /****************************************************************************/

@@ -71,80 +71,15 @@ From the UART:
 #define COMPLETE                0x20
 /*@}*/
 
-#define RX_REQUEST              0x90
-#define TX_REQUEST              0x10
-
-/* The rxFrameType can be expressed as an Rx Request or AT Command Response frame */
-typedef struct
-{
-    uint16_t length;
-    uint8_t checksum;
-    uint8_t frameType;
-    union
-    {
-        uint8_t array[RF_PAYLOAD+13];
-        struct
-        {
-            uint8_t frameId;
-            uint8_t sourceAddress64[7];
-            uint8_t sourceAddress16[2];
-            uint8_t options;
-            uint8_t data[RF_PAYLOAD];
-        } rxRequest;
-        struct
-        {
-            uint8_t frameId;
-            uint8_t sourceAddress16[2];
-            uint8_t retryCount;
-            uint8_t deliveryStatus;
-            uint8_t discoveryStatus;
-        } txStatus;
-    } message;
-} rxFrameType;
-
-/* The txFrameType can be expressed as a Tx Request or AT Command frame */
-typedef struct
-{
-    uint16_t length;
-    uint8_t checksum;
-    uint8_t frameType;
-    union
-    {
-        uint8_t array[RF_PAYLOAD+15];
-        struct
-        {
-            uint8_t frameID;
-            uint8_t atCommand1;
-            uint8_t atCommand2;
-            uint8_t parameter;
-        } atCommand;
-        struct
-        {
-            uint8_t frameID;
-            uint8_t sourceAddress64[8];
-            uint8_t sourceAddress16[2];
-            uint8_t radius;
-            uint8_t options;
-            uint8_t data[RF_PAYLOAD];
-        } txRequest;
-    } message;
-} txFrameType;
-
 /****************************************************************************/
 /* Prototypes */
 
 void hardwareInit(void);
 void wdtInit(const uint8_t waketime);
-void sendMessage(const uint8_t* data);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
+void sendMessage(const uint8_t* data);
 void sleepXBee(void);
 void wakeXBee(void);
-
-/* XBee related prototypes */
-
-void sendBaseFrameconst (txFrameType txMessage);
-void sendTxRequestFrame(const uint8_t sourceAddress64[], const uint8_t sourceAddress16[],
-                        const uint8_t radius, const uint8_t length, const uint8_t data[]);
 
 #endif /*_XBEE_NODE_H_ */
