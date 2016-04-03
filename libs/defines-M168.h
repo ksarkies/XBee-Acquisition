@@ -55,25 +55,6 @@ to an undesired level during programming. */
 // Simple serial I/O (must define cpu frequency and baudrate before this include) */
 #include <util/setbaud.h>
 
-/* Convenience macros (we don't use them all) */
-#define  _BV(bit) (1 << (bit))
-#define  inb(sfr) _SFR_BYTE(sfr)
-#define  inw(sfr) _SFR_WORD(sfr)
-#define  outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#define  high(x) ((uint8_t) (x >> 8) & 0xFF)
-#define  low(x) ((uint8_t) (x & 0xFF))
-
-/* UART Error Definitions. */
-#define NO_DATA                 0x01
-#define BUFFER_OVERFLOW         0x02
-#define OVERRUN_ERROR           0x04
-#define FRAME_ERROR             0x08
-#define STATE_MACHINE           0x10
-#define CHECKSUM                0x11
-
 /* definitions for UART control */
 #define	BAUD_RATE_HIGH_REG	    UBRR0H
 #define	BAUD_RATE_LOW_REG	    UBRR0L

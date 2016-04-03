@@ -18,9 +18,8 @@
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include <avr/io.h>
+#include <inttypes.h>
 #include "xbee.h"
-#include "defines.h"
 #include "serial.h"
 
 /* Convenience macros (we don't use them all) */
@@ -48,22 +47,24 @@ A data message for the XBee API is formed and transmitted.
 void sendTxRequestFrame(const uint8_t sourceAddress64[],
                         const uint8_t sourceAddress16[],
                         const uint8_t radius, const uint8_t dataLength,
-                        const uint8_t data[]){
+                        const uint8_t data[])
+{
+    uint8_t i;
     txFrameType txMessage;
     txMessage.frameType = TX_REQUEST;
     txMessage.message.txRequest.frameID = 0x02;
     txMessage.length = dataLength+14;
-    for (uint8_t i=0; i < 8; i++)
+    for (i=0; i < 8; i++)
     {
         txMessage.message.txRequest.sourceAddress64[i] = sourceAddress64[i];
     }
-    for (uint8_t i=0; i < 2; i++)
+    for (i=0; i < 2; i++)
     {
         txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
     }
     txMessage.message.txRequest.radius = radius;
     txMessage.message.txRequest.options = 0;
-    for (uint8_t i=0; i < dataLength; i++)
+    for (i=0; i < dataLength; i++)
     {
         txMessage.message.txRequest.data[i] = data[i];
     }
@@ -84,7 +85,8 @@ void sendBaseFrame(const txFrameType txMessage)
     sendch(low(txMessage.length));
     sendch(txMessage.frameType);
     uint8_t checksum = txMessage.frameType;
-    for (uint8_t i=0; i < txMessage.length-1; i++)
+    uint8_t i;
+    for (i=0; i < txMessage.length-1; i++)
     {
         uint8_t txData = txMessage.message.array[i];
         sendch(txData);

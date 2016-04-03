@@ -23,6 +23,14 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
+/* UART Error Definitions. */
+#define NO_DATA                 0x01
+#define BUFFER_OVERFLOW         0x02
+#define OVERRUN_ERROR           0x04
+#define FRAME_ERROR             0x08
+#define STATE_MACHINE           0x10
+#define CHECKSUM                0x11
+
 void uartInit(void);
 void sendch(unsigned char c);
 unsigned char getch(void);
