@@ -43,6 +43,10 @@ not suitable for testing in this way.
 Add all global variables as static. Add also any include files needed. These
 should not contain references to any processor specific libraries or functions.
 
+ISRs need to be changed to a function call and means to activate them devised.
+For the timer in this example, an added call in the main loop to a function to
+tick off millisecond counts is sufficient.
+
 xbee.cpp is a file associated with the code under test, which has been copied
 from the library directory with its extension changed from c to cpp to satisfy
 the g++ compiler (otherwise it is not correctly linked).

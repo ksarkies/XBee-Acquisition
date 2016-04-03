@@ -9,6 +9,10 @@ not suitable for testing in this way.
 Add all global variables. Add also any include files needed. These should not
 contain references to any processor specific libraries or functions.
 
+ISRs need to be changed to a function call and means to activate them devised.
+For the timer in this example, an added call in the main loop to a function to
+tick off millisecond counts is sufficient.
+
 The serial.cpp file can be used to provide local function calls to POSIX (QT)
 equivalents.
 
@@ -35,15 +39,27 @@ compilation.
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <unistd.h>
 #include "../libs/serial.h"
 #include "../libs/xbee.h"
 
-/* Library functions to be bypassed */
+/*---------------------------------------------------------------------------*/
+/* clib library functions to be bypassed */
+
 static void wdt_disable() {}
+static void wdt_reset() {}
 
 /*---------------------------------------------------------------------------*/
-/* Dummy define to satisfy code compilation for this example */
-#define RTC_SCALE   0
+/* Timer ISR to be simulated */
+void timerISR();
+void _timerTick();
+static unsigned int timerTickMs;
+static unsigned int timerTickCount;
+
+/*---------------------------------------------------------------------------*/
+/**** Test code starts here */
+
+#define RTC_SCALE   30
 
 /** Convenience macros */
 #define TRUE 1
@@ -113,7 +129,10 @@ event. */
 /* Main loop */
     for(;;)
     {
-//            wdt_reset();
+/****** Add this call to ensure time ticks over for calls to an emulated ISR */
+        _timerTick();
+
+        wdt_reset();
 
 /* Check for incoming messages */
 /* The Rx message variable is re-used and must be processed before the next */
@@ -189,10 +208,80 @@ event. */
 }
 
 /****************************************************************************/
+/** @brief Timer 0 ISR.
+
+This ISR sends a dummy data record to the coordinator and toggles PC4
+where there should be an LED.
+*/
+
+//ISR(TIMER0_OVF_vect)
+void timerISR()
+{
+    time.timeValue++;
+    timeCount++;
+    if (timeCount == 0)
+    {
+        uint8_t buffer[12];
+        uint8_t i;
+        char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
+        uint32_t value = counter;
+        for (i = 0; i < 10; i++)
+        {
+            if (i == 8) value = checksum;
+            buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+            value >>= 4;
+        }
+        buffer[11] = 0;             /* String terminator */
+        buffer[0] = 'D';            /* Data Command */
+        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
+        counter = 0;            /* Reset counter value */
+#ifdef TEST_PORT_DIR
+        sbi(TEST_PORT,TEST_PIN);
+    }
+    if (timeCount == 26)
+        cbi(TEST_PORT,TEST_PIN);
+#else
+    }
+#endif
+}
+
+/****************************************************************************/
+/* Timer initialization
+
+The timerClock parameter is a scale factor for the clock tick rate in ticks
+per second. This is converted to a tick counter to pace the ISR calls.
+*/
+
+void timer0Init(uint8_t mode,uint16_t timerClock)
+{
+    timerTickMs = 0;
+    timerTickCount = 1000/timerClock;
+}
+
+/****************************************************************************/
+/* Timer tick
+
+This counts off a number of milliseconds until the selected timer count
+has been completed, then calls the ISR as would happen with a hardware timer.
+
+It must be called in the main program loop.
+*/
+
+void _timerTick()
+{
+    usleep(1000);
+    timerTickMs++;
+    if (timerTickMs == timerTickCount)
+    {
+        timerTickMs = 0;
+        timerISR();
+    }
+}
+
+/****************************************************************************/
 /* Additional nulled hardware routines not needed for the test */
 
 void hardwareInit(void) {}
-void timer0Init(uint8_t mode,uint16_t timerClock) {}
 
 /*---------------------------------------------------------------------------*/
 
