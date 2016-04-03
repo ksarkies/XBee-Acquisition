@@ -71,12 +71,13 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define low(x) ((uint8_t) (x & 0xFF))
 
 /*****************************************************************************/
-/** Real Time Clock Global Variable
+/* Global Variables */
+/** Real Time Clock Structure
 
 The 32 bit time can also be accessed as four bytes. Time scale is defined in
 the information block.
 */
-volatile union timeUnion
+static volatile union timeUnion
 {
   volatile uint32_t timeValue;
   volatile uint8_t  timeByte[4];
@@ -84,34 +85,28 @@ volatile union timeUnion
 
 /* timeCount measures off timer interrupt ticks to provide an extended time
 between transmissions */
-uint8_t timeCount;
+static uint8_t timeCount;
 /* Counter keep track of external transitions on the digital input */
-uint32_t counter;
-
-/*****************************************************************************/
-/* Global Variables */
+static uint32_t counter;
 
 /** @name UART variables */
 /*@{*/
-    volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
-    volatile uint8_t lastError;    /**< Error code for transmission back */
-    volatile uint8_t checkSum;     /**< Checksum on message contents */
+static volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
+static volatile uint8_t lastError;    /**< Error code for transmission back */
+static volatile uint8_t checkSum;     /**< Checksum on message contents */
 /*@}*/
 
-    uint32_t timeValue;
-    uint8_t messageState;           /**< Progress in message reception */
-    uint8_t messageReady;           /**< Indicate that a message is ready */
-    uint8_t messageError;
-    uint8_t coordinatorAddress64[8];
-    uint8_t coordinatorAddress16[2];
-    uint8_t rxOptions;
+static uint32_t timeValue;
+static uint8_t messageState;           /**< Progress in message reception */
+static uint8_t messageReady;           /**< Indicate that a message is ready */
+static uint8_t messageError;
+static uint8_t coordinatorAddress64[8];
+static uint8_t coordinatorAddress16[2];
 
-/*****************************************************************************/
 /* Local Prototypes */
 
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
-static uint16_t timer0Read(void);
 
 /*****************************************************************************/
 /** @brief Main Program */
