@@ -1,7 +1,7 @@
-/*
-Title:    XBee Node Test
-*/
+/*      POSIX/QT serial I/O
 
+Substitute functions for XBee-node-test.
+*/
 /****************************************************************************
  *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
@@ -20,46 +20,21 @@ Title:    XBee Node Test
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef XBEE_NODE_TEST_H
-#define XBEE_NODE_TEST_H
-
-#include <QDialog>
-#include <QCloseEvent>
-#include <QSerialPort>
-#include "ui_xbee-node-test.h"
-
-/* Port defaults 38400 baud */
-#define BAUDRATE    5
-#define SERIAL_PORT "/dev/ttyUSB0"
-
-//-----------------------------------------------------------------------------
-/** @brief 
-*/
-
-class XbeeNodeTest : public QDialog
+void uartInit(void)
 {
-    Q_OBJECT
-public:
-    XbeeNodeTest(QString*, uint initialBaudrate,bool commandLine,
-                        bool debug,QWidget* parent = 0);
-    ~XbeeNodeTest();
-    bool success();
-    QString error();
-private slots:
-    void on_quitButton_clicked();
-    void on_runButton_clicked();
-private:
-// User Interface object
-    Ui::XbeeNodeTestDialog xbeeNodeTestFormUi;
-    void sendCommand(const char command);
-    void setComboBoxes();
-    void codeRun();             // This is where the actual test code is run
+}
 
-    QSerialPort* port;          //!< Serial port object pointer
-    QString errorMessage;       //!< Messages for the calling application
-    bool commandLineOnly;
-    bool debugMode;
-    bool running;
-};
+void sendch(unsigned char c)
+{
+}
 
-#endif
+unsigned char getch(void)
+{
+    return 0;
+}
+
+unsigned int getchn(void)
+{
+    return 0;
+}
+

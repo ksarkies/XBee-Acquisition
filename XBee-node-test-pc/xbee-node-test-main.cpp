@@ -22,7 +22,7 @@ xbee-node-test -d -P /dev/ttyUSB0 -b 38400 -n
 In command line mode, the program can only be stopped by ctl-C or process kill.
  */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

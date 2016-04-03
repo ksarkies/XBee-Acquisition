@@ -5,7 +5,7 @@
 
 */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
@@ -40,7 +40,9 @@
 #include <iostream>
 #include "xbee-node-test.h"
 
-//-----------------------------------------------------------------------------
+extern void mainprog();
+
+//*****************************************************************************
 /** @brief Code Run
 
 This is where the actual test code is run.
@@ -52,13 +54,15 @@ void XbeeNodeTest::codeRun()
         qApp->processEvents();      // Allow other processes a look in
 
 /* Place test code to be run here. Any of the QT serial access functions should
-include a call to processEvents. */
+include a call to processEvents to ensure that the desired action is taken. */
+        
+        mainprog();
 
     }
     reject();
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** Constructor
 
 @param[in] p Serial Port object pointer
@@ -73,13 +77,14 @@ XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate,bool commandLine,
     commandLineOnly = commandLine;
     debugMode = debug;
     if (debugMode) qDebug() << "Debug Mode";
-    running = false;
 // Set up the GUI if we are not using the command line
     if (success())
     {
+        running = true;
         if (commandLineOnly) codeRun();
         else
         {
+            running = false;
     // Build the User Interface display from the Ui class in ui_mainwindowform.h
             xbeeNodeTestFormUi.setupUi(this);
             xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
@@ -95,7 +100,7 @@ XbeeNodeTest::~XbeeNodeTest()
     port->close();
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Successful Port Open
 
 @returns true if the serial port was opened.
@@ -104,7 +109,7 @@ bool XbeeNodeTest::success()
 {
     return (port->error() == QSerialPort::NoError);
 }
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Error Message
 
 @returns a message when the device didn't respond properly.
@@ -122,7 +127,7 @@ QString XbeeNodeTest::error()
     return errorMessage;
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Close when "Quit" is activated.
 
 No further action is taken.
@@ -133,7 +138,7 @@ void XbeeNodeTest::on_quitButton_clicked()
     running = false;
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Setup Serial ComboBoxes
 
 Test existence of serial ports (ACM and USB) and build both combobox entries
@@ -169,7 +174,7 @@ void XbeeNodeTest::setComboBoxes()
     xbeeNodeTestFormUi.baudrateComboBox->setCurrentIndex(BAUDRATE);
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Run the XBee code loop.
 
 */
@@ -181,7 +186,7 @@ void XbeeNodeTest::on_runButton_clicked()
     codeRun();
 }
 
-//-----------------------------------------------------------------------------
+//*****************************************************************************
 /** @brief Send a single character command to the serial port.
 
 @param[in] command. A single character.
@@ -193,4 +198,4 @@ void XbeeNodeTest::sendCommand(const char command)
     qApp->processEvents();          // Allow send and receive to occur
     if (debugMode) qDebug() << "Sent " << command;
 }
-//-----------------------------------------------------------------------------
+//*****************************************************************************
