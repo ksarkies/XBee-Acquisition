@@ -16,18 +16,18 @@ $ xbee-node-test -d -P /dev/ttyUSB0 -b 38400 -n
 
 In command line mode, the program can only be stopped by ctl-C or process kill.
 
-ADAPTATION TO OTHER TEST CODE
------------------------------
+***ADAPTATION TO OTHER TEST CODE***
+-----------------------------------
 
 The following files may be used as a wrapper for other code tests with
 appropriate adaption of the .pro and mainprog.cpp files:
 
-xbee-node-test-main.cpp
-xbee-node-test.cpp
-xbee-node-test.h
-xbee-node-test.pro
-xbee-node-test.ui
-serial.cpp
+* xbee-node-test-main.cpp
+* xbee-node-test.cpp
+* xbee-node-test.h
+* xbee-node-test.pro
+* xbee-node-test.ui
+* serial.cpp
 
 serial.cpp is a substitute set of communication functions calling on POSIX/QT
 serial I/O.
