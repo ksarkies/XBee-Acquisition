@@ -4,7 +4,9 @@ XBee Data Acquisition Remote Test Code
 This is a POSIX system based test code for a XBee remote unit. Written in C but
 embedded in a QT/C++ wrapper which emulates the environment for the test code.
 The purpose is to provide a testbed for remote system firmware that is capable
-of communicating with an XBee and working as a remote unit.
+of communicating with an XBee and working as a remote unit. The emulator is not
+an AVR emulator as such. Rather it provides a means to run the Xbee firmware
+core on a PC for debugging.
 
 NOTE: gcc required to provide function override for timerISR.
 
@@ -32,7 +34,7 @@ with appropriate adaption of the .pro and mainprog.cpp files:
 * serial.cpp
 
 serial.cpp is a substitute set of communication functions calling on POSIX/QT
-serial I/O.
+serial I/O. This should contain functions that match the calls in the test code.
 
 mainprog.cpp must be provided with the code to be tested in the following way:
 
