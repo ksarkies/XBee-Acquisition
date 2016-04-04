@@ -1,8 +1,18 @@
-/**
-@brief        XBee Node Test
+/** @brief        XBee Node Test
 
 @detail Implementation of main dialogue class and application code.
 
+This emulates the environment in which the test code would normally run, and
+calls user defined functions from mainprog.cpp that provide the code to
+be tested.
+
+A timer is emulated allowing a timer to be initialised in the test code and the
+ISR called.
+
+mainprogInit() provides the initialization part
+mainprog() provides the operational part that would appear in an infinite loop
+
+NOTE: gcc required to provide function override for timerISR.
 */
 /****************************************************************************
  *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
@@ -41,17 +51,34 @@
 #include "xbee-node-test.h"
 
 extern void mainprog();
+extern void mainprogInit();
+
+/*---------------------------------------------------------------------------*/
+/* Timer ISR to be simulated */
+void _timerTick();
+static unsigned int timerTickMs;
+static unsigned int timerTickCount;
+
+// The timer ISR is defined in mainprog.cpp, or is substituted with a null call
+__attribute__((weak)) void timerISR() {}
 
 //*****************************************************************************
 /** @brief Code Run
 
-This is where the actual test code is run.
+This is where the actual test code is run. The test code is split to
+an initialisation part and an operational part which falls within an (almost)
+infinite loop that is emulated here.
 */
 void XbeeNodeTest::codeRun()
 {
+    mainprogInit();                 // Initialization section
+
     while (running)
     {
         qApp->processEvents();      // Allow other processes a look in
+
+/* Ensure time ticks over for calls to an emulated ISR */
+        _timerTick();
 
 /* Place test code to be run here. Any of the QT serial access functions should
 include a call to processEvents to ensure that the desired action is taken. */
@@ -189,13 +216,47 @@ void XbeeNodeTest::on_runButton_clicked()
 //*****************************************************************************
 /** @brief Send a single character command to the serial port.
 
-@param[in] command. A single character.
+@param[in] const char command. A single character.
 */
 
 void XbeeNodeTest::sendCommand(const char command)
 {
     port->putChar(command);
     qApp->processEvents();          // Allow send and receive to occur
-    if (debugMode) qDebug() << "Sent " << command;
 }
+
+/****************************************************************************/
+/* Timer initialization
+
+This function is only called in mainprog.cpp if needed for timer initialization.
+
+@param[in] timerTrigger. Count at which a defined ISR is triggered.
+*/
+
+void timerInit(unsigned int timerTrigger)
+{
+    timerTickMs = 0;
+    timerTickCount = timerTrigger;
+}
+
+/****************************************************************************/
+/* Timer tick
+
+This counts off a number of milliseconds until the selected timer count
+has been completed, then calls the ISR as would happen with a hardware timer.
+
+It must be called in the main program loop.
+*/
+
+void _timerTick()
+{
+    usleep(1000);
+    if (timerTickMs++ == timerTickCount)
+    {
+        timerTickMs = 0;
+        timerISR();
+    }
+}
+
 //*****************************************************************************
+

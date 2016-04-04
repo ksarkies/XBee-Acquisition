@@ -1,17 +1,24 @@
 /*      Main program of code to be tested
 
-Place the code to be tested into the function called mainprog() which is called
-from the xbee-node-test.cpp wrapper. There should be no processor specific
-statements. These can be replaced by a call to a local function that should
-contain code to emulate the statement. If this is not possible then the code is
-not suitable for testing in this way.
+Split the code to be tested into an initialization part and an operational
+part that normally falls within an infinite loop. Place the initialization part
+into the function called mainprogInit(), and the operational part into
+mainprog(). Both these are called from the xbee-node-test.cpp emulator, with the
+operational part having its loop emulated in the emulator code.
+
+There should be no compilable processor specific statements. These can be
+replaced by a call to a local function that should contain code to emulate the
+statement. If this is not possible then the code is not suitable for testing in
+this way.
 
 Add all global variables. Add also any include files needed. These should not
 contain references to any processor specific libraries or functions.
 
 ISRs need to be changed to a function call and means to activate them devised.
-For the timer in this example, an added call in the main loop to a function to
-tick off millisecond counts is sufficient.
+A timer is emulated in the emulator code. Timer initialization is done by
+calling an initialization function in the emulator code as shown. This function
+sets the number of one millisecond tick counts at which the timer fires and
+calls the ISR. If a timer ISR is not defined, a null ISR is substituted.
 
 The serial.cpp file can be used to provide local function calls to POSIX (QT)
 equivalents.
@@ -40,8 +47,7 @@ compilation.
 
 #include <inttypes.h>
 #include <unistd.h>
-#include "../libs/serial.h"
-#include "../libs/xbee.h"
+#include <QDebug>
 
 /*---------------------------------------------------------------------------*/
 /* clib library functions to be bypassed */
@@ -50,14 +56,10 @@ static void wdt_disable() {}
 static void wdt_reset() {}
 
 /*---------------------------------------------------------------------------*/
-/* Timer ISR to be simulated */
-void timerISR();
-void _timerTick();
-static unsigned int timerTickMs;
-static unsigned int timerTickCount;
-
-/*---------------------------------------------------------------------------*/
 /**** Test code starts here */
+
+#include "../libs/serial.h"
+#include "../libs/xbee.h"
 
 #define RTC_SCALE   30
 
@@ -78,7 +80,7 @@ static volatile union timeUnion
 {
   volatile uint32_t timeValue;
   volatile uint8_t  timeByte[4];
-} time;
+} realTime;
 
 /* timeCount measures off timer interrupt ticks to provide an extended time
 between transmissions */
@@ -105,9 +107,9 @@ static uint8_t coordinatorAddress16[2];
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
 
-/** Main Program */
-
-void mainprog()
+/*****************************/
+/* The initialization part is that which is run before the main loop. */
+void mainprogInit()
 {
     timeCount = 0;
     counter = 0;
@@ -126,12 +128,15 @@ event. */
     messageState = 0;
     messageReady = FALSE;
     messageError = 0;
-/* Main loop */
-    for(;;)
-    {
-/****** Add this call to ensure time ticks over for calls to an emulated ISR */
-        _timerTick();
+}
 
+/*****************************/
+/** The Main Program is that part which runs inside an infinite loop.
+The loop is emulated in the emulator program. */
+
+void mainprog()
+{
+/* Main loop */
         wdt_reset();
 
 /* Check for incoming messages */
@@ -204,7 +209,6 @@ event. */
                                    rxMessage.message.rxRequest.data);
             }
         }
-    }
 }
 
 /****************************************************************************/
@@ -217,7 +221,7 @@ where there should be an LED.
 //ISR(TIMER0_OVF_vect)
 void timerISR()
 {
-    time.timeValue++;
+    realTime.timeValue++;
     timeCount++;
     if (timeCount == 0)
     {
@@ -235,6 +239,7 @@ void timerISR()
         buffer[0] = 'D';            /* Data Command */
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
         counter = 0;            /* Reset counter value */
+qDebug() << "Send Transmission";
 #ifdef TEST_PORT_DIR
         sbi(TEST_PORT,TEST_PIN);
     }
@@ -248,34 +253,18 @@ void timerISR()
 /****************************************************************************/
 /* Timer initialization
 
-The timerClock parameter is a scale factor for the clock tick rate in ticks
-per second. This is converted to a tick counter to pace the ISR calls.
+The timer is initialised with the number of millisecond ticks before firing,
+at which time the ISR is called. The initialization is provided in the emulator
+code using the timerInit function.
+
+timerClock is the number of firings per second.
 */
+
+extern void timerInit(unsigned int timerTrigger);
 
 void timer0Init(uint8_t mode,uint16_t timerClock)
 {
-    timerTickMs = 0;
-    timerTickCount = 1000/timerClock;
-}
-
-/****************************************************************************/
-/* Timer tick
-
-This counts off a number of milliseconds until the selected timer count
-has been completed, then calls the ISR as would happen with a hardware timer.
-
-It must be called in the main program loop.
-*/
-
-void _timerTick()
-{
-    usleep(1000);
-    timerTickMs++;
-    if (timerTickMs == timerTickCount)
-    {
-        timerTickMs = 0;
-        timerISR();
-    }
+    timerInit(1000/timerClock);
 }
 
 /****************************************************************************/

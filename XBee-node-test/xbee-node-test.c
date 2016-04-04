@@ -81,7 +81,7 @@ static volatile union timeUnion
 {
   volatile uint32_t timeValue;
   volatile uint8_t  timeByte[4];
-} time;
+} realTime;
 
 /* timeCount measures off timer interrupt ticks to provide an extended time
 between transmissions */
@@ -283,7 +283,7 @@ where there should be an LED.
 
 ISR(TIMER0_OVF_vect)
 {
-    time.timeValue++;
+    realTime.timeValue++;
     timeCount++;
     if (timeCount == 0)
     {

@@ -2,9 +2,11 @@ XBee Data Acquisition Remote Test Code
 --------------------------------------
 
 This is a POSIX system based test code for a XBee remote unit. Written in C but
-embedded in a QT/C++ wrapper. The purpose is to provide a testbed for remote
-system firmware that is capable of communicating with an XBee and working as a
-remote unit.
+embedded in a QT/C++ wrapper which emulates the environment for the test code.
+The purpose is to provide a testbed for remote system firmware that is capable
+of communicating with an XBee and working as a remote unit.
+
+NOTE: gcc required to provide function override for timerISR.
 
 It is identical to the [xbee-node-test](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-test) code but is intended to run on a POSIX
 system using a serial interface to an XBee.
@@ -19,8 +21,8 @@ In command line mode, the program can only be stopped by ctl-C or process kill.
 ***ADAPTATION TO OTHER TEST CODE***
 -----------------------------------
 
-The following files may be used as a wrapper for other code tests with
-appropriate adaption of the .pro and mainprog.cpp files:
+The following files may be used as the environment emulator for other code tests
+with appropriate adaption of the .pro and mainprog.cpp files:
 
 * xbee-node-test-main.cpp
 * xbee-node-test.cpp
@@ -34,18 +36,27 @@ serial I/O.
 
 mainprog.cpp must be provided with the code to be tested in the following way:
 
-Place the code to be tested into the function called mainprog(), which is called
-from the xbee-node-test.cpp wrapper. There should be no processor specific
-statements. Any such should be replaced by a call to a local function that
-contains code to emulate the statement. If this is not possible then the code is
-not suitable for testing in this way.
+Split the code to be tested into an initialization part and an operational
+part that normally falls within an infinite loop. Place the initialization part
+into the function called mainprogInit(), and the operational part into
+mainprog(). Both these are called from the xbee-node-test.cpp wrapper, with the
+operational part having its loop emulated in the wrapper code.
+
+There should be no compilable processor specific statements. These can be
+replaced by a call to a local function that should contain code to emulate the
+statement. If this is not possible then the code is not suitable for testing in
+this way.
 
 Add all global variables as static. Add also any include files needed. These
 should not contain references to any processor specific libraries or functions.
 
 ISRs need to be changed to a function call and means to activate them devised.
-For the timer in this example, an added call in the main loop to a function to
-tick off millisecond counts is sufficient.
+A timer is emulated in the emulator code. Timer initialization is done by
+calling an initialization function in the emulator code. This function
+sets the number of one millisecond tick counts at which the timer fires and
+calls the ISR. If a timer ISR is not defined, a null ISR is substituted. The
+timer ISR can be defined in the test code by replacing the actual ISR call with
+the function: timerISR().
 
 xbee.cpp is a file associated with the code under test, which has been copied
 from the library directory with its extension changed from c to cpp to satisfy
