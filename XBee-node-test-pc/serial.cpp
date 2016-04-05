@@ -2,6 +2,11 @@
 
 Substitute functions for XBee-node-test to provide an emulated communications
 environment.
+
+Note that the serial port object "port" is created and opened in the wrapper
+main program. It is shared as extern through the header file and is not
+part of the XbeeNodeTest object. This allows it to be used here but defined
+through the command line interface or GUI.
 */
 /****************************************************************************
  *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
@@ -23,33 +28,22 @@ environment.
 
 #include <QSerialPort>
 #include <QSerialPortInfo>
-
-#define SERIAL_PORT     "/dev/ttyUSB0"
-#define BAUDRATE        38400
+#include <QDebug>
+#include "xbee-node-test.h"
 
 #define  high(x) ((unsigned char) (x >> 8) & 0xFF)
 #define  low(x) ((unsigned char) (x & 0xFF))
-
-static QSerialPort* socket1;
 
 /*-----------------------------------------------------------------------------*/
 /* Initialise the UART
 
 Setting baudrate, Rx/Tx enables, and flow controls.
 Currently uses fixed values as the test code uses a fixed port and baudrate.
+
+The UART has already been opened in the emulator code.
 */
 void uartInit(void)
 {
-    socket1 = new QSerialPort(SERIAL_PORT);
-    bool ok = socket1->open(QIODevice::ReadWrite);
-    if (ok)
-    {
-        socket1->setBaudRate(BAUDRATE);
-        socket1->setDataBits(QSerialPort::Data8);
-        socket1->setParity(QSerialPort::NoParity);
-        socket1->setStopBits(QSerialPort::OneStop);
-        socket1->setFlowControl(QSerialPort::NoFlowControl);
-    }
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -57,7 +51,7 @@ void uartInit(void)
 
 void sendch(unsigned char c)
 {
-    socket1->putChar(c);
+    port->putChar(c);
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -69,10 +63,10 @@ RTS is then cleared high. The character is then retrieved.
 returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
 
-unsigned int getchn(void)
+unsigned int getch(void)
 {
     char c;
-    bool ok = socket1->getChar(&c);
+    bool ok = port->getChar(&c);
     if (ok) return (unsigned int)c;
     else return 0x100+(unsigned int)c;
 }
@@ -83,12 +77,12 @@ unsigned int getchn(void)
 returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
 
-unsigned char getch(void)
+unsigned char getchb(void)
 {
     unsigned int c;
     do
     {
-        c = getchn();
+        c = getch();
     }
     while (high(c) == 0);
     return low(c);

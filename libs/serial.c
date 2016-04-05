@@ -87,7 +87,7 @@ present, the function blocks.
 returns: unsigned char. The received character.
 */
 
-unsigned char getch(void)
+unsigned char getchb(void)
 {
 #ifdef USE_HARDWARE_FLOW
     cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
@@ -108,7 +108,7 @@ RTS is then cleared high. The character is then retrieved.
 returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
 
-unsigned int getchn(void)
+unsigned int getch(void)
 {
 #ifdef USE_HARDWARE_FLOW
     cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS

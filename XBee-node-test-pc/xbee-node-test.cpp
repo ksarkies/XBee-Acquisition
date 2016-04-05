@@ -52,6 +52,8 @@ NOTE: gcc required to provide function override for timerISR.
 
 extern void mainprog();
 extern void mainprogInit();
+/* The serial port defined here is created and opened, shared with serial.cpp */
+QSerialPort* port;
 
 /*---------------------------------------------------------------------------*/
 /* Timer ISR to be simulated */
@@ -100,24 +102,27 @@ XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate,bool commandLine,
                               bool debug,QWidget* parent): QDialog(parent)
 {
     port = new QSerialPort(*p);
-    port->open(QIODevice::ReadWrite);
-    commandLineOnly = commandLine;
-    debugMode = debug;
-    if (debugMode) qDebug() << "Debug Mode";
-// Set up the GUI if we are not using the command line
-    if (success())
+    bool ok = port->open(QIODevice::ReadWrite);
+    if (ok)
     {
-        running = true;
-        if (commandLineOnly) codeRun();
-        else
+        commandLineOnly = commandLine;
+        debugMode = debug;
+        if (debugMode) qDebug() << "Debug Mode";
+// Set up the GUI if we are not using the command line
+        if (success())
         {
-            running = false;
-    // Build the User Interface display from the Ui class in ui_mainwindowform.h
-            xbeeNodeTestFormUi.setupUi(this);
-            xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
-            xbeeNodeTestFormUi.errorMessage->setVisible(false);
-            setComboBoxes();
-            debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
+            running = true;
+            if (commandLineOnly) codeRun();
+            else
+            {
+                running = false;
+// Build the User Interface display from the Ui class in ui_mainwindowform.h
+                xbeeNodeTestFormUi.setupUi(this);
+                xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
+                xbeeNodeTestFormUi.errorMessage->setVisible(false);
+                setComboBoxes();
+                debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
+            }
         }
     }
 }
@@ -211,18 +216,6 @@ void XbeeNodeTest::on_runButton_clicked()
     qDebug() << "Running";
     running = true;
     codeRun();
-}
-
-//*****************************************************************************
-/** @brief Send a single character command to the serial port.
-
-@param[in] const char command. A single character.
-*/
-
-void XbeeNodeTest::sendCommand(const char command)
-{
-    port->putChar(command);
-    qApp->processEvents();          // Allow send and receive to occur
 }
 
 /****************************************************************************/

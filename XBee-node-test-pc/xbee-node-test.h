@@ -33,6 +33,10 @@ Title:    XBee Node Test
 #define SERIAL_PORT "/dev/ttyUSB0"
 
 //-----------------------------------------------------------------------------
+/* External variable needed for access by serial emulation code */
+extern QSerialPort* port;          //!< Serial port object pointer
+
+//-----------------------------------------------------------------------------
 /** @brief 
 */
 
@@ -51,11 +55,9 @@ private slots:
 private:
 // User Interface object
     Ui::XbeeNodeTestDialog xbeeNodeTestFormUi;
-    void sendCommand(const char command);
     void setComboBoxes();
     void codeRun();             // This is where the actual test code is run
 
-    QSerialPort* port;          //!< Serial port object pointer
     QString errorMessage;       //!< Messages for the calling application
     bool commandLineOnly;
     bool debugMode;
