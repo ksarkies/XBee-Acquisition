@@ -39,6 +39,11 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define F_CPU               1000000
 #define BAUD                9600
 
+/* 0.064ms clock from 1MHz clock
+Timer clock scale value 3 gives scale of 64, (see timer.c)
+This gives a 16ms overflow interrupt.*/
+#define RTC_SCALE               3
+
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
 automatically */
@@ -136,5 +141,4 @@ These are defined from avr-libc io.h based on processor choice. */
 #define ON_SLEEP_PORT_DIR       DDRA
 #define ON_SLEEP_PORT           PINA
 #define ON_SLEEP_PIN            0
-
 

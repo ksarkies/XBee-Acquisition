@@ -33,8 +33,8 @@
 
 void uartInit(void);
 void sendch(unsigned char c);
-unsigned char getch(void);
-unsigned int getchn(void);
+unsigned char getchb(void);
+unsigned int getch(void);
 
 #endif
 

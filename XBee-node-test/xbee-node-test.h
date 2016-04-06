@@ -32,9 +32,4 @@ Tested:     ATMega168 at 8MHz internal clock.
 
 #include <inttypes.h>
 
-/* 0.128ms clock from 8MHz clock
-Timer clock scale value 5 gives scale of 1024, (see timer.c)
-This gives a 32ms overflow interrupt.*/
-#define RTC_SCALE               5
-
 #endif /*_XBEE_NODE_EXAMPLE_H_ */

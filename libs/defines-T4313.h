@@ -37,6 +37,11 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define F_CPU               1000000
 #define BAUD                9600
 
+/* 0.128ms clock from 1MHz clock
+Timer clock scale value 3 gives scale of 64, (see timer.c)
+This gives a 32ms overflow interrupt.*/
+#define RTC_SCALE               3
+
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
 automatically */
@@ -84,9 +89,11 @@ include) */
 #define IMSK                    GIMSK
 #define INT_CR                  MCUCR
 #define WDT_CSR                 WDTCR
+#define PC_IER                  GIMSK
 #define PC_MSK                  PCMSK1
 #define PC_INT                  1
 #define PC_IE                   PCIE1
+#define COUNT_ISR               PCINT1_vect
 
 /* definitions for analogue comparator control */
 #define AC_SR0                  ACSR
@@ -104,19 +111,14 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PAGE_FLAGS              (PAGES >> 3)
 
 /* Count Signal pin */
-#define COUNT_PORT_DIR          DDRB
-#define COUNT_PORT              PINB
-#define COUNT_PIN               1
+#define COUNT_PORT_DIR          DDRD
+#define COUNT_PORT              PIND
+#define COUNT_PIN               2
 
 /* define pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
 #define PROG_PORT               PINB
-#define PROG_PIN                2
-
-/* define pin for forcing the XBee to stay awake (sleep_rq) */
-#define WAKE_PORT_DIR           DDRB
-#define WAKE_PORT               PORTB
-#define WAKE_PIN                3
+#define PROG_PIN                4
 
 /* Battery Measurement Control */
 #define VBAT_PORT_DIR           DDRD
@@ -128,8 +130,19 @@ These are defined from avr-libc io.h based on processor choice. */
 #define SLEEP_RQ_PORT           PORTB
 #define SLEEP_RQ_PIN            3
 
+/* Output to force XBee reset */
+/* XBee Reset */
+#define XBEE_RESET_PORT_DIR     DDRB
+#define XBEE_RESET_PORT         PORTB
+#define XBEE_RESET_PIN          2
+
+/* On/Sleep Status */
+#define ON_SLEEP_PORT_DIR       DDRB
+#define ON_SLEEP_PORT           PINB
+#define ON_SLEEP_PIN            1
+
 /* Test pin */
 #define TEST_PORT_DIR           DDRB
 #define TEST_PORT               PORTB
-#define TEST_PIN                1
+#define TEST_PIN                0
 

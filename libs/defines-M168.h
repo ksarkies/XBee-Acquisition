@@ -43,6 +43,11 @@ Needed for the bootloader as the upload is extensive. */
 #define F_CPU               8000000
 #define BAUD                38400
 
+/* 0.128ms clock from 8MHz clock
+Timer clock scale value 5 gives scale of 1024, (see timer.c)
+This gives a 32ms overflow interrupt.*/
+#define RTC_SCALE               5
+
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered automatically */
 #define AUTO_ENTER_APP      1

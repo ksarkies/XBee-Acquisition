@@ -13,7 +13,7 @@ The microcontroller has the following I/O pin allocations:
 
 * PB2 (in) Bootloader Enable taken from XBee DIO11 pin..
 * PB3 (out) XBee Sleep Request.
-* PB4 (in) XBee Asleep (inv).
+* PB4 (in) XBee On/Sleep.
 * PB5 (out) XBee Reset (inv) taken to the XBee reset pin.
 * PC0 (in) Board Analogue Input also taken to XBee AD2 pin.
 * PC1 (in) Battery Monitor Analogue Input also taken to XBee AD1 pin.
@@ -24,7 +24,7 @@ The microcontroller has the following I/O pin allocations:
 * Microcontroller Reset taken from XBee DIO12 pin.
 
 Three LEDs are provided:
-* Green     PC4 Microcontroller Activity from ATMega48.
+* Green     PC4 Microcontroller Activity (test port) from ATMega48.
 * Yellow    Association status from XBee.
 * Red       Power.
 
@@ -33,7 +33,18 @@ The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-nod
 ### xbee-node-attiny4313
 
 This board is similar to the above but analogue input is taken directly to the
-XBee AD1 input pin as the ATTiny4313 does not have analogue capability.
+XBee AD1 input pin as the ATTiny4313 does not have analogue capability. The
+Green LED is PB0 Microcontroller Activity (test port).
+
+* PB4 (in) Bootloader Enable taken from XBee DIO11 pin..
+* PB3 (out) XBee Sleep Request.
+* PB1 (in) XBee On/Sleep.
+* PB2 (out) XBee Reset (inv) taken to the XBee reset pin.
+* PB0 (out) Microcontroller Activity LED.
+* PD5 (out) Battery Monitor Control.
+* PA1 (in) taken from XBee CTS pin.
+* PD2 (in) Board Digital Input.
+* Microcontroller Reset taken from XBee DIO12 pin.
 
 ### xbee-node-serial
 

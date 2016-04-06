@@ -214,11 +214,6 @@ event. */
 */
 void hardwareInit(void)
 {
-/* General output for a LED to be activated by the mirocontroller as desired. */
-#ifdef TEST_PORT_DIR
-    sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pullup */
-#endif
 /* PB3 is XBee sleep request output. */
 #ifdef SLEEP_RQ_PIN
     sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
@@ -242,6 +237,11 @@ void hardwareInit(void)
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
     sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
+#endif
+/* General output for a LED to be activated by the mirocontroller as desired. */
+#ifdef TEST_PORT_DIR
+    sbi(TEST_PORT_DIR,TEST_PIN);
+    sbi(TEST_PORT,TEST_PIN);            /* Set pullup */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the

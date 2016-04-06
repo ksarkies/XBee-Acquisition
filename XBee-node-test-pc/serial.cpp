@@ -38,9 +38,8 @@ through the command line interface or GUI.
 /* Initialise the UART
 
 Setting baudrate, Rx/Tx enables, and flow controls.
-Currently uses fixed values as the test code uses a fixed port and baudrate.
 
-The UART has already been opened in the emulator code.
+The UART has already been initialised in the emulator code.
 */
 void uartInit(void)
 {

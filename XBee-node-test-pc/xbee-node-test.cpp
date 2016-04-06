@@ -79,7 +79,7 @@ void XbeeNodeTest::codeRun()
     {
         qApp->processEvents();      // Allow other processes a look in
 
-/* Ensure time ticks over for calls to an emulated ISR */
+/* Ensure time ticks over for calls to an emulated ISR, and call the ISR */
         _timerTick();
 
 /* Place test code to be run here. Any of the QT serial access functions should
