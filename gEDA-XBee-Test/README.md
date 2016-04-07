@@ -46,6 +46,8 @@ Green LED is PB0 Microcontroller Activity (test port).
 * PD2 (in) Board Digital Input.
 * Microcontroller Reset taken from XBee DIO12 pin.
 
+The board requires 3.3V power input.
+
 ### xbee-node-serial
 
 This board is intended for use with End devices. It provides an external serial
