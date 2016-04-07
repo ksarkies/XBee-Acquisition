@@ -74,7 +74,7 @@ void sendch(unsigned char c)
 #endif
         UART_DATA_REG = c;                                  // send
         while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    // wait till gone
-        UART_STATUS_REG |= _BV(TRANSMIT_COMPLETE_BIT);      // reset TXCflag
+        sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         // force reset TXCflag
 }
 
 /*-----------------------------------------------------------------------------*/

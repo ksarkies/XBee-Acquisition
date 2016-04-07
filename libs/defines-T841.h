@@ -36,13 +36,13 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 //#define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
-#define F_CPU               1000000
-#define BAUD                9600
+#define F_CPU               8000000
+#define BAUD                38400
 
-/* 0.064ms clock from 1MHz clock
-Timer clock scale value 3 gives scale of 64, (see timer.c)
-This gives a 16ms overflow interrupt.*/
-#define RTC_SCALE               3
+/* 0.128ms clock from 8MHz clock
+Timer clock scale value 5 gives scale of 1024, (see timer.c)
+This gives a 32ms overflow interrupt.*/
+#define RTC_SCALE               5
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered
