@@ -1,4 +1,4 @@
-update=Thu 18 Feb 2016 12:00:55 ACDT
+update=Sat 09 Apr 2016 19:24:58 ACST
 version=1
 last_client=kicad
 [general]
@@ -30,17 +30,6 @@ SolderMaskMinWidth=0
 DrawSegmentWidth=0.2
 BoardOutlineThickness=0.09999999999999999
 ModuleOutlineThickness=0.15
-[schematic_editor]
-version=1
-PageLayoutDescrFile=
-PlotDirectoryName=
-SubpartIdSeparator=0
-SubpartFirstId=65
-NetFmtName=
-SpiceForceRefPrefix=0
-SpiceUseNetNumbers=0
-LabSize=60
-ERC_TestSimilarLabels=1
 [eeschema]
 version=1
 LibDir=symbols
@@ -81,3 +70,13 @@ LibName33=KB1LQC
 LibName34=MiscellaneousDevices
 LibName35=TransistorParts
 LibName36=Sensors
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60

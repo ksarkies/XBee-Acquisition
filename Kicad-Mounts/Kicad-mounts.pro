@@ -1,4 +1,4 @@
-update=Thu 18 Feb 2016 11:59:49 ACDT
+update=Fri 08 Apr 2016 16:33:18 ACST
 version=1
 last_client=kicad
 [general]
@@ -67,3 +67,13 @@ LibName30=KB1LQC
 LibName31=MiscellaneousDevices
 LibName32=Sensors
 LibName33=RF_OEM_Parts
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60
