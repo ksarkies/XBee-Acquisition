@@ -16,7 +16,7 @@ circuit power supply (which is sourced via a 3.3V voltage regulator). The LED is
 mounted on a separate board that will straddle an interrupter wheel for counting
 revolutions of the meter.
 
-The board has a 10-pin debug connector for testing purposes:
+The board has a 12-pin debug connector for testing purposes:
 
 1. Battery power or board power (if a battery is present take extreme care not
 to short or connect any other power source).
@@ -27,8 +27,10 @@ to short or connect any other power source).
 6. MISO microcontroller programming pin.
 7. Tx from microcontroller to XBee Rx (monitor this only unless XBee is removed).
 8. Rx to microcontroller from XBee Tx (monitor this only unless XBee is removed).
-9. On/Sleep (high if XBee is awake, low if asleep).
-10. Ground.
+9. Association Signal from XBee. Blinks at 2Hz when connected to the network.
+10. On/Sleep (high if XBee is awake, low if asleep).
+11. Commissioning input to XBee, requiring a pushbutton to ground.
+12. Ground.
 
 The microcontroller has the following I/O pin allocations:
 
@@ -53,10 +55,11 @@ The TPS77033 symbol from KB1LQC.lib at Rochester Institute of technology
 A photodiode symbol was taken from
 (http://vkoeppel.free.fr/files/diy/kicad_diy_libraries.zip)
 
-Other symbols and footprints except one are provided by KiCad developers.
+Other symbols and footprints are custom or are provided by KiCad developers.
 
 The provided Photodiode.pretty footprint library should contain all necessary
-footprints. Place any legacy footprint mod files into the modules directory. In
+footprints. Copy any legacy footprints into the modules directory, and any
+external footprints into Photodiode.pretty to avoid problems of obsolescence. In
 CvPcb go to "Library Tables", then select the tab "Project Specific Libraries".
 Append a new entry, add the library path (including the name of the .mod file),
 choosing "Legacy" for the plugin type. The nickname will then appear in the main
@@ -64,20 +67,24 @@ listing of CvPcb and the library footprints should appear. If a mistake is made,
 no footprints will show, but no error message will be given until CvPcb is
 restarted.
 
-A custom footprint S1133 is provided for the photodiode. This actually has a
+A custom footprint S1133 is provided for the S1133 photodiode. This has a
 truncated circular form 8mm diameter with 6mm across the truncation, and through
 hole pins. In CvPcb append a new KiCad entry and add the library path to the
 .pretty directory (not the file, which is a single footprint). Also included
 are some 2mm pin spacing header footprints.
 
+The production version of the board has a custom footprint for the debug
+connector to allow the option of using an SMD form. Also the photodiode is now
+a BPW34 which can be either SMD or through hole mounted below the board, or a
+reverse form mounted on top of the board over the square hole. The latter choice
+avoids possible interference with mechanical parts in the space under the board.
+
 * 27 November 2014: Add missing ground points. Correct error in battery voltage
   circuit.
 * 24 February 2016: Changed position of connectors to avoid housing structures.
+* 11 April: Production version with additional XBee signals brought out to the
+   debug connector which is now 12 pin.
 
 K. Sarkies
-19 February 2016
-
-Note; pin 1 of the XBee connector links to CTS on the XBee mount, but is not
-connected on this board.
-
+11 April 2016
 

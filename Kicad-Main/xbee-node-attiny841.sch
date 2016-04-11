@@ -409,13 +409,13 @@ $EndComp
 $Comp
 L GND-RESCUE-xbee-node-attiny841 #PWR015
 U 1 1 53E0741A
-P 7000 6000
-F 0 "#PWR015" H 7000 6000 30  0001 C CNN
-F 1 "GND" H 7000 5930 30  0001 C CNN
-F 2 "" H 7000 6000 60  0000 C CNN
-F 3 "" H 7000 6000 60  0000 C CNN
-	1    7000 6000
-	0    1    -1   0   
+P 7500 6100
+F 0 "#PWR015" H 7500 6100 30  0001 C CNN
+F 1 "GND" H 7500 6030 30  0001 C CNN
+F 2 "" H 7500 6100 60  0000 C CNN
+F 3 "" H 7500 6100 60  0000 C CNN
+	1    7500 6100
+	0    -1   -1   0   
 $EndComp
 NoConn ~ 6300 1400
 NoConn ~ 4950 5350
@@ -595,7 +595,7 @@ Text Label 7500 4750 0    60   ~ 0
 Sleep-Rq
 Text Label 7000 4550 2    60   ~ 0
 Bootloader
-Text Label 7500 6000 0    60   ~ 0
+Text Label 7000 6000 2    60   ~ 0
 On/Sleep
 $Comp
 L CONN_01X01 P7
@@ -1019,9 +1019,9 @@ F 3 "" H 7250 4650 50  0000 C CNN
 	1    7250 5850
 	-1   0    0    -1  
 $EndComp
-Text Label 7000 6100 2    60   ~ 0
+Text Label 7500 6000 0    60   ~ 0
 Association
-Text Label 7500 6100 0    60   ~ 0
+Text Label 7000 6100 2    60   ~ 0
 Commissioning
 $Comp
 L CONN_01X01 P19
