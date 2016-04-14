@@ -78,7 +78,7 @@ void hardwareInit(void);
 void wdtInit(const uint8_t waketime);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const uint8_t* data);
+void sendMessage(const char* data);
 void sleepXBee(void);
 void wakeXBee(void);
 

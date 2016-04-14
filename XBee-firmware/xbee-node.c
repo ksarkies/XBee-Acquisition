@@ -18,6 +18,10 @@ The watchdog timer is used to wake the AVR at intervals to transmit the count
 and battery voltage to the XBee. The XBee is then woken again after a short
 interval to pass on any base station messages to the AVR.
 
+An error correction protocol is used to ensure that count data is delivered
+correctly to the base station before new counts are started. Refer to the
+detailed documentation for more information.
+
 @note
 Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.
 @note
@@ -125,7 +129,7 @@ original message is repeated up to 3 times. Then the communication is abandoned.
 
 At the end, if the base station had responded positively and the protocol ended
 successfully, a Y response is sent back without any further checks. If all
-retries has passed without a positive response, an X response is returned.
+retries have passed without a positive response, an X response is returned.
 */
 
 int main(void)
@@ -133,7 +137,6 @@ int main(void)
 
 /*  Initialise hardware */
     hardwareInit();
-    wdtInit(WDT_TIME);
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
@@ -152,6 +155,7 @@ event. */
     wdtCounter = 0;
     bool stayAwake = false;         /* Keep awake in response to command */
 
+    wdtInit(WDT_TIME);              /* Set up watchdog timer */
     sei();
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
@@ -390,7 +394,7 @@ changed outside the function until the function returns COMPLETE.
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
 /* Wait for data to appear */
-    uint16_t inputChar = getchn();
+    uint16_t inputChar = getch();
     uint8_t messageError = high(inputChar);
     if (messageError != NO_DATA)
     {
@@ -454,7 +458,7 @@ for transmission. This is sent at the beginning of the string.
 
 void sendDataCommand(const uint8_t command, const uint32_t datum)
 {
-    uint8_t buffer[12];
+    char buffer[12];
     uint8_t i;
     char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
     uint32_t value = datum;
@@ -476,7 +480,7 @@ Wake the XBee and send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
-void sendMessage(const uint8_t* data)
+void sendMessage(const char* data)
 {
     wakeXBee();
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
@@ -569,7 +573,8 @@ The timeout settings give the same time interval for each AVR, regardless of the
 clock frequency used by the WDT.
 
 The interrupt enable mode is set. The WDE bit is left off to ensure that the WDT
-remains in interrupt mode.
+remains in interrupt mode. Note that the changing of these modes must follow
+a strict protocol as outlined in the datasheet.
 
 IMPORTANT: Disable the "WDT Always On" fuse.
 
@@ -578,11 +583,17 @@ IMPORTANT: Disable the "WDT Always On" fuse.
 void wdtInit(const uint8_t waketime)
 {
     uint8_t timeout = waketime;
-    outb(WDT_CSR,0);     /* Clear the WDT register */
     if (timeout > 9) timeout = 9;
     uint8_t wdtcsrSetting = (timeout & 0x07);
     if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
-    outb(WDT_CSR,wdtcsrSetting | _BV(WDIE));
+    wdtcsrSetting |= _BV(WDIE); /* Set WDT interrupt enable */
+    outb(MCUSR,0);              /* Clear the WDRF flag to allow WDE to reset */
+/* This is the required change sequence to clear WDE and set enable and scale */
+#ifdef WDCE
+    outb(WDTCSR,_BV(WDCE) | _BV(WDE));  /* Set change enable */
+#endif
+    outb(WDTCSR,wdtcsrSetting); /* Set scaling factor and enable WDT interrupt */
+    sei();
 }
 
 /****************************************************************************/
@@ -661,5 +672,8 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
+    sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case it was changed */
+    if ((inb(TEST_PORT) & _BV(TEST_PIN)) == 0) sbi(TEST_PORT,TEST_PIN);
+    else cbi(TEST_PORT,TEST_PIN);
 }
 
