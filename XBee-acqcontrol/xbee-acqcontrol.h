@@ -105,6 +105,10 @@ extern nodeEntry nodeInfo[25];
 //-----------------------------------------------------------------------------
 /* Prototypes */
 
+bool command_handler(const int listener, unsigned char *buf);
+void *get_in_addr(const struct sockaddr *sa);
+int init_socket(int *listener);
+int check_connections(fd_set *master, int *fd_max, const int listener);
 int setupXbeeInstance();
 void openRemoteConnection(int row);
 void openRemoteConnections();
@@ -113,11 +117,6 @@ void closeRemoteConnections();
 int openGlobalConnections();
 int closeGlobalConnections();
 int nodeProbe();
-int command_handler(const int listener, unsigned char *buf);
-void *get_in_addr(const struct sockaddr *sa);
-int init_socket(int *listener);
-int check_connections(fd_set *master, int *fd_max, const int listener);
-xbee_err sendTxRequest(const int row, unsigned char * string);
 int dataFileCheck();
 int configFillNodeTable();
 int readConfigFileHex();

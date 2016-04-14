@@ -10,11 +10,12 @@ system and communicate over LAN or WAN to a GUI running on a separate PC.
 the provided zip file.
 
 The latest stable version at this time is 3.0.11. Compile libxbee according to
-the included instructions. Install the libraries. Then compile the program.
+the included instructions and install. Then compile xbee-acqcontrol.
 
 The program when run will announce the results filename and loop waiting for
-communication from the network. Debug information is written to /var/log/syslog.
-Command line options are:
+communication from the network. The default filename willbe time-stamped, but
+this can be overriden by a command line option. Debug information is written to
+/var/log/syslog. Command line options are:
 
 -d _directory_ to store results file
 

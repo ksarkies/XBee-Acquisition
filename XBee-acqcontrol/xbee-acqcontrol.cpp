@@ -20,8 +20,8 @@ by a control program. Refer to the command handler function for the commands
 passed on that interface.
 
 @note
-The program uses libxbee by Attie Grande
-http://attie.co.uk/libxbee
+The program uses libxbee3 by Attie Grande
+http://attie.co.uk/libxbee3
 
 @note
 May be portable to Windows and OS X, if anyone is so crazy.
@@ -73,12 +73,12 @@ struct xbee_con *identifyCon;   /* Connection for identify packets */
 int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
 char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
-uint8_t dataResponseRcvd;       /* Signal response to an AVR command received */
+bool dataResponseRcvd;          /* Signal response to an AVR command received */
 char dataResponseData[SIZE];    /* The data record received with a response */
-uint8_t remoteATResponseRcvd;   /* Signal response to a remote AT command received */
+bool remoteATResponseRcvd;      /* Signal response to a remote AT command received */
 uint8_t remoteATLength;
 char remoteATResponseData[SIZE];/* Data record received with remote AT response */
-uint8_t localATResponseRcvd;    /* Signal response to a local AT command received */
+bool localATResponseRcvd;       /* Signal response to a local AT command received */
 uint8_t localATLength;
 char localATResponseData[SIZE]; /* The data record received with a local AT response */
 FILE *fp;                       /* File for results */
@@ -285,7 +285,7 @@ we do not wait for anything lagging behind.
 
 L send a local AT command to the attached coordinator XBee.
 l check for a response to a previously sent local AT command.
-R send a remote AT command to the selected node. The AT command follows in the data field.
+R send a remote AT command to the selected node. The command follows in the data field.
 r check for a response to a previously sent remote AT command.
 S send an ASCII string to a remote node on the established data connection.
 s check for a response to a previously sent node AVR command.
@@ -310,7 +310,7 @@ there was no response received at that time.
 @parameter  unsigned char * buf: A buffer [256] with the received data.
 @returns:   true if no error
 */
-int command_handler(const int listener, unsigned char *buf)
+bool command_handler(const int listener, unsigned char *buf)
 {
     xbee_err ret;
     char reply[256];
@@ -596,356 +596,6 @@ If no response was received, a short message is sent back without data.*/
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Create the XBee instance
-
-The xbee instance is created along with a local AT command interface temporarily
-for checking that the XBee is working.
-
-Globals: xbee (the libxbee instance created here and used throughout).
-
-@returns    libxbee error
-*/
-int setupXbeeInstance()
-{
-    xbee_err ret;
-    unsigned char txRet;
-
-/* Setup the XBee instance with given device and baudrate (from command line).
-Use Unix stat to check if the file is available. This is not guaranteed to be
-the one actually allocated to the XBee. Abort if the attempted setup fails. */
-    struct stat st;
-    if(stat(inPort,&st) == 0)           /* Check if serial port exists */
-    {
-        ret = xbee_setup(&xbee, "xbee2", inPort, baudrate);
-        if (ret != XBEE_ENONE)
-        {
-            syslog(LOG_INFO, "Unable to open XBee port: %d (%s)", ret,
-                   xbee_errorToStr(ret));
-#ifdef DEBUG
-        if (debug)
-            printf("Unable to open XBee port: %d (%s)\n", ret,
-                    xbee_errorToStr(ret));
-#endif
-            return ret;
-        }
-    }
-    else
-    {
-        syslog(LOG_INFO, "Serial Port %s not available.\n", inPort);
-#ifdef DEBUG
-        if (debug)
-            printf("Serial Port %s not available.\n", inPort);
-#endif
-        return -1;
-    }
-    
-/* Setup a connection for local AT commands. */
-    ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL);
-    if (ret != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-#ifdef DEBUG
-        if (debug)
-            printf("Local AT connection failed: %d (%s)\n", ret,
-                    xbee_errorToStr(ret));
-#endif
-        return ret;
-    }
-/* Attempt to send an AP command to change the coordinator to mode 1 (in case
-it was set to mode 2).
-For some reason the XBee needs a command like this before sending out the ND,
-otherwise it doesn't pick up the responses.
-Try several times if a timeout occurs. */
-    unsigned char timeCounter = TIMEOUT;
-    while ((ret == XBEE_ENONE) && timeCounter--)
-        ret = xbee_conTx(localATCon, &txRet, "AP\x01");
-    if (ret != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Unable to change mode of XBee: %d (%s)", ret,
-               xbee_errorToStr(ret));
-#ifdef DEBUG
-        if (debug)
-            printf("Unable to change mode of XBee: %d (%s)\n", ret,
-                    xbee_errorToStr(ret));
-#endif
-    }
-/* Close off the local AT connection to destroy unwanted responses that
-could get mixed up with the ND responses. */
-    xbee_conEnd(localATCon);
-    return ret;
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Open Remote Node connections
-
-The entry to the node table structure is set as valid and a set of xbee
-connections is built if it is not already present.
-
-Globals: xbee, nodeInfo
-
-@parameter  int node. The table node entry to be set.
-*/
-
-void openRemoteConnection(int node)
-{
-/* Setup an address to build connections for incoming data, remote AT and I/O
-frames */
-    struct xbee_conAddress address;
-    memset(&address, 0, sizeof(address));
-    address.addr64_enabled = 1;
-    address.addr64[0] = (nodeInfo[node].SH >> 24) & 0xFF;
-    address.addr64[1] = (nodeInfo[node].SH >> 16) & 0xFF;
-    address.addr64[2] = (nodeInfo[node].SH >> 8) & 0xFF;
-    address.addr64[3] = nodeInfo[node].SH & 0xFF;
-    address.addr64[4] = (nodeInfo[node].SL >> 24) & 0xFF;
-    address.addr64[5] = (nodeInfo[node].SL >> 16) & 0xFF;
-    address.addr64[6] = (nodeInfo[node].SL >> 8) & 0xFF;
-    address.addr64[7] = nodeInfo[node].SL & 0xFF;
-    if (nodeInfo[node].dataCon == NULL)
-    {
-        if ((xbee_conNew(xbee, &nodeInfo[node].dataCon, "Data", &address)
-                    != XBEE_ENONE) ||
-            (xbee_conCallbackSet(nodeInfo[node].dataCon, dataCallback, NULL)
-                    != XBEE_ENONE))
-        {
-            nodeInfo[node].dataCon = NULL;
-        }
-    }
-    if (nodeInfo[node].atCon == NULL)
-    {
-        if ((xbee_conNew(xbee, &nodeInfo[node].atCon, "Remote AT", &address)
-                    != XBEE_ENONE) ||
-            (xbee_conCallbackSet(nodeInfo[node].atCon, remoteATCallback, NULL)
-                    != XBEE_ENONE))
-        {
-            nodeInfo[node].atCon = NULL;
-        }
-    }
-    if (nodeInfo[node].ioCon == NULL)
-    {
-        if ((xbee_conNew(xbee, &nodeInfo[node].ioCon, "I/O", &address)
-                    != XBEE_ENONE) ||
-            (xbee_conCallbackSet(nodeInfo[node].ioCon, ioCallback, NULL)
-                    != XBEE_ENONE))
-        {
-            nodeInfo[node].ioCon = NULL;
-        }
-    }
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Open all remote node connections in the table
-
-Globals: numberNodes
-*/
-
-void openRemoteConnections()
-{
-    for (int node=0; node<numberNodes; node++)
-    {
-        openRemoteConnection(node);
-    }
-    return;
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Close down a single remote node connections
-
-Globals: nodeInfo
-
-@parameter  int node. The table node entry to be invalidated.
-*/
-
-void closeRemoteConnection(int node)
-{
-    if (nodeInfo[node].dataCon != NULL) xbee_conEnd(nodeInfo[node].dataCon);
-    nodeInfo[node].dataCon = NULL;
-    if (nodeInfo[node].ioCon != NULL) xbee_conEnd(nodeInfo[node].ioCon);
-    nodeInfo[node].ioCon = NULL;
-    if (nodeInfo[node].atCon != NULL) xbee_conEnd(nodeInfo[node].atCon);
-    nodeInfo[node].atCon = NULL;
-    nodeInfo[node].valid = FALSE;
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Close down all remote node connections
-
-Globals: numberNodes
-*/
-
-void closeRemoteConnections()
-{
-/* Invalidate all entries in the table */
-    for (int node=0; node<numberNodes; node++)
-    {
-        closeRemoteConnection(node);
-    }
-    return;
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Probe for all nodes on the network
-
-Send out a node discover signal and build the table of nodes. A local AT
-connection is used.
-
-Globals: xbee
-
-@returns    libxbee error value
-*/
-
-int nodeProbe()
-{
-    xbee_err ret;
-    unsigned char txRet;
-    int sleeping = FALSE;
-    struct xbee_con *probeATCon;
-/* Check if the local AT connection is open and put it to sleep */
-    if (xbee_conValidate(localATCon) == XBEE_ENONE)
-    {
-        if ((ret = xbee_conSleepSet(localATCon, CON_SLEEP)) != XBEE_ENONE)
-        {
-            syslog(LOG_INFO, "Cannot sleep local connection: %d (%s)", ret,
-                   xbee_errorToStr(ret));
-            return ret;
-        }
-        sleeping = TRUE;
-    }
-
-/* Open a local AT connection without callback. */
-    if ((ret = xbee_conNew(xbee, &probeATCon, "Local AT", NULL)) != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-    }
-    else
-    {
-        ret = xbee_conTx(probeATCon, &txRet, "ND");
-        syslog(LOG_INFO, "ND probe sent: %d (%s)", txRet, xbee_errorToStr(ret));
-        if ((ret != XBEE_ENONE) && (ret != XBEE_ETX))
-            syslog(LOG_INFO, "ND probe Tx failed: %d (%s)", ret,
-                   xbee_errorToStr(ret));
-        else
-        {
-/* Timeout always seems to occur so we won't act on this */
-            if (txRet == (unsigned char)XBEE_ETIMEOUT)
-                syslog(LOG_INFO, "ND probe Tx timeout: %d (%s)", txRet,
-                       xbee_errorToStr(XBEE_ETIMEOUT));
-/* For this particular command callbacks have not been used and the Rx is
-polled for all responding nodes */
-            int rxWait = 20;            /* Wait up to 10sec for response. */
-            struct xbee_pkt *pkt;
-            int pktRemaining;
-            {
-                for (int i = 0; i < rxWait; i++)
-                {
-                    if ((ret = xbee_conRx(probeATCon, &pkt, &pktRemaining))
-                        != XBEE_ENOTEXISTS)
-                    {
-                        nodeIDCallback(xbee, probeATCon, &pkt, NULL);
-#ifdef DEBUG
-                        if (debug)
-                            printf("Node found %d return %d\n",i,ret);
-#endif
-                    }
-                    usleep(500000);
-                }
-            }
-            xbee_pktFree(pkt);
-#ifdef DEBUG
-            if (debug)
-            {
-                printf("ND Ready\n");
-                int i;
-                for (i=0; i<numberNodes; i++)
-                    printf("\nNode ID %s Address %d Valid %d\n",
-                           nodeInfo[i].nodeIdent,nodeInfo[i].adr,nodeInfo[i].valid);
-            }
-#endif
-        }
-/* Close off local AT connection */
-        ret = xbee_conEnd(probeATCon);
-        if (ret != XBEE_ENONE)
-        {
-            syslog(LOG_INFO, "Local AT connection exit failed: %d (%s)", ret,
-                   xbee_errorToStr(ret));
-        }
-    }
-    if (! sleeping) xbee_conSleepSet(localATCon, CON_AWAKE);
-    return ret;
-}
-/*--------------------------------------------------------------------------*/
-/** @brief Open all long-running connections
-
-Connections for local AT and identify are left open.
-
-@returns    libxbee error value
-*/
-
-int openGlobalConnections()
-{
-    xbee_err ret;
-
-    if ((ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL)) != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-        return ret;
-    }
-/* Set the callback for the local AT response. */
-    if ((ret = xbee_conCallbackSet(localATCon, localATCallback, NULL))
-            != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-        xbee_conEnd(localATCon);
-        return ret;
-    }
-/* Setup a long-running connection for Identify packets for nodes starting up
-later. */
-    if ((ret = xbee_conNew(xbee, &identifyCon, "Identify", NULL)) != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Identify Connection failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-        return ret;
-    }
-/* Set the callback for the identify response. */
-    if ((ret = xbee_conCallbackSet(identifyCon, nodeIDCallback, NULL))
-            != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Identify Callback Set failed: %d (%s)", ret,
-               xbee_errorToStr(ret));
-        xbee_conEnd(identifyCon);
-    }
-    return ret;
-}
-
-/*--------------------------------------------------------------------------*/
-/** @brief Close all long-running connections
-
-Connections for local AT and identify are closed.
-
-@returns    libxbee error value
-*/
-
-int closeGlobalConnections()
-{
-    xbee_err ret;
-
-    if ((ret = xbee_conEnd(localATCon)) != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Could not close local AT connection %d\n", ret);
-        return ret;
-    }
-    if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
-    {
-        syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
-    }
-    return ret;
-}
-
-/*--------------------------------------------------------------------------*/
 /** @brief Get the Internet socket address IPv4 or IPv6
 
 @parameter  struct sockaddr *sa: Socket address structure
@@ -1093,11 +743,375 @@ of error just let client die as we are running as a background process) */
 }
 
 /*--------------------------------------------------------------------------*/
+/** @brief Create the XBee instance
+
+The xbee instance is created for an attached XBee, along with a local AT command
+interface temporarily for checking that the XBee is working.
+
+Globals:
+xbee instance
+
+@returns    libxbee error
+*/
+int setupXbeeInstance()
+{
+    xbee_err ret;
+    unsigned char txRet;
+
+/* Setup the XBee instance with given device and baudrate (from command line).
+Use Unix stat to check if the file is available. This is not guaranteed to be
+the one actually allocated to the XBee. Abort if the attempted setup fails. */
+    struct stat st;
+    if(stat(inPort,&st) == 0)           /* Check if serial port exists */
+    {
+        ret = xbee_setup(&xbee, "xbee2", inPort, baudrate);
+        if (ret != XBEE_ENONE)
+        {
+            syslog(LOG_INFO, "Unable to open XBee port: %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Unable to open XBee port: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
+            return ret;
+        }
+    }
+    else
+    {
+        syslog(LOG_INFO, "Serial Port %s not available.\n", inPort);
+#ifdef DEBUG
+        if (debug)
+            printf("Serial Port %s not available.\n", inPort);
+#endif
+        return -1;
+    }
+    
+/* Setup a connection for local AT commands. */
+    ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL);
+    if (ret != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Local AT connection failed: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
+        return ret;
+    }
+/* Attempt to send an AP command to change the coordinator to mode 1 (in case
+it was set to mode 2).
+For some reason the XBee needs a command like this before sending out the ND,
+otherwise it doesn't pick up the responses.
+Try several times if a timeout occurs. */
+    unsigned char timeCounter = TIMEOUT;
+    while ((ret == XBEE_ENONE) && timeCounter--)
+        ret = xbee_conTx(localATCon, &txRet, "AP\x01");
+    if (ret != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Unable to change mode of XBee: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Unable to change mode of XBee: %d (%s)\n", ret,
+                    xbee_errorToStr(ret));
+#endif
+    }
+/* Close off the local AT connection to destroy unwanted responses that
+could get mixed up with the ND responses. */
+    xbee_conEnd(localATCon);
+    return ret;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Open Remote Node connections
+
+The entry to the node table structure is set as valid and a set of xbee
+connections is built if it is not already present.
+
+Globals:
+xbee instance
+nodeInfo node information array
+
+@parameter  int node. The table node entry to be set.
+*/
+
+void openRemoteConnection(int node)
+{
+/* Setup an address to build connections for incoming data, remote AT and I/O
+frames */
+    struct xbee_conAddress address;
+    memset(&address, 0, sizeof(address));
+    address.addr64_enabled = 1;
+    address.addr64[0] = (nodeInfo[node].SH >> 24) & 0xFF;
+    address.addr64[1] = (nodeInfo[node].SH >> 16) & 0xFF;
+    address.addr64[2] = (nodeInfo[node].SH >> 8) & 0xFF;
+    address.addr64[3] = nodeInfo[node].SH & 0xFF;
+    address.addr64[4] = (nodeInfo[node].SL >> 24) & 0xFF;
+    address.addr64[5] = (nodeInfo[node].SL >> 16) & 0xFF;
+    address.addr64[6] = (nodeInfo[node].SL >> 8) & 0xFF;
+    address.addr64[7] = nodeInfo[node].SL & 0xFF;
+    if (nodeInfo[node].dataCon == NULL)
+    {
+        if ((xbee_conNew(xbee, &nodeInfo[node].dataCon, "Data", &address)
+                    != XBEE_ENONE) ||
+            (xbee_conCallbackSet(nodeInfo[node].dataCon, dataCallback, NULL)
+                    != XBEE_ENONE))
+        {
+            nodeInfo[node].dataCon = NULL;
+        }
+    }
+    if (nodeInfo[node].atCon == NULL)
+    {
+        if ((xbee_conNew(xbee, &nodeInfo[node].atCon, "Remote AT", &address)
+                    != XBEE_ENONE) ||
+            (xbee_conCallbackSet(nodeInfo[node].atCon, remoteATCallback, NULL)
+                    != XBEE_ENONE))
+        {
+            nodeInfo[node].atCon = NULL;
+        }
+    }
+    if (nodeInfo[node].ioCon == NULL)
+    {
+        if ((xbee_conNew(xbee, &nodeInfo[node].ioCon, "I/O", &address)
+                    != XBEE_ENONE) ||
+            (xbee_conCallbackSet(nodeInfo[node].ioCon, ioCallback, NULL)
+                    != XBEE_ENONE))
+        {
+            nodeInfo[node].ioCon = NULL;
+        }
+    }
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Open all remote node connections in the table
+
+Globals:
+xbee instance
+nodeInfo node information array
+numberNodes
+*/
+
+void openRemoteConnections()
+{
+    for (int node=0; node<numberNodes; node++)
+    {
+        openRemoteConnection(node);
+    }
+    return;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Close down a single remote node connections
+
+Globals:
+xbee instance
+nodeInfo node information array
+
+@parameter  int node. The table node entry to be invalidated.
+*/
+
+void closeRemoteConnection(int node)
+{
+    if (nodeInfo[node].dataCon != NULL) xbee_conEnd(nodeInfo[node].dataCon);
+    nodeInfo[node].dataCon = NULL;
+    if (nodeInfo[node].ioCon != NULL) xbee_conEnd(nodeInfo[node].ioCon);
+    nodeInfo[node].ioCon = NULL;
+    if (nodeInfo[node].atCon != NULL) xbee_conEnd(nodeInfo[node].atCon);
+    nodeInfo[node].atCon = NULL;
+    nodeInfo[node].valid = FALSE;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Close down all remote node connections
+
+Globals:
+xbee instance
+nodeInfo node information array
+numberNodes
+*/
+
+void closeRemoteConnections()
+{
+/* Invalidate all entries in the table */
+    for (int node=0; node<numberNodes; node++)
+    {
+        closeRemoteConnection(node);
+    }
+    return;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Open all long-running connections
+
+Connections for local AT and identify are left open.
+
+@returns    libxbee error value
+*/
+
+int openGlobalConnections()
+{
+    xbee_err ret;
+
+    if ((ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        return ret;
+    }
+/* Set the callback for the local AT response. */
+    if ((ret = xbee_conCallbackSet(localATCon, localATCallback, NULL))
+            != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        xbee_conEnd(localATCon);
+        return ret;
+    }
+/* Setup a long-running connection for Identify packets for nodes starting up
+later. */
+    if ((ret = xbee_conNew(xbee, &identifyCon, "Identify", NULL)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Identify Connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        return ret;
+    }
+/* Set the callback for the identify response. */
+    if ((ret = xbee_conCallbackSet(identifyCon, nodeIDCallback, NULL))
+            != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Identify Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        xbee_conEnd(identifyCon);
+    }
+    return ret;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Close all long-running connections
+
+Connections for local AT and identify are closed.
+
+@returns    libxbee error value
+*/
+
+int closeGlobalConnections()
+{
+    xbee_err ret;
+
+    if ((ret = xbee_conEnd(localATCon)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Could not close local AT connection %d\n", ret);
+        return ret;
+    }
+    if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
+    }
+    return ret;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Probe for all nodes on the network
+
+Send out a node discover signal and build the table of nodes. A local AT
+connection is used.
+
+Globals:
+xbee instance
+nodeInfo node information array
+
+@returns    libxbee error value
+*/
+
+int nodeProbe()
+{
+    xbee_err ret;
+    unsigned char txRet;
+    int sleeping = FALSE;
+    struct xbee_con *probeATCon;
+/* Check if the local AT connection is open and put it to sleep */
+    if (xbee_conValidate(localATCon) == XBEE_ENONE)
+    {
+        if ((ret = xbee_conSleepSet(localATCon, CON_SLEEP)) != XBEE_ENONE)
+        {
+            syslog(LOG_INFO, "Cannot sleep local connection: %d (%s)", ret,
+                   xbee_errorToStr(ret));
+            return ret;
+        }
+        sleeping = TRUE;
+    }
+
+/* Open a local AT connection without callback. */
+    if ((ret = xbee_conNew(xbee, &probeATCon, "Local AT", NULL)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+    }
+    else
+    {
+        ret = xbee_conTx(probeATCon, &txRet, "ND");
+        syslog(LOG_INFO, "ND probe sent: %d (%s)", txRet, xbee_errorToStr(ret));
+        if ((ret != XBEE_ENONE) && (ret != XBEE_ETX))
+            syslog(LOG_INFO, "ND probe Tx failed: %d (%s)", ret,
+                   xbee_errorToStr(ret));
+        else
+        {
+/* Timeout always seems to occur so we won't act on this */
+            if (txRet == (unsigned char)XBEE_ETIMEOUT)
+                syslog(LOG_INFO, "ND probe Tx timeout: %d (%s)", txRet,
+                       xbee_errorToStr(XBEE_ETIMEOUT));
+/* For this particular command callbacks have not been used and the Rx is
+polled for all responding nodes */
+            int rxWait = 20;            /* Wait up to 10sec for response. */
+            struct xbee_pkt *pkt;
+            int pktRemaining;
+            {
+                for (int i = 0; i < rxWait; i++)
+                {
+                    if ((ret = xbee_conRx(probeATCon, &pkt, &pktRemaining))
+                        != XBEE_ENOTEXISTS)
+                    {
+                        nodeIDCallback(xbee, probeATCon, &pkt, NULL);
+#ifdef DEBUG
+                        if (debug)
+                            printf("Node found %d return %d\n",i,ret);
+#endif
+                    }
+                    usleep(500000);
+                }
+            }
+            xbee_pktFree(pkt);
+#ifdef DEBUG
+            if (debug)
+            {
+                printf("ND Ready\n");
+                int i;
+                for (i=0; i<numberNodes; i++)
+                    printf("\nNode ID %s Address %d Valid %d\n",
+                           nodeInfo[i].nodeIdent,nodeInfo[i].adr,nodeInfo[i].valid);
+            }
+#endif
+        }
+/* Close off local AT connection */
+        ret = xbee_conEnd(probeATCon);
+        if (ret != XBEE_ENONE)
+        {
+            syslog(LOG_INFO, "Local AT connection exit failed: %d (%s)", ret,
+                   xbee_errorToStr(ret));
+        }
+    }
+    if (! sleeping) xbee_conSleepSet(localATCon, CON_AWAKE);
+    return ret;
+}
+
+/*--------------------------------------------------------------------------*/
 /** @brief Callback for the ND and Identify command, to load up the node list.
 
 This is a callback required by libxbee. It operates on the global
 datastructure that holds all information for each node returned by the ND
-command.
+command. It is invoked when an identify packet is received.
 
 This checks for existence of the node information and adds a new node if not
 present. Data, I/O and AT command connections are added.
@@ -1108,6 +1122,11 @@ check later by other means to attempt to correct the problem.
 If a device powers off and back on again it will be dealt with adequately by
 this callback. Connections are only added if the entry is not valid or is a new
 entry.
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
 */
 
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
@@ -1194,6 +1213,9 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
 
 If the returned value equals the number of rows, then the node is not in the
 table.
+
+@param unsigned char *addr. Address of the XBee as an 8 element array of bytes.
+@returns int row. The row at which the address occurs.
 */
 
 int findRow(unsigned char *addr)
@@ -1218,15 +1240,28 @@ int findRow(unsigned char *addr)
 /** @brief Callback for the data packets sent from the nodes.
 
 This is a callback required by libxbee. It interprets incoming packets on the
-remote node data connection, and for process data passes it on to an external
+remote node data connection. Application data is passed on to an external
 file.
 
 Other packets are responses to commands to the node AVR sent over the same
 connection. The response is stored in a global array. This should be read
 before any other node AVR command is sent to any node.
 
+- 'C' xx xx aa aa … (11 bytes) Original message with application data.
+- 'E' xx xx aa aa … (11 bytes) Repeat message in response to reception errors.
+- 'N' xx xx aa aa … (11 bytes) Repeat message in response to a NAK.
+- 'T' xx xx aa aa … (11 bytes) Repeat message in response to a timeout.
+- 'X' (1 byte) Remote will abandon the communication attempt.
+- 'A' (1 byte) Remote accepts the communication.
+- 'D' aa aa … (unlimited bytes) Debug message.
+
 TODO The data received is oriented to 32 bit counts. Needs generalization to
 other data types.
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
 */
 
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
@@ -1252,7 +1287,8 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
         printf("\n");
     }
 #endif
-/* Determine if the packet received is a data packet and check for errors */
+/* Determine if the packet received is a data packet and check for errors.
+The command is that sent by the application layer protocol in the remote. */
     char command = (*pkt)->data[0];
     bool error = false;
     unsigned long int count = 0;
@@ -1265,8 +1301,8 @@ the remote. */
         if (writeLength != 11) error = true;
         if (!error)
         {
-/* Convert hex ASCII checksum and count to an integer from latter part of
-string */
+/* Convert hex ASCII checksum and count to an integer from the latter part of
+the string */
             for (int i=0; i<8; i++)
             {
                 int digit=0;
@@ -1299,7 +1335,7 @@ string */
         if (error)
         {
 #ifdef DEBUG
-//            printf("NAK: error %d\n\r",error);
+            if (debug) printf("NAK: error %d\n\r",error);
 #endif
 /* Negative Acknowledge */
             xbee_conTx(con, NULL, "N");
@@ -1320,7 +1356,7 @@ has detected ongoing errors and will now not reset its count. */
     else if (command == 'X')
     {
 #ifdef DEBUG
-//        printf("Remote Abandoned\n\r");
+        if (debug) printf("Remote Abandoned\n\r");
 #endif
         storeData = false;
     }
@@ -1365,6 +1401,16 @@ remote AT connection.
 
 The response is stored in a global array. This should be read before any other
 remote AT command is sent to any node.
+
+Globals:
+bool remoteATResponseRcvd
+uint8_t remoteATLength
+char remoteATResponseData[SIZE]
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
 */
 
 void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
@@ -1392,6 +1438,16 @@ remote AT connection.
 
 The response is stored in a global array. This should be read before any other
 remote AT command is sent to any node.
+
+Globals:
+bool localATResponseRcvd
+uint8_t localATLength
+char localATResponseData[SIZE]
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
 */
 
 void localATCallback(struct xbee *xbee, struct xbee_con *con,
@@ -1417,19 +1473,24 @@ void localATCallback(struct xbee *xbee, struct xbee_con *con,
 This is a callback required by libxbee. It interprets incoming packets on the
 I/O connection for XBees that have been setup to send these.
 
-The I/O frames are values measured on selected ports of the XBee itself.
+The I/O frames are values measured on selected ports of the XBee itself. The
+XBee must be configured to read these ports and transmit at given intervals.
 
 Received data is simply stored in an external file.
+Node information array is global.
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
 */
 
 void ioCallback(struct xbee *xbee, struct xbee_con *con,
                 struct xbee_pkt **pkt, void **data)
 {
     char timeString[20];
-    time_t now;
-    now = time(NULL);
-    struct tm *tmp;
-    tmp = localtime(&now);
+    time_t now = time(NULL);
+    struct tm *tmp = localtime(&now);
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int row = findRow((*pkt)->address.addr64);
     if (row == numberNodes) fprintf(fp,"Node Unknown ");
@@ -1484,7 +1545,7 @@ write the next word field directly as the set of digitial ports. */
         printf("\n");
     }
 #endif
-/* If we are hearing from this then it is a valid node */
+/* We are hearing from this node so it is a valid node */
     if (row < numberNodes) nodeInfo[row].valid = TRUE;
 }
 
@@ -1496,7 +1557,10 @@ limit has been reached, close and reopen another file.
 
 If the file hasn't been opened, create it.
 
-Globals: The file descriptor fp and the record counters.
+Globals:
+The file descriptor fp and the record counters.
+
+@returns bool: file successfully opened.
 */
 
 int dataFileCheck()
@@ -1547,10 +1611,14 @@ name. */
 /** @brief Read a hex field from the config file.
 
 This assumes the exact file format. No checks are made for bad file contents.
-Blanks are skipped, and the next field is read in entirety and converted to int.
+Blanks are skipped, and the next field is read in entirely and converted to int.
 The process stops when blank or EOL is found.
 
-The file descriptor fpd is global, as are the record counters.
+Globals:
+The file descriptor fpd.
+The file record counters.
+
+@returns int: interpreted hex integer.
 */
 
 int readConfigFileHex()
@@ -1580,7 +1648,10 @@ int readConfigFileHex()
 /*--------------------------------------------------------------------------*/
 /** @brief Read or Setup a Configuration File and fill node table if present.
 
-The file descriptor fpd is global.
+Globals:
+The file descriptor fpd.
+
+@returns bool: Configuration file was successfully established.
 */
 
 int configFillNodeTable()
