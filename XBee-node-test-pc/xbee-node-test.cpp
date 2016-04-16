@@ -70,6 +70,9 @@ __attribute__((weak)) void timerISR() {}
 This is where the actual test code is run. The test code is split to
 an initialisation part and an operational part which falls within an (almost)
 infinite loop that is emulated here.
+
+After initialisation of the timer the tick function is called to update the
+counter. The ISR is called in that function when the limit is reached.
 */
 void XbeeNodeTest::codeRun()
 {
@@ -219,7 +222,7 @@ void XbeeNodeTest::on_runButton_clicked()
 }
 
 /****************************************************************************/
-/* Timer initialization
+/* @brief Timer initialization
 
 This function is only called in mainprog.cpp if needed for timer initialization.
 
@@ -233,12 +236,10 @@ void timerInit(unsigned int timerTrigger)
 }
 
 /****************************************************************************/
-/* Timer tick
+/* brief Timer tick
 
 This counts off a number of milliseconds until the selected timer count
 has been completed, then calls the ISR as would happen with a hardware timer.
-
-It must be called in the main program loop.
 */
 
 void _timerTick()

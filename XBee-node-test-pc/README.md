@@ -10,15 +10,26 @@ core on a PC for debugging.
 
 NOTE: gcc required to provide function override for timerISR.
 
-It is identical to the [xbee-node-test](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-test) code but is intended to run on a POSIX
-system using a serial interface to an XBee.
-
 The program can be run without a GUI from the command line with the -n option.
 A debug mode is available for extended printout.
 
 $ xbee-node-test -d -P /dev/ttyUSB0 -b 38400 -n
 
 In command line mode, the program can only be stopped by ctl-C or process kill.
+
+The following main program modules allow different tests to be run. Change the
+XBee-node-test.pro file to compile the different tests.
+
+***mainprog-test***
+-------------------
+
+This is taken from the [xbee-node-test](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-test) code but is intended to run on a POSIX
+system using a serial interface to an XBee.
+
+***mainprog-firmware***
+-----------------------
+
+This is taken from the [xbee-firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-firmware) code.
 
 ***ADAPTATION TO OTHER TEST CODE***
 -----------------------------------
