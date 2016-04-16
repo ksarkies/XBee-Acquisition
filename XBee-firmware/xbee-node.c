@@ -175,6 +175,8 @@ Counter is a global and is changed in the ISR. */
         do
         {
             lastCount = counter;
+    if ((inb(TEST_PORT) & _BV(TEST_PIN)) == 0) sbi(TEST_PORT,TEST_PIN);
+    else cbi(TEST_PORT,TEST_PIN);
 
 /* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
 8 seconds will be too short to do anything useful, so go back to sleep again
@@ -588,9 +590,14 @@ void wdtInit(const uint8_t waketime)
     if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
     wdtcsrSetting |= _BV(WDIE); /* Set WDT interrupt enable */
     outb(MCUSR,0);              /* Clear the WDRF flag to allow WDE to reset */
-/* This is the required change sequence to clear WDE and set enable and scale */
 #ifdef WDCE
+/* This is the required change sequence to clear WDE and set enable and scale
+as required for ATMega48 and most other devices. */
     outb(WDTCSR,_BV(WDCE) | _BV(WDE));  /* Set change enable */
+#else
+/* For later devices, notably ATTiny441 series, the CPU CCP register needs to be
+written with a change enable key. Then setting WDIE will also clear WDE. */
+    outb(CCP,0xD8);
 #endif
     outb(WDTCSR,wdtcsrSetting); /* Set scaling factor and enable WDT interrupt */
     sei();
@@ -615,11 +622,10 @@ inline void sleepXBee(void)
 /** @brief Wake the XBee
 
 If the XBee is asleep, toggle the Sleep_RQ pin high then low. If the XBee is in
-pin hibernate mode, this will hold it awake indefinitely until the Sleep_RQ pin
-is set high again. This is the mode the XBee should be using.
-
-If the XBee is in cyclic/pin wake mode, this will wake it up for a period as set
-in the XBee preprogrammed wake time.
+pin hibernate mode, this will hold it awake until the Sleep_RQ pin is set high
+again or until the XBee wake period has expired. This is the mode the XBee
+should be using in this application. Set the XBee wake period sufficiently long
+if better control of wake time is desired.
 
 The XBee should wake in a very short time.
 */
@@ -673,7 +679,5 @@ ISR(WDT_vect)
 {
     wdtCounter++;
     sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case it was changed */
-    if ((inb(TEST_PORT) & _BV(TEST_PIN)) == 0) sbi(TEST_PORT,TEST_PIN);
-    else cbi(TEST_PORT,TEST_PIN);
 }
 
