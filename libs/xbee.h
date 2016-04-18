@@ -21,6 +21,16 @@
 #ifndef XBEE_H
 #define XBEE_H
 
+/** @name Error Definitions.
+@{*/
+/* From the XBee receiver process: */
+#define STATE_MACHINE           0x10
+#define CHECKSUM                0x11
+#define ACK                     0x12
+#define NAK                     0x13
+#define COMPLETE                0x20
+/*@}*/
+
 /* Xbee parameters */
 #define RF_PAYLOAD              63
 

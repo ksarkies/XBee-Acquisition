@@ -62,10 +62,10 @@ static void wakeXBee() {}
 /*---------------------------------------------------------------------------*/
 /**** Test code starts here */
 
-#define F_CPU   1000000
 
 #include "../libs/serial.h"
 #include "../libs/xbee.h"
+#define F_CPU   1000000
 #include "xbee-node-firmware.h"
 
 #define RTC_SCALE   30
@@ -149,10 +149,11 @@ The loop is emulated in the emulator program. */
 
 void mainprog()
 {
-/* Main loop */
 
-    for(;;)
-    {
+/* Main loop. Remove outer loop as it is simulated. */
+
+//    for(;;)
+//    {
 
 //        if (! stayAwake) sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
@@ -191,6 +192,7 @@ means of notifying the base station that the AVR is awake. */
                         sendDataCommand(txCommand,lastCount);
                         txDelivered = false;    /* Allow check for Tx Status frame */
                         txStatusReceived = false;
+qDebug() << "Transmission Sent";
                     }
                     transmit = false;   /* Prevent transmissions until told */
 
@@ -211,6 +213,7 @@ or command reception. */
                         if (messageStatus == NO_DATA) timeResponse++;
                         else
                         {
+qDebug() << "Got Packet" << messageStatus << messageState;
                             timeResponse = 0;
 /* Got a frame complete without error. */
                             if (messageStatus == COMPLETE)
@@ -358,85 +361,15 @@ this will catch it (i.e. independently of the Tx Status response). */
                 }
 /* If the repeats were exceeded, notify the base station of the abandonment of
 this communication attempt. */
-                if (retry >= 3) sendMessage("X");
+                if (retry >= 3) sendMessage(1,(uint8_t*)"X");
 /* Otherwise notify acceptance */
-                else sendMessage("A");
+                else sendMessage(1,(uint8_t*)"A");
             }
 
 //            _delay_ms(1);
         }
         while (counter != lastCount);
-    }
-}
-
-/****************************************************************************/
-/** @brief Check for incoming messages and respond.
-
-An incoming message is assembled over multiple calls to this function. A status
-is returned indicating completion or error status of the message.
-
-The message is built up as serial data is received, and therefore must not be
-changed outside the function until the function returns COMPLETE.
-
-@param[out] rxFrameType *rxMessage: Message received.
-@param[out] uint8_t *messageState: Message build state, must be set to zero on
-                                   the first call.
-@returns uint8_t message completion/error state. Zero means character received
-                                   OK but not yet finished.
-*/
-uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
-{
-/* Wait for data to appear */
-    uint16_t inputChar = getch();
-    uint8_t messageError = high(inputChar);
-    if (messageError != NO_DATA)
-    {
-        uint8_t state = *messageState;
-/* Pull in the received character and look for message start */
-/* Read in the length (16 bits) and frametype then the rest to a buffer */
-        uint8_t inputValue = low(inputChar);
-        switch(state)
-        {
-/* Sync character */
-            case 0:
-                if (inputChar == 0x7E) state++;
-                break;
-/* Two byte length */
-            case 1:
-                rxMessage->length = (inputChar << 8);
-                state++;
-                break;
-            case 2:
-                rxMessage->length += inputValue;
-                state++;
-                break;
-/* Frame type */
-            case 3:
-                rxMessage->frameType = inputValue;
-                rxMessage->checksum = inputValue;
-                state++;
-                break;
-/* Rest of message, maybe include addresses or just data */
-            default:
-                if (state > rxMessage->length + 3)
-                    messageError = STATE_MACHINE;
-                else if (rxMessage->length + 3 > state)
-                {
-                    rxMessage->message.array[state-4] = inputValue;
-                    state++;
-                    rxMessage->checksum += inputValue;
-                }
-                else
-                {
-                    state = 0;
-                    if (((rxMessage->checksum + inputValue + 1) & 0xFF) > 0)
-                        messageError = CHECKSUM;
-                    else messageError = COMPLETE;
-                }
-        }
-        *messageState = state;
-    }
-    return messageError;
+//    }
 }
 
 /****************************************************************************/
@@ -451,7 +384,7 @@ for transmission. This is sent at the beginning of the string.
 
 void sendDataCommand(const uint8_t command, const uint32_t datum)
 {
-    char buffer[12];
+    uint8_t buffer[12];
     uint8_t i;
     char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
     uint32_t value = datum;
@@ -463,7 +396,7 @@ void sendDataCommand(const uint8_t command, const uint32_t datum)
     }
     buffer[11] = 0;             /* String terminator */
     buffer[0] = command;
-    sendMessage(buffer);
+    sendMessage(11,buffer);
 }
 
 /****************************************************************************/
@@ -473,18 +406,16 @@ Wake the XBee and send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
-void sendMessage(const char* data)
+void sendMessage(const uint8_t length,const uint8_t* data)
 {
     wakeXBee();
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
-                       strlen(data),(uint8_t*)data);
+                       length,data);
 }
 
 /****************************************************************************/
 /** @brief Timer 0 ISR.
 
-This ISR sends a dummy data record to the coordinator and toggles PC4
-where there should be an LED.
 */
 
 //ISR(TIMER0_OVF_vect)
@@ -493,6 +424,7 @@ void timerISR()
     realTime.timeValue++;
     timeCount++;
     wdtCounter = timeCount;
+    qDebug() << "Tick";
 }
 
 /****************************************************************************/
@@ -501,6 +433,9 @@ void timerISR()
 The timer is initialised with the number of millisecond ticks before firing,
 at which time the ISR is called. The initialization is provided in the emulator
 code using the timerInit function.
+
+In this implementation, the parameter timerTrigger is the number of milliseconds
+between ticks.
 */
 
 extern void timerInit(unsigned int timerTrigger);

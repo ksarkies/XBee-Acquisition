@@ -29,8 +29,8 @@ Title:    XBee Node Test
 #include "ui_xbee-node-test.h"
 
 /* Port defaults 38400 baud */
-#define BAUDRATE    5
-#define SERIAL_PORT "/dev/ttyUSB0"
+#define INITIAL_BAUDRATE    5
+#define SERIAL_PORT         "/dev/ttyUSB0"
 
 //-----------------------------------------------------------------------------
 /* External variable needed for access by serial emulation code */
@@ -55,7 +55,7 @@ private slots:
 private:
 // User Interface object
     Ui::XbeeNodeTestDialog xbeeNodeTestFormUi;
-    void setComboBoxes();
+    void setComboBoxes(uint initialBaudrate);
     void codeRun();             // This is where the actual test code is run
 
     QString errorMessage;       //!< Messages for the calling application

@@ -87,4 +87,3 @@ unsigned char getchb(void)
     return low(c);
 }
 
-

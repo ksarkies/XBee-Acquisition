@@ -54,6 +54,7 @@ extern void mainprog();
 extern void mainprogInit();
 /* The serial port defined here is created and opened, shared with serial.cpp */
 QSerialPort* port;
+const qint32 bauds[8] = {1200,2400,4800,9600,19200,38400,57600,115200};
 
 /*---------------------------------------------------------------------------*/
 /* Timer ISR to be simulated */
@@ -97,17 +98,25 @@ include a call to processEvents to ensure that the desired action is taken. */
 //*****************************************************************************
 /** Constructor
 
-@param[in] p Serial Port object pointer
-@param[in] parent Parent widget.
+@param[in] QString* p: Serial Port object pointer
+@param[in] uint initialBaudrate: index to baudrate array
+@param[in] bool commandLine: use command line I/O only
+@param[in] bool debug: print debug messages
+@param[in] QWidget* parent: Parent widget.
 */
 
-XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate,bool commandLine,
+XbeeNodeTest::XbeeNodeTest(QString* p,uint initialBaudrate,bool commandLine,
                               bool debug,QWidget* parent): QDialog(parent)
 {
     port = new QSerialPort(*p);
     bool ok = port->open(QIODevice::ReadWrite);
     if (ok)
     {
+        port->setBaudRate(bauds[initialBaudrate]);
+        port->setDataBits(QSerialPort::Data8);
+        port->setParity(QSerialPort::NoParity);
+        port->setStopBits(QSerialPort::OneStop);
+        port->setFlowControl(QSerialPort::NoFlowControl);
         commandLineOnly = commandLine;
         debugMode = debug;
         if (debugMode) qDebug() << "Debug Mode";
@@ -115,7 +124,11 @@ XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate,bool commandLine,
         if (success())
         {
             running = true;
-            if (commandLineOnly) codeRun();
+            if (commandLineOnly)
+            {
+                if (debugMode) qDebug() << "Running";
+                codeRun();
+            }
             else
             {
                 running = false;
@@ -123,7 +136,7 @@ XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate,bool commandLine,
                 xbeeNodeTestFormUi.setupUi(this);
                 xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
                 xbeeNodeTestFormUi.errorMessage->setVisible(false);
-                setComboBoxes();
+                setComboBoxes(initialBaudrate);
                 debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
             }
         }
@@ -180,7 +193,7 @@ Test existence of serial ports (ACM and USB) and build both combobox entries
 with ttyS0 for machines with a serial port.
 */
 
-void XbeeNodeTest::setComboBoxes()
+void XbeeNodeTest::setComboBoxes(uint initialBaudrate)
 {
     QString port;
     xbeeNodeTestFormUi.serialComboBox->clear();
@@ -206,7 +219,7 @@ void XbeeNodeTest::setComboBoxes()
     baudrates << "1200" <<"2400" << "4800" << "9600" << "19200" << "38400"
               << "57600" << "115200";
     xbeeNodeTestFormUi.baudrateComboBox->addItems(baudrates);
-    xbeeNodeTestFormUi.baudrateComboBox->setCurrentIndex(BAUDRATE);
+    xbeeNodeTestFormUi.baudrateComboBox->setCurrentIndex(initialBaudrate);
 }
 
 //*****************************************************************************
@@ -216,7 +229,7 @@ void XbeeNodeTest::setComboBoxes()
 
 void XbeeNodeTest::on_runButton_clicked()
 {
-    qDebug() << "Running";
+    if (debugMode) qDebug() << "Running";
     running = true;
     codeRun();
 }
@@ -240,12 +253,15 @@ void timerInit(unsigned int timerTrigger)
 
 This counts off a number of milliseconds until the selected timer count
 has been completed, then calls the ISR as would happen with a hardware timer.
+
+The number of milliseconds delay must be a multiple of 55 as the POSIX clock has
+this granularity.
 */
 
 void _timerTick()
 {
-    usleep(1000);
-    if (timerTickMs++ == timerTickCount)
+    usleep(55000);
+    if (timerTickMs++ > timerTickCount/55)
     {
         timerTickMs = 0;
         timerISR();

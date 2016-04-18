@@ -55,22 +55,6 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 /* Time to mute counter update following a transmission */
 #define MUTE_TIME               F_CPU/1000
 
-/**********************************************************/
-/** @name Error Definitions.
-From the UART:
-@{*/
-#define NO_DATA                 0x01
-#define BUFFER_OVERFLOW         0x02
-#define OVERRUN_ERROR           0x04
-#define FRAME_ERROR             0x08
-
-#define STATE_MACHINE           0x10
-#define CHECKSUM                0x11
-#define ACK                     0x12
-#define NAK                     0x13
-#define COMPLETE                0x20
-/*@}*/
-
 /****************************************************************************/
 /* Prototypes */
 

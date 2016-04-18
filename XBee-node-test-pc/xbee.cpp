@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include "../libs/xbee.h"
 #include "../libs/serial.h"
+#include <QApplication>
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))
@@ -69,6 +70,7 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
         txMessage.message.txRequest.data[i] = data[i];
     }
     sendBaseFrame(txMessage);
+    qApp->processEvents();      // Allow serial transmission to complete
 }
 
 /****************************************************************************/
@@ -96,4 +98,76 @@ void sendBaseFrame(const txFrameType txMessage)
 }
 
 /****************************************************************************/
+/** @brief Check for incoming messages and respond.
+
+An incoming message is assembled over multiple calls to this function. A status
+is returned indicating completion or error status of the message.
+
+The message is built up as serial data is received, and therefore must not be
+changed outside the function until the function returns COMPLETE.
+
+@param[out] rxFrameType *rxMessage: Message received.
+@param[out] uint8_t *messageState: Message build state, must be set to zero on
+                                   the first call.
+@returns uint8_t message completion/error state. Zero means character received
+                                   OK but not yet finished.
+*/
+uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
+{
+/* Wait for data to appear */
+    qApp->processEvents();      // Allow serial transmission to complete
+    uint16_t inputChar = getch();
+    uint8_t messageError = high(inputChar);
+    if (messageError != NO_DATA)
+    {
+        uint8_t state = *messageState;
+/* Pull in the received character and look for message start */
+/* Read in the length (16 bits) and frametype then the rest to a buffer */
+        uint8_t inputValue = low(inputChar);
+        switch(state)
+        {
+/* Sync character */
+            case 0:
+                if (inputChar == 0x7E) state++;
+                break;
+/* Two byte length */
+            case 1:
+                rxMessage->length = (inputChar << 8);
+                state++;
+                break;
+            case 2:
+                rxMessage->length += inputValue;
+                state++;
+                break;
+/* Frame type */
+            case 3:
+                rxMessage->frameType = inputValue;
+                rxMessage->checksum = inputValue;
+                state++;
+                break;
+/* Rest of message, maybe include addresses or just data */
+            default:
+                if (state > rxMessage->length + 3)
+                    messageError = STATE_MACHINE;
+                else if (rxMessage->length + 3 > state)
+                {
+                    rxMessage->message.array[state-4] = inputValue;
+                    state++;
+                    rxMessage->checksum += inputValue;
+                }
+                else
+                {
+                    state = 0;
+                    if (((rxMessage->checksum + inputValue + 1) & 0xFF) > 0)
+                        messageError = CHECKSUM;
+                    else messageError = COMPLETE;
+                }
+        }
+        *messageState = state;
+    }
+    return messageError;
+}
+
+/****************************************************************************/
+
 

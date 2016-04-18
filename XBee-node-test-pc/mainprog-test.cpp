@@ -239,7 +239,7 @@ void timerISR()
         buffer[0] = 'D';            /* Data Command */
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
         counter = 0;            /* Reset counter value */
-qDebug() << "Send Transmission";
+qDebug() << "Sent Transmission";
 #ifdef TEST_PORT_DIR
         sbi(TEST_PORT,TEST_PIN);
     }
