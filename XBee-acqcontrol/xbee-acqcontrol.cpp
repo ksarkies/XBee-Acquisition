@@ -1343,7 +1343,7 @@ the string */
         else
         {
 #ifdef DEBUG
-//            printf("ACK\n\r");
+            printf("ACK\n\r");
 #endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];

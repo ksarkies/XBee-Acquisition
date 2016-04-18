@@ -213,7 +213,6 @@ or command reception. */
                         if (messageStatus == NO_DATA) timeResponse++;
                         else
                         {
-qDebug() << "Got Packet" << messageStatus << messageState;
                             timeResponse = 0;
 /* Got a frame complete without error. */
                             if (messageStatus == COMPLETE)

@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include "../libs/xbee.h"
 #include "../libs/serial.h"
+#include <QDebug>
 #include <QApplication>
 
 /* Convenience macros (we don't use them all) */

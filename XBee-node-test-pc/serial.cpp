@@ -29,6 +29,7 @@ through the command line interface or GUI.
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
+#include "../libs/serial.h"
 #include "xbee-node-test.h"
 
 #define  high(x) ((unsigned char) (x >> 8) & 0xFF)
@@ -66,8 +67,9 @@ unsigned int getch(void)
 {
     char c;
     bool ok = port->getChar(&c);
-    if (ok) return (unsigned int)c;
-    else return 0x100+(unsigned int)c;
+    unsigned int result = c;
+    if (ok) result += (NO_DATA<<8);
+    return result;
 }
 
 /*-----------------------------------------------------------------------------*/
