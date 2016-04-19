@@ -51,13 +51,13 @@ compilation.
 
 #include <inttypes.h>
 #include <unistd.h>
-#include <QDebug>
 
 /*---------------------------------------------------------------------------*/
 /* clib library functions to be bypassed */
 
 static void wdt_disable() {}
 static void wakeXBee() {}
+extern void _timerTick();
 
 /*---------------------------------------------------------------------------*/
 /**** Test code starts here */
@@ -192,7 +192,6 @@ means of notifying the base station that the AVR is awake. */
                         sendDataCommand(txCommand,lastCount);
                         txDelivered = false;    /* Allow check for Tx Status frame */
                         txStatusReceived = false;
-qDebug() << "Transmission Sent";
                     }
                     transmit = false;   /* Prevent transmissions until told */
 
@@ -364,7 +363,6 @@ this communication attempt. */
 /* Otherwise notify acceptance */
                 else sendMessage(1,(uint8_t*)"A");
             }
-
 //            _delay_ms(1);
         }
         while (counter != lastCount);
@@ -423,7 +421,6 @@ void timerISR()
     realTime.timeValue++;
     timeCount++;
     wdtCounter = timeCount;
-    qDebug() << "Tick";
 }
 
 /****************************************************************************/

@@ -19,6 +19,7 @@
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <unistd.h>
 #include "../libs/xbee.h"
 #include "../libs/serial.h"
 #include <QDebug>
@@ -115,12 +116,13 @@ changed outside the function until the function returns COMPLETE.
 */
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
+    qApp->processEvents();      // Allow serial reception to proceed
 /* Wait for data to appear */
-    qApp->processEvents();      // Allow serial transmission to complete
     uint16_t inputChar = getch();
     uint8_t messageError = high(inputChar);
     if (messageError != NO_DATA)
     {
+
         uint8_t state = *messageState;
 /* Pull in the received character and look for message start */
 /* Read in the length (16 bits) and frametype then the rest to a buffer */

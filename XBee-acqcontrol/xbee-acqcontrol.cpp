@@ -1332,24 +1332,28 @@ the string */
 //            printf("Count %lu Checksum %lu\n\r",count,checksum);
 #endif
         }
+        xbee_err txError;
         if (error)
         {
 #ifdef DEBUG
-            if (debug) printf("NAK: error %d\n\r",error);
+            if (debug) printf("Sent NAK: error %d\n\r",error);
 #endif
 /* Negative Acknowledge */
-            xbee_conTx(con, NULL, "N");
+            txError = xbee_conTx(con, NULL, "N");
         }
         else
         {
 #ifdef DEBUG
-            printf("ACK\n\r");
+            if (debug) printf("Sent ACK\n\r");
 #endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
-            xbee_conTx(con, NULL, "A");
+            txError = xbee_conTx(con, NULL, "A");
         }
+#ifdef DEBUG
+        if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %d\n\r",txError);
+#endif
     }
 /* Abandon the communication and discard the current count value as the remote
 has detected ongoing errors and will now not reset its count. */

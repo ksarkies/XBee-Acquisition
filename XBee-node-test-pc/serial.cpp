@@ -65,10 +65,15 @@ returns: unsigned int. The upper byte is zero or NO_DATA if no character present
 
 unsigned int getch(void)
 {
-    char c;
-    bool ok = port->getChar(&c);
-    unsigned int result = c;
-    if (ok) result += (NO_DATA<<8);
+    unsigned int result = 0;
+    if (port->bytesAvailable() == 0) result = (NO_DATA<<8);
+    else
+    {
+        char c;
+        bool ok = port->getChar(&c);
+        if (ok) result = (unsigned int)c & 0xFF;
+        else result = c+(FRAME_ERROR<<8);
+    }
     return result;
 }
 

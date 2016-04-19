@@ -256,6 +256,10 @@ has been completed, then calls the ISR as would happen with a hardware timer.
 
 The number of milliseconds delay must be a multiple of 55 as the POSIX clock has
 this granularity.
+
+This is called in the outer loop of the test code in codeRun() above. However if
+test code has inner loops it must be called there as well to ensure that the
+timer continues to tick over.
 */
 
 void _timerTick()
