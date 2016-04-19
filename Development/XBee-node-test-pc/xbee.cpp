@@ -20,8 +20,8 @@
 
 #include <inttypes.h>
 #include <unistd.h>
-#include "../libs/xbee.h"
-#include "../libs/serial.h"
+#include "../../libs/xbee.h"
+#include "../../libs/serial.h"
 #include <QDebug>
 #include <QApplication>
 

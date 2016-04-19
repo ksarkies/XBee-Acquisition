@@ -33,7 +33,7 @@ Tested:     ATMega168 at 8MHz internal clock.
 #define BOOTLOADER_H
 
 #include <avr/sfr_defs.h>
-#include "../libs/defines-M168.h"
+#include "../../libs/defines-M168.h"
 
 #define TRUE 1
 #define FALSE 0

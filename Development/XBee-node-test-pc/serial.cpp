@@ -29,7 +29,7 @@ through the command line interface or GUI.
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
-#include "../libs/serial.h"
+#include "../../libs/serial.h"
 #include "xbee-node-test.h"
 
 #define  high(x) ((unsigned char) (x >> 8) & 0xFF)

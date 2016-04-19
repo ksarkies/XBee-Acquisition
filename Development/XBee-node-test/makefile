@@ -1,29 +1,17 @@
-# Makefile to compile and link the UARTlibrary and test program
+# Makefile to compile and link the ATMega168 example
 # 
 # based on
-# WinAVR Sample makefile written by Eric B. Weddington, J�g Wunsch, et al.
-#
-# On command line:
-#
-# make all = Make software.
-#
-# make clean = Clean out built project files.
-#
-# make coff = Convert ELF to AVR COFF (for use with AVR Studio 3.x or VMLAB).
-#
-# make extcoff = Convert ELF to AVR Extended COFF (for use with AVR Studio
-#                4.07 or greater).
-#
-# make program = Download the hex file to the device, using avrdude.  Please
-#                customize the avrdude settings below first!
-#
-# make filename.s = Just compile filename.c into the assembler code only
-#
-# To rebuild project do "make clean" then "make all".
+# WinAVR Sample makefile
+# written by Eric B. Weddington, Jorg Wunsch, et al.
 #
 
+# Define toolchain directories, if needed.
+# This is the Atmel version of gcc-avr. The open-source version lacks some
+# devices, notable the ATTiny441/841.
+DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+
 # MCU name
-MCU ?= attiny841
+MCU ?= atmega48
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
 ifeq ($(MCU),atmega168)
@@ -36,32 +24,19 @@ else ifeq ($(MCU),attiny841)
 MCU_TYPE = 841
 endif
 
-# Set the base address to start of application area
-BASEADDR = 0x0000
-ifeq ($(MCU),attiny4313)
-#BASEADDR = 0x06C0
-endif
-
-# Define toolchain directories, if needed.
-# This is the Atmel version of gcc-avr. The open-source version lacks some
-# devices, notably the ATTiny441/841.
-#ifeq ($(MCU),attiny841)
-DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
-#endif
-
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-OPT = 1
+OPT = s
 
 
 # Target file name (without extension).
-TARGET = watermeter-test
+TARGET = xbee-node-test
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c ../libs/serial.c
+SRC = $(TARGET).c ../../libs/serial.c ../../libs/xbee.c
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s
@@ -93,6 +68,7 @@ $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 CFLAGS += -DMCU_TYPE=$(MCU_TYPE)
 
+
 # Set a "language standard" compiler flag.
 #   Unremark just one line below to set the language standard to use.
 #   gnu99 = C99 + GNU extensions. See GCC manual for more information.
@@ -118,7 +94,7 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  -Wl,...:   tell GCC to pass this to linker.
 #  -Map:      create map file
 #  --cref:    add cross reference to  map file
-LDFLAGS = -Ttext=$(BASEADDR) -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
 
 
 
@@ -202,6 +178,7 @@ HEXSIZE = $(SIZE) --target=$(FORMAT) $(TARGET).hex
 ELFSIZE = $(SIZE) -A $(TARGET).elf
 
 
+# ---------------------------------------------------------------------------
 
 # Define Messages
 # English

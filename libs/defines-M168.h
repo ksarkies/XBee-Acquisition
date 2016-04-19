@@ -40,8 +40,8 @@ Needed for the bootloader as the upload is extensive. */
 #define USE_HARDWARE_FLOW
 
 /* These are the defines for the selected device and bootloader system */
-#define F_CPU               8000000
-#define BAUD                38400
+#define F_CPU                   8000000
+#define BAUD                    38400
 
 /* 0.128ms clock from 8MHz clock
 Timer clock scale value 5 gives scale of 1024, (see timer.c)
@@ -50,12 +50,12 @@ This gives a 32ms overflow interrupt.*/
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered automatically */
-#define AUTO_ENTER_APP      1
+#define AUTO_ENTER_APP          1
 /* Use the defined output pin to force the XBee to stay awake while in the bootloader.
 This is valid for the XBee sleep mode 1 only. The application should move it to other modes
 if necessary. Note that using this may fail because the output pins may be forced
 to an undesired level during programming. */
-#define XBEE_STAY_AWAKE     1
+#define XBEE_STAY_AWAKE         1
 
 // Simple serial I/O (must define cpu frequency and baudrate before this include) */
 #include <util/setbaud.h>

@@ -1,22 +1,16 @@
 /**
-@mainpage XBee AVR Node Test
+@mainpage XBee AVR Node Example
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
-@date 25 September 2014
-@brief Code for an ATMega48 AVR with an XBee in a Remote Low Power Node 
+@date 21 September 2014
+@brief Code for an AVR with an XBee in a Remote Low Power Node
 
 This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
 measurements for communication to a base controller.
 
-This application works with AVRs having a bootloader block or for situations
-where a bootloader is not required. It has no code referring to a bootloader.
-
-The board targetted is the test board developed for the project using the
-ATMega48 series microcontrollers. See the hardwareInit() function for
-documented I/O ports.
-
-Count interrupt via PCINT2 is handled.
+NOTE: with the current avr-gcc, optimization level 1 must be used. Other levels
+appear to create faulty code.
 
 @note
 Software: AVR-GCC 4.8.2
@@ -49,18 +43,20 @@ Tested:   ATMega168 at 8MHz internal clock.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-#include "../libs/defines.h"
+#if (MCU_TYPE==1)
+#include "../../libs/defines-M168.h"
+#elif (MCU_TYPE==2)
+#include "../../libs/defines-T4313.h"
+#endif
 #include <util/delay.h>
-#include "../libs/serial.h"
-#include "../libs/timer.h"
-#include "../libs/xbee.h"
-#include "xbee-node-test.h"
+#include "../../libs/timer.h"
+#include "bootloader.h"
+#include "xbee-node-example.h"
 
 /** Convenience macros (we don't use them all) */
 #define TRUE 1
 #define FALSE 0
 
-#define  _BV(bit) (1 << (bit))
 #define inb(sfr) _SFR_BYTE(sfr)
 #define inw(sfr) _SFR_WORD(sfr)
 #define outb(sfr, val) (_SFR_BYTE(sfr) = (val))
@@ -71,51 +67,68 @@ Tested:   ATMega168 at 8MHz internal clock.
 #define low(x) ((uint8_t) (x & 0xFF))
 
 /*****************************************************************************/
-/* Global Variables */
-/** Real Time Clock Structure
+/** Real Time Clock Global Variable
 
 The 32 bit time can also be accessed as four bytes. Time scale is defined in
 the information block.
 */
-static volatile union timeUnion
+volatile union timeUnion
 {
   volatile uint32_t timeValue;
   volatile uint8_t  timeByte[4];
-} realTime;
+} time;
 
-/* timeCount measures off timer interrupt ticks to provide an extended time
-between transmissions */
-static uint8_t timeCount;
-/* Counter keep track of external transitions on the digital input */
-static uint32_t counter;
+uint8_t counter;
+
+/*****************************************************************************/
+/* Global Variables */
 
 /** @name UART variables */
 /*@{*/
-static volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
-static volatile uint8_t lastError;    /**< Error code for transmission back */
-static volatile uint8_t checkSum;     /**< Checksum on message contents */
+    volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
+    volatile uint8_t lastError;    /**< Error code for transmission back */
+    volatile uint8_t checkSum;     /**< Checksum on message contents */
 /*@}*/
 
-static uint32_t timeValue;
-static uint8_t messageState;           /**< Progress in message reception */
-static uint8_t messageReady;           /**< Indicate that a message is ready */
-static uint8_t messageError;
-static uint8_t coordinatorAddress64[8];
-static uint8_t coordinatorAddress16[2];
+    uint32_t timeValue;
+    uint8_t messageState;           /**< Progress in message reception */
+    uint8_t messageReady;           /**< Indicate that a message is ready */
+    uint8_t messageError;
+    uint8_t coordinatorAddress64[8];
+    uint8_t coordinatorAddress16[2];
+    uint8_t rxOptions;
 
+/*****************************************************************************/
 /* Local Prototypes */
 
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
+static void resetTimer(void);
+static uint16_t timer0Read(void);
+void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
+                        uint8_t radius, uint8_t length, uint8_t data[]);
 
 /*****************************************************************************/
 /** @brief Main Program */
 
 int main(void)
 {
-    timeCount = 0;
+
     counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
+/* Test for the selected bootloader pin pulled low, then jump directly to the
+bootloader.*/
+    _delay_ms(100);                 /* Wait a bit until the signal settles */
+    cbi(PROG_PORT_DIR,PROG_PIN);    /* Set bootloader test pin input */
+
+sbi(TEST_PORT_DIR,TEST_PIN);
+cbi(TEST_PORT,TEST_PIN);
+
+    if ((inb(PROG_PORT) & _BV(PROG_PIN)) == 0)
+    {
+        bootloader();
+    }
+
     hardwareInit();                 /* Initialize the processor specific hardware */
     uartInit();
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
@@ -194,10 +207,8 @@ event. */
             else if (rxMessage.frameType == RX_REQUEST)
             {
 /* Toggle test port */
-#ifdef TEST_PORT_DIR
-                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
-#endif
+                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(PORTB,0);
+                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(PORTB,0);
 /* Echo */
                 sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
                                    rxMessage.message.rxRequest.sourceAddress16,
@@ -209,110 +220,100 @@ event. */
 }
 
 /****************************************************************************/
-/** @brief Initialize the hardware for process measurement and XBee control
+/** @brief Build and transmit a Tx Request frame
+
+A data message for the XBee API is formed and transmitted.
+
+@param[in]:   uint8_t sourceAddress64[]. Address of parent or 0 for coordinator.
+@param[in]:   uint8_t sourceAddress16[].
+@param[in]:   uint8_t radius. Broadcast radius or 0 for maximum network value.
+@param[in]:   uint8_t dataLength. Length of data array.
+@param[in]:   uint8_t data[]. Define array size to be greater than length.
+*/
+void sendTxRequestFrame(uint8_t sourceAddress64[], uint8_t sourceAddress16[],
+                         uint8_t radius, uint8_t dataLength, uint8_t data[])
+{
+    txFrameType txMessage;
+    txMessage.frameType = TX_REQUEST;
+    txMessage.message.txRequest.frameID = 0x02;
+    txMessage.length = dataLength+14;
+    for (uint8_t i=0; i < 8; i++)
+    {
+        txMessage.message.txRequest.sourceAddress64[i] = sourceAddress64[i];
+    }
+    for (uint8_t i=0; i < 2; i++)
+    {
+        txMessage.message.txRequest.sourceAddress16[i] = sourceAddress16[i];
+    }
+    txMessage.message.txRequest.radius = radius;
+    txMessage.message.txRequest.options = 0;
+    for (uint8_t i=0; i < dataLength; i++)
+    {
+        txMessage.message.txRequest.data[i] = data[i];
+    }
+/* Build and transmit a basic frame.
+Send preamble, then data block, followed by computed checksum */
+    sendch(0x7E);
+    sendch(high(txMessage.length));
+    sendch(low(txMessage.length));
+    sendch(txMessage.frameType);
+    txMessage.checksum = txMessage.frameType;
+    for (uint8_t i=0; i < txMessage.length-1; i++)
+    {
+        uint8_t txData = txMessage.message.array[i];
+        sendch(txData);
+        txMessage.checksum += txData;
+    }
+    sendch(0xFF-txMessage.checksum);
+}
+
+/****************************************************************************/
+/** @brief Initialize the hardware for process measurement
 
 */
 void hardwareInit(void)
 {
-/* PB3 is XBee sleep request output. */
-#ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on */
-#endif
-/* PB4 is XBee on/sleep input. High is XBee on, low is asleep. */
-#ifdef ON_SLEEP_PIN
-    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
-#endif
-/* PB5 is XBee reset output. Pulse low to reset. */
-#ifdef XBEE_RESET_PIN
-    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Reset */
-    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Set to keep XBee on */
-#endif
-/* PC0 is the board analogue input. */
-/* PC1 is the battery monitor analogue input. */
-/* PC5 is the battery monitor control output. Hold low for lower power drain. */
-    cbi(VBAT_PORT_DIR,VBAT_PIN);
-    cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
-/* PD5 is the counter input. */
-#ifdef COUNT_PIN
-    cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
-    sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
-#endif
-/* General output for a LED to be activated by the mirocontroller as desired. */
-#ifdef TEST_PORT_DIR
-    sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pullup */
-#endif
-
-/* Counter: Use PCINT for the asynchronous pin change interrupt on the
-count signal line. */
-    sbi(PC_MSK,PC_INT);                 /* Mask */
-    sbi(PC_IER,PC_IE);                  /* Enable */
+    sbi(DDRB,0);
+    sbi(PORTB,0);
 }
 
 /****************************************************************************/
-/** @brief Interrupt on Count Signal.
+/** @brief Initialise the timer
 
-Determine if a change in the count signal level has occurred. An upward
-change will require a count to be registered. A downward change is ignored.
-
-Sample twice to ensure that this isn't a false alarm.
-
-The count is suppressed if the muteCounter is non zero. This is intended to
-follow a transmission. The specific phenomenon dealt with is the presence
-of a short positive pulse at the time of a transmission, when the counter
-input is at low level.
 */
-ISR(COUNT_ISR)
+void timerInit(void)
 {
-    uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
-    if (countSignal > 0)
-    {
-        _delay_us(100);
-        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
-        if (countSignal > 0) counter++;
-    }
+}
+
+/****************************************************************************/
+/** @brief Reset the timer
+
+*/
+void resetTimer(void)
+{
 }
 
 /****************************************************************************/
 /** @brief Timer 0 ISR.
 
-This ISR sends a dummy data record to the coordinator and toggles PC4
-where there should be an LED.
+This ISR sends a dummy data record to the coordinator.
 */
 
 ISR(TIMER0_OVF_vect)
 {
-    realTime.timeValue++;
-    timeCount++;
-    if (timeCount == 0)
+    if ((inb(PORTB) & 0x01) == 0) sbi(PORTB,0);
+    else cbi(PORTB,0);
+    uint8_t data[7] = "DHowdy";
+    time.timeValue++;
+    counter--;
+    if (counter == 0)
     {
-        uint8_t buffer[12];
-        uint8_t i;
-        char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
-        uint32_t value = counter;
-        for (i = 0; i < 10; i++)
-        {
-            if (i == 8) value = checksum;
-            buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-            value >>= 4;
-        }
-        buffer[11] = 0;             /* String terminator */
-        buffer[0] = 'D';            /* Data Command */
-        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-        counter = 0;            /* Reset counter value */
-#ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);
+        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,6,data);
     }
-    if (timeCount == 26)
-        cbi(TEST_PORT,TEST_PIN);
-#else
-    }
-#endif
 }
-
 /****************************************************************************/
-/** @brief   Initialise Timer 0
+/**
+    @brief   Initialise Timer 0
 
 This function will initialise the timer with the mode of operation and the
 clock rate to be used. An error will be returned if the timer is busy.
@@ -353,8 +354,7 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
 #endif
   outb(TIMER_CONT_REG0,((inb(TIMER_CONT_REG0) & 0xF8)|(timerClock & 0x07)));
 #if defined (TCNT0L)
-  outb(TCNT0L,0);                   /* 16 bit - clear both registers */
-  outb(TCNT0H,0);
+  outw(TCNT0,0);                    /* 16 bit - clear both registers */
 #else
   outb(TCNT0,0);                    /* Clear the register */
 #endif
@@ -362,6 +362,29 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
   sbi(TIMER_FLAG_REG0, TOV0);       /* Force clear the interrupt flag */
   sbi(TIMER_MASK_REG0, TOIE0);      /* Enable the overflow interrupt */
   sei();
+#endif
+}
+
+/****************************************************************************/
+/**
+    @brief   Read Timer 0
+
+This function will return the current timer value as a 16 bit unsigned integer
+even if the timer is only 8 bit. This allows for a possibility of a 16 bit
+timer being at timer 0 (so far this is not the case in any MCU).
+
+In the event of a 16 bit register, the hardware registers must be accessed
+high byte first. The avr-gcc compiler does this automatically.
+
+    @return Timer Value.
+*/
+
+uint16_t timer0Read()
+{
+#if defined (TCNT0L)
+  return inw(TCNT0);
+#else
+  return (int16_t) inb(TCNT0);
 #endif
 }
 

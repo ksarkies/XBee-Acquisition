@@ -1,12 +1,12 @@
-/*        XBee AVR Node Example
+/*        Watermeter Echo Test
 
        Ken Sarkies ksarkies@internode.on.net
-            25 September 2014
+            19 April 2016
 
 version     0.0.0
 Software    AVR-GCC 4.8.2
 Target:     Any AVR with sufficient output ports and a timer
-Tested:     ATMega168 at 8MHz internal clock.
+Tested:     ATTiny841 at 8MHz internal clock.
 
 */
 /****************************************************************************
@@ -27,9 +27,9 @@ Tested:     ATMega168 at 8MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef _XBEE_NODE_EXAMPLE_H_
-#define _XBEE_NODE_EXAMPLE_H_
+#ifndef _WATERMETER_ECHO_TEST_H_
+#define _WATERMETER_ECHO_TEST_H_
 
 #include <inttypes.h>
 
-#endif /*_XBEE_NODE_EXAMPLE_H_ */
+#endif /*_WATERMETER_ECHO_TEST_H_ */

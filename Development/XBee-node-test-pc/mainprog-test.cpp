@@ -58,8 +58,8 @@ static void wdt_reset() {}
 /*---------------------------------------------------------------------------*/
 /**** Test code starts here */
 
-#include "../libs/serial.h"
-#include "../libs/xbee.h"
+#include "../../libs/serial.h"
+#include "../../libs/xbee.h"
 
 #define RTC_SCALE   30
 

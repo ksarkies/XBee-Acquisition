@@ -63,8 +63,8 @@ extern void _timerTick();
 /**** Test code starts here */
 
 
-#include "../libs/serial.h"
-#include "../libs/xbee.h"
+#include "../../libs/serial.h"
+#include "../../libs/xbee.h"
 #define F_CPU   1000000
 #include "xbee-node-firmware.h"
 

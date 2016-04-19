@@ -53,8 +53,8 @@ Tested:   ATTiny841 at 1MHz internal clock.
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
-#include "../libs/defines.h"
-#include "../libs/serial.h"
+#include "../../libs/defines.h"
+#include "../../libs/serial.h"
 #include <util/delay.h>
 #include "watermeter-test.h"
 

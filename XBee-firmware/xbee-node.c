@@ -75,6 +75,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
 #define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#define  inbit(sfr, bit) (_SFR_BYTE(sfr) & _BV(bit))
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
 
@@ -172,6 +173,12 @@ not, return to sleep. Otherwise keep awake until the counts have settled.
 This will avoid rapid wake/sleep cycles when counts are changing.
 Counter is a global and is changed in the ISR. */
         uint32_t lastCount;
+#ifdef TEST_PIN
+        if (inbit(TEST_PORT,TEST_PIN) == 0)
+            sbi(TEST_PORT,TEST_PIN);            /* Test port */
+        else
+            cbi(TEST_PORT,TEST_PIN);
+#endif
         do
         {
             lastCount = counter;
@@ -560,7 +567,7 @@ The XBee should wake in a very short time.
 inline void wakeXBee(void)
 {
 /* If the XBee is asleep: */
-    if ((inb(ON_SLEEP_PORT) & ON_SLEEP_PIN) == 0)
+    if (inbit(ON_SLEEP_PORT,ON_SLEEP_PIN) == 0)
     {
 /* Set Sleep_RQ high in case the XBee is in cyclic/pin wake mode. */
         sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
@@ -585,11 +592,11 @@ input is at low level.
 */
 ISR(COUNT_ISR)
 {
-    uint8_t countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+    uint8_t countSignal = inbit(COUNT_PORT,COUNT_PIN);
     if (countSignal > 0)
     {
         _delay_us(100);
-        countSignal = (inb(COUNT_PORT) & _BV(COUNT_PIN));
+        countSignal = inbit(COUNT_PORT,COUNT_PIN);
         if (countSignal > 0) counter++;
     }
 }
@@ -606,6 +613,6 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
-    sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case it was changed */
+    sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case changed */
 }
 
