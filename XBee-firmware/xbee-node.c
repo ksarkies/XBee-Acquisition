@@ -203,12 +203,12 @@ means of notifying the base station that the AVR is awake. */
                     transmit = false;   /* Prevent any more transmissions until told */
 
 /* Deal with incoming message assembly for Tx Status and base station response
-or command reception. */
+or command reception. Keep looping until we have a recognised packet or error. */
                     bool timeout = false;
                     rxFrameType rxMessage;      /* Received frame */
                     rxFrameType inMessage;      /* Buffered data frame */
                     uint8_t messageState = 0;
-                    uint16_t timeResponse = 0;
+                    uint32_t timeResponse = 0;
                     bool packetError = false;
                     bool packetReady = false;
                     while (true)
@@ -232,7 +232,6 @@ or command reception. */
                                         inMessage.message.rxRequest.data[i] =
                                             rxMessage.message.rxRequest.data[i];
                                     packetReady = true;
-                                    messageState = 0;   /* Reset packet counter */
                                 }
 /* XBee Status frame. Check if the transmitted message was delivered. Action to
 repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
@@ -240,14 +239,16 @@ repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
                                 {
                                     txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
-                                    messageState = 0;   /* Reset packet counter */
                                 }
 /* Unknown packet type. Discard as error and continue. */
                                 else
                                 {
                                     packetError = true;
-                                    messageState = 0;   /* Reset packet counter */
+                                    txDelivered = false;
+                                    txStatusReceived = false;
                                 }
+                                messageState = 0;   /* Reset packet counter */
+                                break;
                             }
 /* Zero message status means it is part way through so just continue on. */
 /* If nonzero then this means other errors occurred (namely checksum or packet
@@ -263,18 +264,27 @@ so treat it as if the delivery was made */
                                 }
                                 else
                                 {
-/* With all other errors in the frame, clear the corrupted message, discard and
-repeat. */
+/* With all other errors in the frame, discard and repeat. */
                                     rxMessage.frameType = 0;
                                     packetError = true;
+                                    txDelivered = false;
+                                    txStatusReceived = false;
                                 }
-                                messageState = 0;
+                                messageState = 0;   /* Reset packet counter */
+                                break;
                             }
                         }
 /* Nothing received, check for timeout waiting for a base station response.
 Otherwise continue waiting. */
                         else
-                            if (timeResponse > RESPONSE_DELAY) timeout = true;
+                            if (timeResponse++ > RESPONSE_DELAY)
+                            {
+                                timeResponse = 0;
+                                timeout = true;
+                                txDelivered = false;
+                                txStatusReceived = false;
+                                break;
+                            }
                     }
 
 /* The transmitted data message was (supposedly) delivered. */
@@ -293,6 +303,7 @@ up the entire cycle. */
                                 if (++retry >= 3) cycleComplete = true;
                                 txCommand = 'N';
                                 transmit = true;
+                                packetReady = false;
                             }
 /* Got an ACK: aaaah that feels good. */
                             else if (rxCommand == 'A')
@@ -303,6 +314,7 @@ to cause it to drop out immediately if the counts had not changed. */
                                 counter -= lastCount;
                                 lastCount = 0;
                                 cycleComplete = true;
+                                packetReady = false;
                             }
 /* If not an ACK/NAK, process below as an application data frame */
                         }
@@ -337,24 +349,21 @@ this will catch it (i.e. independently of the Tx Status response).
 This is intended for application commands. */
                     if (packetReady)
                     {
-                        if (inMessage.frameType == 0x90)
-                        {
 /* The first character in the data field is a command. */
-                            uint8_t rxCommand = inMessage.message.rxRequest.data[0];
+                        uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Interpret a 'Parameter Change' command. */
-                            if (rxCommand == 'P')
-                            {
-                            }
+                        if (rxCommand == 'P')
+                        {
+                        }
 /* Keep XBee awake until further notice for possible reconfiguration. */
-                            else if (rxCommand == 'W')
-                            {
-                                stayAwake = true;
-                            }
+                        else if (rxCommand == 'W')
+                        {
+                            stayAwake = true;
+                        }
 /* Send XBee to sleep. */
-                            else if (rxCommand == 'S')
-                            {
-                                stayAwake = false;
-                            }
+                        else if (rxCommand == 'S')
+                        {
+                            stayAwake = false;
                         }
                     }
                 }

@@ -47,7 +47,7 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 /* Time to wait for a response from the base station. Time units depend on
 the code execution time needed to check for a received character, and F_CPU.
 Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
-#define RESPONSE_DELAY          F_CPU/50
+#define RESPONSE_DELAY          40000
 
 /* Response for a Tx Status frame should be smaller. Aim at 100ms */
 #define TX_STATUS_DELAY         F_CPU/100
