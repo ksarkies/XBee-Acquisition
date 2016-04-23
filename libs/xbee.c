@@ -125,7 +125,7 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
         {
 /* Sync character */
             case 0:
-                if (inputChar == 0x7E) state++;
+                if (inputValue == 0x7E) state++;
                 break;
 /* Two byte length */
             case 1:

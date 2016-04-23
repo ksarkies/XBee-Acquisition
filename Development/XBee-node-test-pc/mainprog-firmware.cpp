@@ -176,7 +176,7 @@ until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
 /* Now ready to initiate a data transmission. */
-                wdtCounter = 0; /* Reset the WDT counter for next time */
+                wdtCounter = 0;     /* Reset the WDT counter for next time */
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
                 bool txDelivered = false;
@@ -193,7 +193,7 @@ means of notifying the base station that the AVR is awake. */
                         txDelivered = false;    /* Allow check for Tx Status frame */
                         txStatusReceived = false;
                     }
-                    transmit = false;   /* Prevent transmissions until told */
+                    transmit = false;   /* Prevent any more transmissions until told */
 
 /* Deal with incoming message assembly for Tx Status and base station response
 or command reception. */
@@ -209,14 +209,13 @@ or command reception. */
 
 /* Read in part of an incoming frame. */
                         uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
-                        if (messageStatus == NO_DATA) timeResponse++;
-                        else
+                        if (messageStatus != NO_DATA)
                         {
                             timeResponse = 0;
 /* Got a frame complete without error. */
                             if (messageStatus == COMPLETE)
                             {
-/* XBee Receive frame. Copy to a buffer for later processing. */
+/* XBee Data frame. Copy to a buffer for later processing. */
                                 if (rxMessage.frameType == 0x90)
                                 {
                                     inMessage.length = rxMessage.length;
@@ -226,54 +225,49 @@ or command reception. */
                                         inMessage.message.rxRequest.data[i] =
                                             rxMessage.message.rxRequest.data[i];
                                     packetReady = true;
+                                    messageState = 0;   /* Reset packet counter */
                                 }
-/* Tx Status frame. Check if the message was delivered. Action to repeat will
-happen ONLY if txDelivered is false and txStatusReceived is true. */
+/* XBee Status frame. Check if the transmitted message was delivered. Action to
+repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
                                 else if (rxMessage.frameType == 0x8B)
                                 {
                                     txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
+                                    messageState = 0;   /* Reset packet counter */
                                 }
-                                messageState = 0;   /* Reset in case of a repeat */
-                                break;
+/* Unknown packet type. Discard as error and continue. */
+                                else
+                                {
+                                    packetError = true;
+                                    messageState = 0;   /* Reset packet counter */
+                                }
                             }
 /* Zero message status means it is part way through so just continue on. */
 /* If nonzero then this means other errors occurred (namely checksum or packet
 length is wrong). */
                             else if (messageStatus > 0)
                             {
-                                if (rxMessage.frameType == 0x90)
-                                {
-/* With errors in the data frame, clear the corrupted message. */
-                                    messageState = 0;
-                                    rxMessage.frameType = 0;
-                                    packetError = true;
-                                }
 /* For any received errored Tx Status frame, we are unsure about its validity,
 so treat it as if the delivery was made */
-                                else if (rxMessage.frameType == 0x8B)
+                                if (rxMessage.frameType == 0x8B)
                                 {
                                     txStatusReceived = true;
                                     txDelivered = true;
                                 }
-                                break;
+                                else
+                                {
+/* With all other errors in the frame, clear the corrupted message, discard and
+repeat. */
+                                    rxMessage.frameType = 0;
+                                    packetError = true;
+                                }
+                                messageState = 0;
                             }
                         }
-/* Check for a timeout waiting for a status frame. If timeout, continue on by
-assuming delivered and let higher processes determine if the message was
-really delivered. */
-                        if ((! txStatusReceived) && (timeResponse > TX_STATUS_DELAY))
-                        {
-                            txDelivered = true;
-                            txStatusReceived = true;
-                            break;
-                        }
-/* Check for a timeout waiting for a base station response. */
-                        if (timeResponse > RESPONSE_DELAY)
-                        {
-                            timeout = true;
-                            break;
-                        }
+/* Nothing received, check for timeout waiting for a base station response.
+Otherwise continue waiting. */
+                        else
+                            if (timeResponse > RESPONSE_DELAY) timeout = true;
                     }
 
 /* The transmitted data message was (supposedly) delivered. */
@@ -282,30 +276,28 @@ really delivered. */
 /* A base station response to the data transmission arrived. */
                         if (packetReady)
                         {
-/* Respond to an XBee Receive packet. */
-                            if (inMessage.frameType == 0x90)
-                            {
+/* Respond to an XBee Data packet. */
 /* The first character in the data field is an ACK or NAK. */
-                                uint8_t rxCommand = inMessage.message.rxRequest.data[0];
+                            uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Base station picked up an error and sent a NAK. Retry three times then give
 up the entire cycle. */
-                                if (rxCommand == 'N')
-                                {
-                                    if (++retry >= 3) cycleComplete = true;
-                                    txCommand = 'N';
-                                    transmit = true;
-                                }
+                            if (rxCommand == 'N')
+                            {
+                                if (++retry >= 3) cycleComplete = true;
+                                txCommand = 'N';
+                                transmit = true;
+                            }
 /* Got an ACK: aaaah that feels good. */
-                                else if (rxCommand == 'A')
-                                {
+                            else if (rxCommand == 'A')
+                            {
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to cause it to drop out immediately if the counts had not changed. */
-                                    counter -= lastCount;
-                                    lastCount = 0;
-                                    cycleComplete = true;
-                                }
+                                counter -= lastCount;
+                                lastCount = 0;
+                                cycleComplete = true;
                             }
+/* If not an ACK/NAK, process below as an application data frame */
                         }
 /* Errors found in received packet. Retry three times then give up the entire
 cycle. */
@@ -316,8 +308,9 @@ cycle. */
                             transmit = true;
                         }
                     }
-/* If the message was signalled as definitely not delivered, repeat up to three
-times then give up the entire cycle. */
+/* If the message was signalled as definitely not delivered, that is,
+txStatusReceived but not txDelivered, repeat up to three times then give up the
+entire cycle. */
                     else if (txStatusReceived)
                     {
                         if (++retry >= 3) cycleComplete = true;
@@ -333,7 +326,8 @@ notification */
                     }
 
 /* If a command packet arrived outside the data transmission protocol then
-this will catch it (i.e. independently of the Tx Status response). */
+this will catch it (i.e. independently of the Tx Status response).
+This is intended for application commands. */
                     if (packetReady)
                     {
                         if (inMessage.frameType == 0x90)
