@@ -1277,6 +1277,7 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int writeLength = (*pkt)->dataLen;
     if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
+    int dataLength = writeLength-1;
 #ifdef DEBUG
     if (debug)
     {
@@ -1303,7 +1304,7 @@ the remote. */
         {
 /* Convert hex ASCII checksum and count to an integer from the latter part of
 the string */
-            for (int i=0; i<8; i++)
+            for (int i=0; i<dataLength-2; i++)
             {
                 int digit=0;
                 char hex = (*pkt)->data[i+3];
@@ -1347,7 +1348,7 @@ the string */
             if (debug) printf("Sent ACK\n\r");
 #endif
 /* If no error, store data field aside for later recording. */
-            for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
+            for (int i=0; i<dataLength; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
             txError = xbee_conTx(con, NULL, "P");
 usleep(100000);
@@ -1389,8 +1390,8 @@ string to the remote node. */
         else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
         fprintf(fp," %s ", timeString);
         fprintf(fp, "Count ");
-        for (int i=0; i<8; i++) buffer[i] = remoteData[i][row];
-        fwrite(buffer,1,8,fp);
+        for (int i=0; i<dataLength; i++) buffer[i] = remoteData[i][row];
+        fwrite(buffer,1,dataLength,fp);
         fprintf(fp, "\n\r");
         dataFileCheck();
 /* If we are hearing from this then it is a valid node */
