@@ -1349,7 +1349,8 @@ the string */
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<8; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
-usleep(200000);
+            txError = xbee_conTx(con, NULL, "P");
+usleep(100000);
             txError = xbee_conTx(con, NULL, "A");
         }
 #ifdef DEBUG
