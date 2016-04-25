@@ -37,7 +37,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               8000000
-#define BAUD                38400
+#define BAUD                9600
 
 /* 0.128ms clock from 8MHz clock
 Timer clock scale value 5 gives scale of 1024, (see timer.c)
