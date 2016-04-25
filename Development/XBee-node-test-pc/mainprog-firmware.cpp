@@ -52,6 +52,7 @@ compilation.
 #include <inttypes.h>
 #include <unistd.h>
 #include <QDebug>
+#include <QString>
 
 /*---------------------------------------------------------------------------*/
 /* clib library functions to be bypassed */
@@ -188,6 +189,10 @@ means of notifying the base station that the AVR is awake. */
                 uint8_t retry = 0;      /* Retries to get base response OK */
                 while (! cycleComplete)
                 {
+QChar command = txCommand;
+qDebug() << "New Cycle: Complete?" << cycleComplete;
+if (transmit) qDebug() << "Transmit?" << QString::fromRawData(&command,1)
+                       << ", Last Count" << lastCount;
                     if (transmit)
                     {
                         sendDataCommand(txCommand,lastCount);
@@ -216,6 +221,8 @@ or command reception. Keep looping until we have a recognised packet or error. *
 /* Got a frame complete without error. */
                             if (messageStatus == COMPLETE)
                             {
+qDebug() << "Message" << QString("Type %1").arg(rxMessage.frameType,0,16)
+         << ", Length" << rxMessage.length;
 /* XBee Data frame. Copy to a buffer for later processing. */
                                 if (rxMessage.frameType == 0x90)
                                 {
@@ -225,6 +232,11 @@ or command reception. Keep looping until we have a recognised packet or error. *
                                     for (uint8_t i=0; i<RF_PAYLOAD; i++)
                                         inMessage.message.rxRequest.data[i] =
                                             rxMessage.message.rxRequest.data[i];
+QChar reply = rxMessage.message.rxRequest.data[0];
+QString msg = QString("Reply: ")+QString::fromRawData(&reply,1)+" ";
+for (uint8_t i=1; i<rxMessage.length; i++)
+msg.append(QString("%1").arg(rxMessage.message.rxRequest.data[i]));
+qDebug() << msg;
                                     packetReady = true;
                                 }
 /* XBee Status frame. Check if the transmitted message was delivered. Action to
@@ -233,10 +245,13 @@ repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
                                 {
                                     txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
+qDebug() << "Status Frame: Status?" << rxMessage.message.txStatus.deliveryStatus
+         << ", Delivered?" << txDelivered;
                                 }
 /* Unknown packet type. Discard as error and continue. */
                                 else
                                 {
+qDebug() << "Packet error detected";
                                     packetError = true;
                                     txDelivered = false;
                                     txStatusReceived = false;
@@ -253,6 +268,7 @@ length is wrong). */
 so treat it as if the delivery was made */
                                 if (rxMessage.frameType == 0x8B)
                                 {
+qDebug() << "Faulty status frame - treat as delivered!";
                                     txStatusReceived = true;
                                     txDelivered = true;
                                 }
@@ -260,6 +276,7 @@ so treat it as if the delivery was made */
                                 {
 /* With all other errors in the frame, clear the corrupted message, discard and
 repeat. */
+qDebug() << "Other error detected";
                                     rxMessage.frameType = 0;
                                     packetError = true;
                                     txDelivered = false;
@@ -274,6 +291,8 @@ Otherwise continue waiting. */
                         else
                             if (timeResponse++ > RESPONSE_DELAY) 
                             {
+qDebug() << "Timeout - Try number" << retry << ", Delivered?" << txDelivered
+         << ", Received?" << txStatusReceived;
                                 timeResponse = 0;
                                 timeout = true;
                                 txDelivered = false;
@@ -286,15 +305,18 @@ Otherwise continue waiting. */
                     if (txDelivered)
                     {
 /* A base station response to the data transmission arrived. */
+qDebug() << "Delivered, start processing";
                         if (packetReady)
                         {
 /* Respond to an XBee Data packet. */
 /* The first character in the data field is an ACK or NAK. */
+qDebug() << "Process Packet ready to check for ACK/NAK";
                             uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Base station picked up an error and sent a NAK. Retry three times then give
 up the entire cycle. */
                             if (rxCommand == 'N')
                             {
+qDebug() << "NAK";
                                 if (++retry >= 3) cycleComplete = true;
                                 txCommand = 'N';
                                 transmit = true;
@@ -306,6 +328,7 @@ up the entire cycle. */
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to cause it to drop out immediately if the counts had not changed. */
+qDebug() << "ACK";
                                 counter -= lastCount;
                                 lastCount = 0;
                                 cycleComplete = true;
@@ -317,6 +340,7 @@ to cause it to drop out immediately if the counts had not changed. */
 cycle. */
                         else if (packetError)
                         {
+qDebug() << "Process Packet Error";
                             if (++retry >= 3) cycleComplete = true;
                             txCommand = 'E';
                             transmit = true;
@@ -327,6 +351,7 @@ txStatusReceived but not txDelivered, repeat up to three times then give up the
 entire cycle. */
                     else if (txStatusReceived)
                     {
+qDebug() << "Process Not Delivered: Try number" << retry;
                         if (++retry >= 3) cycleComplete = true;
                         transmit = true;
                     }
@@ -334,6 +359,7 @@ entire cycle. */
 notification */
                     else if (timeout)
                     {
+qDebug() << "Process Timeout: Try number" << retry;
                         if (++retry >= 3) cycleComplete = true;
                         if (txCommand == 'C') txCommand = 'T';
                         transmit = true;
@@ -344,7 +370,9 @@ this will catch it (i.e. independently of the Tx Status response).
 This is intended for application commands. */
                     if (packetReady)
                     {
-/* The first character in the data field is a command. */
+qDebug() << "Might be an Application packet?";
+/* The first character in the data field is a command. Do not use A or N as
+commands as they will be confused with late ACK/NAK */
                         uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Interpret a 'Parameter Change' command. */
                         if (rxCommand == 'P')
@@ -364,6 +392,8 @@ This is intended for application commands. */
                 }
 /* If the repeats were exceeded, notify the base station of the abandonment of
 this communication attempt. */
+qDebug() << "Finished Cycle";
+qDebug() << "-------------------------";
                 if (retry >= 3) sendMessage(1,(uint8_t*)"X");
 /* Otherwise notify acceptance */
                 else sendMessage(1,(uint8_t*)"A");
