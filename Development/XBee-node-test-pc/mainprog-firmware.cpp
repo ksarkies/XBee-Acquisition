@@ -265,12 +265,12 @@ length is wrong). */
                             else if (messageStatus > 0)
                             {
 /* For any received errored Tx Status frame, we are unsure about its validity,
-so treat it as if the delivery was made */
+so treat it as if the delivery was faulty */
                                 if (rxMessage.frameType == 0x8B)
                                 {
-qDebug() << "Faulty status frame - treat as delivered!";
+qDebug() << "Faulty status frame - treat as errored!";
+                                    txDelivered = false;
                                     txStatusReceived = true;
-                                    txDelivered = true;
                                 }
                                 else
                                 {
@@ -356,7 +356,7 @@ qDebug() << "Process Not Delivered: Try number" << retry;
                         transmit = true;
                     }
 /* If timeout, repeat, or for the initial transmission, send back a timeout
-notification */
+notification. */
                     else if (timeout)
                     {
 qDebug() << "Process Timeout: Try number" << retry;
@@ -372,7 +372,7 @@ This is intended for application commands. */
                     {
 qDebug() << "Might be an Application packet?";
 /* The first character in the data field is a command. Do not use A or N as
-commands as they will be confused with late ACK/NAK */
+commands as they will be confused with late ACK/NAK messages. */
                         uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Interpret a 'Parameter Change' command. */
                         if (rxCommand == 'P')
@@ -390,9 +390,10 @@ commands as they will be confused with late ACK/NAK */
                         }
                     }
                 }
-/* If the repeats were exceeded, notify the base station of the abandonment of
-this communication attempt. */
+/* If the repeat limit is exceeded, notify the base station of the abandonment
+of this communication attempt. */
 qDebug() << "Finished Cycle";
+if (retry >= 3) qDebug() << "Abandoned"; else qDebug() << "Accepted";
 qDebug() << "-------------------------";
                 if (retry >= 3) sendMessage(1,(uint8_t*)"X");
 /* Otherwise notify acceptance */

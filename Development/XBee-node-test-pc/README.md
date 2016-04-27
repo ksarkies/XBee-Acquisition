@@ -23,8 +23,7 @@ XBee-node-test.pro file to compile the different tests.
 ***mainprog-test***
 -------------------
 
-This is taken from the [xbee-node-test](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-test) code but is intended to run on a POSIX
-system using a serial interface to an XBee.
+This is taken from the [xbee-node-test](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-test) code.
 
 ***mainprog-firmware***
 -----------------------

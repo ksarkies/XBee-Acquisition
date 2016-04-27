@@ -1349,8 +1349,7 @@ the string */
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
-            txError = xbee_conTx(con, NULL, "P");
-usleep(100000);
+// usleep(500000);  /* Inserted delay for protocol testing */
             txError = xbee_conTx(con, NULL, "A");
         }
 #ifdef DEBUG

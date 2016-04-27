@@ -5,7 +5,7 @@ This is a simple test firmware for the AVR in the watermeter. Written in C under
 avr-gcc.
 
 This test simply echoes characters back on the serial port. Used to verify that
-the serial link to teh XBee is working.
+the serial link to the XBee is working.
 
 The Atmel version of gcc-avr needs to be placed into the an auxiliary directory
 and referenced in the Makefile as the open source version doesn't support

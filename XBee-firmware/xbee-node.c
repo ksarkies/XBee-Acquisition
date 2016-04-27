@@ -256,15 +256,15 @@ length is wrong). */
                             else if (messageStatus > 0)
                             {
 /* For any received errored Tx Status frame, we are unsure about its validity,
-so treat it as if the delivery was made */
+so treat it as if the delivery was faulty */
                                 if (rxMessage.frameType == 0x8B)
                                 {
+                                    txDelivered = false;
                                     txStatusReceived = true;
-                                    txDelivered = true;
                                 }
                                 else
                                 {
-/* With all other errors in the frame, discard and repeat. */
+/* With all other errors in the frame, discard everything and repeat. */
                                     rxMessage.frameType = 0;
                                     packetError = true;
                                     txDelivered = false;
