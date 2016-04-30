@@ -1294,9 +1294,10 @@ The command is that sent by the application layer protocol in the remote. */
     unsigned long int count = 0;
     bool storeData = false;
 /* These messages result from initial data transmission and error conditions in
-the remote. */
+the remote. If the message length is 11, the defined length of a data packet,
+then the data will be extracted and set aside for storage. */
     if ((command == 'C') || (command == 'T') || (command == 'N')
-                         || (command == 'E'))
+                         || (command == 'E') || (command == 'S'))
     {
         if (writeLength != 11) error = true;
         if (!error)
@@ -1329,14 +1330,14 @@ the string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-//            printf("Count %lu Checksum %lu\n\r",count,checksum);
+            printf("Count %lu Checksum %lu\n\r",count,checksum);
 #endif
         }
         xbee_err txError;
         if (error)
         {
 #ifdef DEBUG
-            if (debug) printf("Sent NAK: error %d\n\r",error);
+            if (debug) printf("Sent NAK\n\r");
 #endif
 /* Negative Acknowledge */
             txError = xbee_conTx(con, NULL, "N");
@@ -1349,7 +1350,8 @@ the string */
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
-// usleep(500000);  /* Inserted delay for protocol testing */
+// txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
+// usleep(500000);                          /* Insert delay for test */
             txError = xbee_conTx(con, NULL, "A");
         }
 #ifdef DEBUG

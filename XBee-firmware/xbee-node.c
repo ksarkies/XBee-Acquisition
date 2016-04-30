@@ -256,7 +256,8 @@ length is wrong). */
                             else if (messageStatus > 0)
                             {
 /* For any received errored Tx Status frame, we are unsure about its validity,
-so treat it as if the delivery was faulty */
+so treat it as if the delivery did not occur. This may result in data being
+duplicated if the original message was actually received correctly. */
                                 if (rxMessage.frameType == 0x8B)
                                 {
                                     txDelivered = false;
@@ -319,7 +320,7 @@ to cause it to drop out immediately if the counts had not changed. */
 /* If not an ACK/NAK, process below as an application data frame */
                         }
 /* Errors found in received packet. Retry three times then give up the entire
-cycle. */
+cycle. Send an E packet to signal to the base station. */
                         else if (packetError)
                         {
                             if (++retry >= 3) cycleComplete = true;
@@ -327,12 +328,14 @@ cycle. */
                             transmit = true;
                         }
                     }
-/* If the message was signalled as definitely not delivered, that is,
-txStatusReceived but not txDelivered, repeat up to three times then give up the
-entire cycle. */
+/* If the message was signalled as definitely not delivered (or was errored),
+that is, txStatusReceived but not txDelivered, repeat up to three times then
+give up the entire cycle. Send an S packet to signal to the base station which
+should avoid duplication. */
                     else if (txStatusReceived)
                     {
                         if (++retry >= 3) cycleComplete = true;
+                        txCommand = 'S';
                         transmit = true;
                     }
 /* If timeout, repeat, or for the initial transmission, send back a timeout
@@ -340,7 +343,7 @@ notification */
                     else if (timeout)
                     {
                         if (++retry >= 3) cycleComplete = true;
-                        if (txCommand == 'C') txCommand = 'T';
+                        txCommand = 'T';
                         transmit = true;
                     }
 
