@@ -121,7 +121,6 @@ d - Debug mode.
  */
     strcpy(inPort,SERIAL_PORT);
     baudrate = BAUDRATE;
-    bool ok;
     strcpy(dirname,DATA_PATH);
 
     int c;
@@ -1249,11 +1248,16 @@ before any other node AVR command is sent to any node.
 
 - 'C' xx xx aa aa … (11 bytes) Original message with application data.
 - 'E' xx xx aa aa … (11 bytes) Repeat message in response to reception errors.
+- 'S' xx xx aa aa … (11 bytes) Repeat message in response to delivery failure.
 - 'N' xx xx aa aa … (11 bytes) Repeat message in response to a NAK.
 - 'T' xx xx aa aa … (11 bytes) Repeat message in response to a timeout.
 - 'X' (1 byte) Remote will abandon the communication attempt.
 - 'A' (1 byte) Remote accepts the communication.
 - 'D' aa aa … (unlimited bytes) Debug message.
+
+Refer to the documentation for a description and analysis of the protocol. The
+protocol maintains a state across calls to this function so that in the last
+stage the probability of lost data is minimized.
 
 TODO The data received is oriented to 32 bit counts. Needs generalization to
 other data types.
@@ -1263,6 +1267,8 @@ other data types.
 @param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
 @param void **data. Data (not used).
 */
+
+static int protocolState;
 
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
                   struct xbee_pkt **pkt, void **data)
@@ -1295,10 +1301,12 @@ The command is that sent by the application layer protocol in the remote. */
     bool storeData = false;
 /* These messages result from initial data transmission and error conditions in
 the remote. If the message length is 11, the defined length of a data packet,
-then the data will be extracted and set aside for storage. */
+then the data will be extracted and set aside for storage.
+Error is signalled if length or checksum are wrong. */
     if ((command == 'C') || (command == 'T') || (command == 'N')
                          || (command == 'E') || (command == 'S'))
     {
+        protocolState = 1;                      /* Start of protocol cycle. */
         if (writeLength != 11) error = true;
         if (!error)
         {
@@ -1330,7 +1338,7 @@ the string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-            printf("Count %lu Checksum %lu\n\r",count,checksum);
+            printf("Count %lu Checksum %u\n\r",count,checksum);
 #endif
         }
         xbee_err txError;
@@ -1353,27 +1361,12 @@ the string */
 // txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
 // usleep(500000);                          /* Insert delay for test */
             txError = xbee_conTx(con, NULL, "A");
+/* Advance the protocol state to indicate acceptance of any response as ACK. */
+            protocolState = 2;
         }
 #ifdef DEBUG
         if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %d\n\r",txError);
 #endif
-    }
-/* Abandon the communication and discard the current count value as the remote
-has detected ongoing errors and will now not reset its count. */
-    else if (command == 'X')
-    {
-#ifdef DEBUG
-        if (debug) printf("Remote Abandoned\n\r");
-#endif
-        storeData = false;
-    }
-/* Accept the communication as valid and store the data permanently. */
-    else if (command == 'A')
-    {
-#ifdef DEBUG
-//        printf("Remote Accepted\n\r");
-#endif
-        storeData = true;
     }
 /* This is the response to a Parameter Change command which passes an arbitrary
 string to the remote node. */
@@ -1383,6 +1376,30 @@ string to the remote node. */
         for (int i=1; i< min(SIZE,writeLength); i++)
             dataResponseData[i] = (*pkt)->data[i+1];
     }
+/* If the protocol state has reached the final stage, any response apart from
+the Parameter Change or data commands is accepted as ACK since this is the
+only response possible. The only way now that a cycle can give a wrong
+result is if the response was not detected as a data packet. In that case
+the remote will clear its data but the base will not record it. */
+    else if (protocolState == 2)
+    {
+        protocolState = 1;                  /* Reset protocol state */
+#ifdef DEBUG
+//        printf("Remote Accepted\n\r");
+#endif
+        storeData = true;
+    }
+/* Abandon the communication and discard the current count value as the remote
+has detected ongoing errors and will now not reset its count. */
+    else if (command == 'X')
+    {
+        protocolState = 1;                  /* Reset protocol state */
+#ifdef DEBUG
+        if (debug) printf("Remote Abandoned\n\r");
+#endif
+        storeData = false;
+    }
+
 /* Print out received data to the file once it is verified. */
     if (storeData)
     {
