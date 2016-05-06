@@ -214,6 +214,8 @@ or command reception. Keep looping until we have a recognised packet or error. *
                     while (true)
                     {
 
+/* ============ Read and verify incoming messages
+
 /* Read in part of an incoming frame. */
                         uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
                         if (messageStatus != NO_DATA)
@@ -288,6 +290,8 @@ Otherwise continue waiting. */
                             }
                     }
 
+/* ============ Interpret messages and decide on actions to take
+
 /* The transmitted data message was (supposedly) delivered. */
                     if (txDelivered)
                     {
@@ -297,8 +301,8 @@ Otherwise continue waiting. */
 /* Respond to an XBee Data packet. */
 /* The first character in the data field is an ACK or NAK. */
                             uint8_t rxCommand = inMessage.message.rxRequest.data[0];
-/* Base station picked up an error and sent a NAK. Retry three times then give
-up the entire cycle. */
+/* Base station picked up an error and sent a NAK. Retry three times with an N
+command then give up the entire cycle with an X command. */
                             if (rxCommand == 'N')
                             {
                                 if (++retry >= 3) cycleComplete = true;
@@ -320,7 +324,7 @@ to cause it to drop out immediately if the counts had not changed. */
 /* If not an ACK/NAK, process below as an application data frame */
                         }
 /* Errors found in received packet. Retry three times then give up the entire
-cycle. Send an E packet to signal to the base station. */
+cycle. Send an E data packet to signal to the base station. */
                         else if (packetError)
                         {
                             if (++retry >= 3) cycleComplete = true;
@@ -331,7 +335,8 @@ cycle. Send an E packet to signal to the base station. */
 /* If the message was signalled as definitely not delivered (or was errored),
 that is, txStatusReceived but not txDelivered, repeat up to three times then
 give up the entire cycle. Send an S packet to signal to the base station which
-should avoid duplication. */
+should avoid any unlikely duplication (even though previous transmissions were
+not received). */
                     else if (txStatusReceived)
                     {
                         if (++retry >= 3) cycleComplete = true;
@@ -347,8 +352,10 @@ notification */
                         transmit = true;
                     }
 
+/* ============ Command Packets */
+
 /* If a command packet arrived outside the data transmission protocol then
-this will catch it (i.e. independently of the Tx Status response).
+this will catch it (i.e. independently of the Base station status response).
 This is intended for application commands. */
                     if (packetReady)
                     {
@@ -370,11 +377,11 @@ This is intended for application commands. */
                         }
                     }
                 }
-/* If the repeats were exceeded, notify the base station of the abandonment of
-this communication attempt. */
-                if (retry >= 3) sendMessage("X");
-/* Otherwise notify acceptance */
-                else sendMessage("A");
+/* Notify acceptance. No response is expected. */
+                if (retry < 3) sendMessage("A");
+/* Otherwise if the repeats were exceeded, notify the base station of the
+abandonment of this communication attempt. No response is expected. */
+                else sendMessage("X");
             }
 
             _delay_ms(1);

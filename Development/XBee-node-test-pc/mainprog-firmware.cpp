@@ -393,14 +393,14 @@ commands as they will be confused with late ACK/NAK messages. */
                         }
                     }
                 }
-/* If the repeat limit is exceeded, notify the base station of the abandonment
-of this communication attempt. */
 qDebug() << "Finished Cycle";
 if (retry >= 3) qDebug() << "Abandoned"; else qDebug() << "Accepted";
 qDebug() << "-------------------------";
-                if (retry >= 3) sendMessage(1,(uint8_t*)"X");
-/* Otherwise notify acceptance */
-                else sendMessage(1,(uint8_t*)"A");
+/* Notify acceptance. No response is expected. */
+                if (retry < 3) sendMessage("A");
+/* Otherwise if the repeats were exceeded, notify the base station of the
+abandonment of this communication attempt. No response is expected. */
+                else sendMessage("X");
             }
 //            _delay_ms(1);
         }
