@@ -116,7 +116,7 @@ U 1 1 57576E80
 P 3400 2400
 F 0 "U1" H 3400 2715 50  0000 C CNN
 F 1 "78L05" H 3400 2624 50  0000 C CNN
-F 2 "Testboard:TO-92_Molded_Narrow" H 3400 2400 50  0001 C CNN
+F 2 "Testboard:TO-92_Molded_Wide" H 3400 2400 50  0001 C CNN
 F 3 "" H 3400 2400 50  0000 C CNN
 	1    3400 2400
 	1    0    0    -1  
@@ -301,7 +301,7 @@ U 1 1 5757E5D8
 P 3750 6000
 F 0 "Q3" H 3941 6046 50  0000 L CNN
 F 1 "Commissioning" H 3941 5955 50  0000 L CNN
-F 2 "Testboard:TO-92_Molded_Narrow" H 3950 6100 50  0001 C CNN
+F 2 "Testboard:TO-92_Molded_Wide" H 3950 6100 50  0001 C CNN
 F 3 "" H 3750 6000 50  0000 C CNN
 	1    3750 6000
 	1    0    0    -1  
@@ -422,7 +422,7 @@ U 1 1 5758134F
 P 2900 6000
 F 0 "Q2" H 3091 6046 50  0000 L CNN
 F 1 "On_Sleep" H 3091 5955 50  0000 L CNN
-F 2 "Testboard:TO-92_Molded_Narrow" H 3100 6100 50  0001 C CNN
+F 2 "Testboard:TO-92_Molded_Wide" H 3100 6100 50  0001 C CNN
 F 3 "" H 2900 6000 50  0000 C CNN
 	1    2900 6000
 	-1   0    0    -1  
@@ -488,7 +488,7 @@ U 1 1 575828F8
 P 1850 6000
 F 0 "Q1" H 2041 6046 50  0000 L CNN
 F 1 "Association" H 2041 5955 50  0000 L CNN
-F 2 "Testboard:TO-92_Molded_Narrow" H 2050 6100 50  0001 C CNN
+F 2 "Testboard:TO-92_Molded_Wide" H 2050 6100 50  0001 C CNN
 F 3 "" H 1850 6000 50  0000 C CNN
 	1    1850 6000
 	-1   0    0    -1  

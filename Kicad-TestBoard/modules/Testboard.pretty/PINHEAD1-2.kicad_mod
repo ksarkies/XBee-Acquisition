@@ -1,4 +1,4 @@
-(module PINHEAD1-2 (layer F.Cu) (tedit 57CA1CF1)
+(module PINHEAD1-2 (layer F.Cu) (tedit 57CA7E5C)
   (attr virtual)
   (fp_text reference P1 (at 0 -3.9) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
