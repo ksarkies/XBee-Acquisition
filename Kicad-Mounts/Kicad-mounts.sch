@@ -39,9 +39,9 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "Watermeter XBee and LED Mounting Boards"
-Date "08 April 2016"
-Rev "1.00"
-Comp ""
+Date "14 September 2013"
+Rev "2.00"
+Comp "Xerofill"
 Comment1 ""
 Comment2 ""
 Comment3 ""

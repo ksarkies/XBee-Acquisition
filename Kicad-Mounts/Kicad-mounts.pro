@@ -1,15 +1,10 @@
-update=Fri 08 Apr 2016 16:33:18 ACST
+update=Mon 14 Nov 2016 15:08:27 ACDT
 version=1
 last_client=kicad
 [general]
 version=1
 RootSch=
 BoardNm=
-[cvpcb]
-version=1
-NetIExt=net
-[cvpcb/libraries]
-EquName1=devcms
 [pcbnew]
 version=1
 PageLayoutDescrFile=
@@ -77,3 +72,6 @@ NetFmtName=
 SpiceForceRefPrefix=0
 SpiceUseNetNumbers=0
 LabSize=60
+[cvpcb]
+version=1
+NetIExt=net
