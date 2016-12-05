@@ -1,33 +1,5 @@
 EESchema Schematic File Version 2
 LIBS:power
-LIBS:device
-LIBS:transistors
-LIBS:conn
-LIBS:linear
-LIBS:regul
-LIBS:74xx
-LIBS:cmos4000
-LIBS:adc-dac
-LIBS:memory
-LIBS:xilinx
-LIBS:microcontrollers
-LIBS:dsp
-LIBS:microchip
-LIBS:analog_switches
-LIBS:motorola
-LIBS:texas
-LIBS:intel
-LIBS:audio
-LIBS:interface
-LIBS:digital-audio
-LIBS:philips
-LIBS:display
-LIBS:cypress
-LIBS:siliconi
-LIBS:opto
-LIBS:atmel
-LIBS:contrib
-LIBS:valves
 LIBS:Kicad-TestBoard-cache
 EELAYER 25 0
 EELAYER END
@@ -760,7 +732,7 @@ Wire Wire Line
 Wire Wire Line
 	2100 3600 2100 4600
 Wire Wire Line
-	2050 3850 2050 5850
+	2050 3700 2050 5850
 Wire Wire Line
 	2850 3300 3350 3300
 Wire Wire Line
@@ -776,13 +748,13 @@ Wire Wire Line
 Wire Wire Line
 	2850 3700 3100 3700
 Wire Wire Line
-	3100 3850 3100 5850
+	3100 3700 3100 5850
 Wire Wire Line
 	2850 3800 3300 3800
 Wire Wire Line
 	3300 3800 3300 3950
 Wire Wire Line
-	3550 4100 3550 5850
+	3550 3950 3550 5850
 Connection ~ 2200 3400
 Wire Wire Line
 	1600 3400 2200 3400
