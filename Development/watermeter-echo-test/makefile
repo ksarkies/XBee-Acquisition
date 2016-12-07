@@ -302,7 +302,7 @@ program: $(TARGET).hex $(TARGET).eep
 %.sym: %.elf
 	@echo
 	@echo $(MSG_SYMBOL_TABLE) $@
-	avr-nm -n $< > $@
+	$(DIRAVRBIN)avr-nm -n $< > $@
 
 
 
