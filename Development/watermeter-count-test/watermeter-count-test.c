@@ -56,7 +56,7 @@ Tested:   ATTiny841 at 1MHz internal clock.
 #include "../../libs/defines.h"
 #include "../../libs/serial.h"
 #include <util/delay.h>
-#include "watermeter-test.h"
+#include "watermeter-count-test.h"
 
 #define TRUE 1
 #define FALSE 0

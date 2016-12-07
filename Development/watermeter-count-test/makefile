@@ -58,7 +58,7 @@ OPT = 1
 
 
 # Target file name (without extension).
-TARGET = watermeter-test
+TARGET = watermeter-count-test
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c ../../libs/serial.c
@@ -325,7 +325,7 @@ program: $(TARGET).hex $(TARGET).eep
 %.sym: %.elf
 	@echo
 	@echo $(MSG_SYMBOL_TABLE) $@
-	avr-nm -n $< > $@
+	$(DIRAVRBIN)avr-nm -n $< > $@
 
 
 
