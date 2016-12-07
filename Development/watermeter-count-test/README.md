@@ -1,14 +1,14 @@
-Watermeter Echo Test
---------------------
+Watermeter Count Test
+---------------------
 
-This is a simple test firmware for the AVR in the watermeter. Written in C under
+This is a test firmware for the AVR in the watermeter. Written in C under
 avr-gcc.
 
-This test simply echoes characters back on the serial port at 9600 baud. Use
-to verify that the serial link to the AVR is working. This link is normally
-connected to an XBee in the watermeter assembly. The test can ONLY be used
-where the XBee is not present and the serial link is brought out to a PC serial
-port.
+This test transmits the count of the photointerrupter at regular
+intervals (1 sec) via the serial port at 9600 baud in csv format for capture
+and analysis off-line. This link is normally connected to an XBee in the
+watermeter assembly. The test can ONLY be used where the XBee is not present
+and the serial link is brought out to a PC serial port.
 
 Open source versions of gcc-avr earlier than release 2.0.0 did not support the
 ATTiny841 series. To get around this, either a recent version of gcc-avr or the

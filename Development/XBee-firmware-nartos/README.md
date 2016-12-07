@@ -33,10 +33,11 @@ The code is written to allow several AVR microcontroller types and currently
 supports ATMega168, ATTiny4313 and ATTiny841, the latter being the one selected
 for the watermeter.
 
-The Atmel version of gcc-avr needs to be placed into the an auxiliary directory
-and referenced in the Makefile as the open source version doesn't support
-the ATTiny841. Change the DIRAVR environment variable in Makefile to suit the
-location chosen.
+Open source versions of gcc-avr earlier than release 2.0.0 did not support
+the ATTiny841. To get around this, either a later version of gcc-avr or the
+Atmel version needs to be placed into a directory somewhere where it can be
+referenced in the Makefile. Change the DIRAVR environment variable in Makefile
+to suit the location chosen.
 
 The XBee does not use hardware flow control, although RTS may be
 possible. This is due to a lack of ports on the AVR package intended for use
@@ -57,6 +58,9 @@ creates an integer variable MCU_TYPE, derived from the MCU variable, (see the
 makefile) and passes it to the source files. This variable must then be used in
 the defines.h header to incorporate the appropriate MCU specific defines file.
 
+This code is outdated and may need to be modified if the scheduler approach is
+to be used.
+
 K. Sarkies
-28 November 2014
+7 December 2016
 
