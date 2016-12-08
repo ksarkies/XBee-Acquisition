@@ -28,7 +28,7 @@ Three LEDs are provided:
 * Yellow    Association status from XBee.
 * Red       Power.
 
-The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-node-example-M168) for ATMega48 series is provided for test transmissions.
+The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/XBee-node-test) for ATMega48 series is provided for test transmissions.
 
 ### xbee-node-attiny4313
 

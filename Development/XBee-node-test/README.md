@@ -3,7 +3,7 @@ XBee Data Acquisition Remote Test Firmware
 
 This is a test firmware for a remote unit. Written in C under avr-gcc.
 The node hardware is based on the ATMega48 series. The hardware is defined in
-[gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/gEDA-XBee) but is also useable with the watermeter board.
+[gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-Test) but is also useable with the watermeter board.
 
 A message containing counts from an external pulse source is sent to the
 coordinator at timed intervals in the timer ISR. The program will flash an LED
@@ -19,10 +19,10 @@ be compiled and installed. or the latest Atmel toolchain needs to be placed into
 a directory somewhere where it can be referenced in the Makefile. Change the
 DIRAVR environment variable in Makefile to suit the location chosen.
 
-The makefile target is attiny841 by default. To use another target eg ATMega48.
+The makefile target is ATMega48 by default. To use another target eg ATTiny841.
 
 $ make MCU=attiny841
 
 K. Sarkies
-9 March 2016
+8 December 2016
 
