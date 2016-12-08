@@ -6,9 +6,11 @@
 #
 
 # Define toolchain directories, if needed.
-# This is the Atmel version of gcc-avr. The open-source version lacks some
-# devices, notable the ATTiny441/841.
-DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+# This is the Atmel version of gcc-avr. Earlier open-source version lacks some
+# devices, notably the ATTiny441/841.
+#ifeq ($(MCU),attiny841)
+# DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+#endif
 
 # MCU name
 MCU ?= atmega48

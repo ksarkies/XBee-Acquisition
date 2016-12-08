@@ -13,13 +13,13 @@ Differences in registers, ports and ISRs between devices are incorporated into
 the defines.h header file in the lib directory, which calls on separate
 defines-xxx.h files.
 
-Open source versions of gcc-avr earlier than release 2.0.0 did not support
-the ATTiny841. To get around this, either a later version of gcc-avr or the
-Atmel version needs to be placed into a directory somewhere where it can be
-referenced in the Makefile. Change the DIRAVR environment variable in Makefile
-to suit the location chosen.
+Open source versions of avr-libc earlier than release 2.0.0 did not support the
+ATTiny841 series. To get around this, either the latest version of avr-libc must
+be compiled and installed. or the latest Atmel toolchain needs to be placed into
+a directory somewhere where it can be referenced in the Makefile. Change the
+DIRAVR environment variable in Makefile to suit the location chosen.
 
-The makefile target is ATMega48 by default. To use another target eg ATTiny841
+The makefile target is attiny841 by default. To use another target eg ATMega48.
 
 $ make MCU=attiny841
 

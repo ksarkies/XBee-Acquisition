@@ -57,7 +57,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 
 #include "../../libs/defines.h"
 #include "../../libs/serial.h"
-#include "../NARTOS/nartos.h"
+#include "../../../NARTOS/nartos.h"
 #include <util/delay.h>
 #include "xbee-node.h"
 
