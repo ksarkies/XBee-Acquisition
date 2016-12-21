@@ -114,10 +114,10 @@ int main(int argc,char ** argv)
     debug = false;
 /*--------------------------------------------------------------------------*/
 /* Parse the command line arguments.
-P - serial port to use, default /dev/ttyUSB0
-b - baud rate, default 38400 baud.
-D - directory for results file.
-d - Debug mode.
+P - serial port to use, (default /dev/ttyUSB0)
+b - baud rate, (default 38400 baud)
+d - directory for results file (default /data/XBee/)
+D - Debug mode.
  */
     strcpy(inPort,SERIAL_PORT);
     baudrate = BAUDRATE;
@@ -125,14 +125,14 @@ d - Debug mode.
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:b:D:d")) != -1)
+    while ((c = getopt (argc, argv, "P:b:d:D")) != -1)
     {
         switch (c)
         {
-        case 'D':
+        case 'd':
             strcpy(dirname,optarg);
             break;
-        case 'd':
+        case 'D':
             debug = true;
             break;
         case 'P':

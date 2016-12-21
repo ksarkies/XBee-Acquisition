@@ -6,7 +6,7 @@
 version     0.0.0
 Software    AVR-GCC 4.8.2
 Target:     Any AVR with sufficient output ports and a timer
-Tested:     ATMega168 at 8MHz internal clock.
+Tested:     ATMega48 at 8MHz internal clock, and ATTiny841 at 1MHz.
 
 */
 /****************************************************************************

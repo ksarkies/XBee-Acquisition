@@ -12,7 +12,7 @@ and the serial link is brought out to a PC serial port.
 
 Open source versions of avr-libc earlier than release 2.0.0 did not support the
 ATTiny841 series. To get around this, either the latest version of avr-libc must
-be compiled and installed. or the latest Atmel toolchain needs to be placed into
+be compiled and installed, or the latest Atmel toolchain needs to be placed into
 a directory somewhere where it can be referenced in the Makefile. Change the
 DIRAVR environment variable in Makefile to suit the location chosen.
 

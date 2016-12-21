@@ -3,12 +3,12 @@ XBee Data Acquisition Remote Test Code
 
 This is a POSIX system based test code for a XBee remote unit. Written in C but
 embedded in a QT/C++ wrapper which emulates the environment for the test code.
-The purpose is to provide a testbed for remote system firmware that is capable
-of communicating with an XBee and working as a remote unit. The emulator is not
-an AVR emulator as such. Rather it provides a means to run the Xbee firmware
-core on a PC for debugging.
+The purpose is to provide a PC Linux based testbed for emulating remote system
+firmware that is capable of communicating directly with an XBee over a serial
+port, and working as a remote unit. The emulator is not an AVR emulator. Rather
+it provides a means to run the Xbee firmware core on a PC for debugging.
 
-NOTE: gcc required to provide function override for timerISR.
+NOTE: gcc is required to allow function override for timerISR.
 
 The program can be run without a GUI from the command line with the -n option.
 A debug mode is available for extended printout.

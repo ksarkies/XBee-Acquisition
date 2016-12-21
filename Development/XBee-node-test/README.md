@@ -3,7 +3,7 @@ XBee Data Acquisition Remote Test Firmware
 
 This is a test firmware for a remote unit. Written in C under avr-gcc.
 The node hardware is based on the ATMega48 series. The hardware is defined in
-[gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-Test) but is also useable with the watermeter board.
+[gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-Test) but is also useable with the watermeter board which uses the ATTiny841.
 
 A message containing counts from an external pulse source is sent to the
 coordinator at timed intervals in the timer ISR. The program will flash an LED

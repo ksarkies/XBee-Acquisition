@@ -1,4 +1,5 @@
 EESchema Schematic File Version 2
+LIBS:Kicad-mounts-rescue
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -70,7 +71,7 @@ F 3 "" H 6800 5700 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L LED D1
+L LED-RESCUE-Kicad-mounts D1
 U 1 1 53F67A70
 P 5900 5700
 F 0 "D1" H 5900 5800 50  0000 C CNN

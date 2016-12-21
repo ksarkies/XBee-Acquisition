@@ -13,15 +13,17 @@ The latest stable version at this time is 3.0.11. Compile libxbee according to
 the included instructions and install. Then compile xbee-acqcontrol.
 
 The program when run will announce the results filename and loop waiting for
-communication from the network. The default filename willbe time-stamped, but
+communication from the network. The default filename will be time-stamped, but
 this can be overriden by a command line option. Debug information is written to
-/var/log/syslog. Command line options are:
+/var/log/syslog. Optional command line options are:
 
--d _directory_ to store results file
+-d _directory_ to store results file (default is /data/XBee/)
 
 -P _port_ (default is /dev/ttyUSB0)
 
 -b _baudrate_ (default 38400 baud)
+
+-D debug mode, causing printout of various actions.
 
 More information is available on [Jiggerjuice](http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html)
 

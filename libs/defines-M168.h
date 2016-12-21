@@ -1,6 +1,6 @@
 /* AVR/XBee Defines for the ATMega48 series
 
-This uses the prototype board described in gEDA-XBee-Test.
+This uses the test board described in gEDA-XBee-Test.
 
 For AVR microcontrollers with a bootloader section.
 The bootloader start address BASEADDR must be given in the makefile.
@@ -49,12 +49,14 @@ This gives a 32ms overflow interrupt.*/
 #define RTC_SCALE               5
 
 /* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered automatically */
+/* Use the defined input pin to decide if the application will be entered
+automatically */
 #define AUTO_ENTER_APP          1
-/* Use the defined output pin to force the XBee to stay awake while in the bootloader.
-This is valid for the XBee sleep mode 1 only. The application should move it to other modes
-if necessary. Note that using this may fail because the output pins may be forced
-to an undesired level during programming. */
+
+/* Use the defined output pin to force the XBee to stay awake while in the
+bootloader. This is valid for the XBee sleep mode 1 only. The application
+should move it to other modes if necessary. Note that using this may fail
+because the output pins may be forced to an undesired level during programming. */
 #define XBEE_STAY_AWAKE         1
 
 // Simple serial I/O (must define cpu frequency and baudrate before this include) */
