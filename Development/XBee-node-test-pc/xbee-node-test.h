@@ -52,6 +52,7 @@ public:
 private slots:
     void on_quitButton_clicked();
     void on_runButton_clicked();
+    void on_debugModeCheckBox_clicked();
 private:
 // User Interface object
     Ui::XbeeNodeTestDialog xbeeNodeTestFormUi;

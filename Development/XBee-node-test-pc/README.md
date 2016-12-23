@@ -3,6 +3,10 @@ XBee Data Acquisition Remote Test Code
 
 This is a POSIX system based test code for a XBee remote unit. Written in C but
 embedded in a QT/C++ wrapper which emulates the environment for the test code.
+It can be run with any adapter interface board that contains a USB-serial
+converter, or with a board having a serial interface plus an external USB-serial
+converter.
+
 The purpose is to provide a PC Linux based testbed for emulating remote system
 firmware that is capable of communicating directly with an XBee over a serial
 port, and working as a remote unit. The emulator is not an AVR emulator. Rather

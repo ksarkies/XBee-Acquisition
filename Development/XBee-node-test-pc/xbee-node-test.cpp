@@ -149,6 +149,15 @@ XbeeNodeTest::~XbeeNodeTest()
 }
 
 //*****************************************************************************
+/** @brief Change debuhg mode when button is clicked
+
+*/
+void XbeeNodeTest::on_debugModeCheckBox_clicked()
+{
+    debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
+}
+
+//*****************************************************************************
 /** @brief Successful Port Open
 
 @returns true if the serial port was opened.
