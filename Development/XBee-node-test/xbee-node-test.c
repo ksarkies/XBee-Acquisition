@@ -16,6 +16,8 @@ The board targetted is the test board developed for the project using the
 ATMega48 series microcontrollers. See the hardwareInit() function for
 documented I/O ports.
 
+The ports and clock scale factor are defined in the libs/defines headers.
+
 Count interrupt via PCINT2 is handled.
 
 @note
@@ -23,7 +25,7 @@ Software: AVR-GCC 4.8.2
 @note
 Target:   Any AVR with sufficient output ports and a timer
 @note
-Tested:   ATMega168 at 8MHz internal clock.
+Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
  */
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -279,6 +281,9 @@ ISR(COUNT_ISR)
 
 This ISR sends a dummy data record to the coordinator and toggles PC4
 where there should be an LED.
+
+If the clock scale factor is 5 (divide by 1024) and processor clock is 8MHz, a
+transmission is sent every 8.4 seconds.
 */
 
 ISR(TIMER0_OVF_vect)
