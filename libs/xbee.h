@@ -24,11 +24,12 @@
 /** @name Error Definitions.
 @{*/
 /* From the XBee receiver process: */
-#define STATE_MACHINE           0x10
-#define CHECKSUM                0x11
-#define ACK                     0x12
-#define NAK                     0x13
-#define COMPLETE                0x20
+#define XBEE_STATE_MACHINE      0x10
+#define XBEE_CHECKSUM           0x11
+#define XBEE_ACK                0x12
+#define XBEE_NAK                0x13
+#define XBEE_INCOMPLETE         0x14
+#define XBEE_COMPLETE           0x15
 /*@}*/
 
 /* Xbee parameters */
@@ -36,6 +37,8 @@
 
 #define RX_REQUEST              0x90
 #define TX_REQUEST              0x10
+
+#define AT_COMMAND              0x08
 
 /* The rxFrameType can be expressed as an Rx Request or AT Command Response frame */
 typedef struct
@@ -47,6 +50,13 @@ typedef struct
     union
     {
         uint8_t array[RF_PAYLOAD+13];
+        struct
+        {
+            uint8_t frameID;
+            uint8_t atCommand1;
+            uint8_t atCommand2;
+            uint8_t parameter;
+        } atCommand;
         struct
         {
             uint8_t sourceAddress64[8];
@@ -61,7 +71,7 @@ typedef struct
             uint8_t retryCount;
             uint8_t deliveryStatus;
             uint8_t discoveryStatus;
-        } txStatus;
+        } rxStatus;
     } message;
 } rxFrameType;
 
@@ -100,7 +110,9 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
                         const uint8_t sourceAddress16[],
                         const uint8_t radius, const uint8_t dataLength,
                         const uint8_t data[]);
+void sendATFrame(const uint8_t dataLength, const char data[]);
 void sendBaseFrame(const txFrameType txMessage);
+uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 
 #endif
 

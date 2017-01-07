@@ -48,7 +48,8 @@ In command line mode, the program can only be stopped by ctl-C or process kill.
 //-----------------------------------------------------------------------------
 /** @brief Main Program
 
-This creates a serial port object and a programming window object.
+This creates a serial port object and a programming window object, and launches
+the running code.
 */
 
 int main(int argc,char ** argv)

@@ -98,6 +98,9 @@ include a call to processEvents to ensure that the desired action is taken. */
 //*****************************************************************************
 /** Constructor
 
+This creates the interface settings to communicate with the XBee, and
+initialises some GUI elements.
+
 @param[in] QString* p: Serial Port object pointer
 @param[in] uint initialBaudrate: index to baudrate array
 @param[in] bool commandLine: use command line I/O only

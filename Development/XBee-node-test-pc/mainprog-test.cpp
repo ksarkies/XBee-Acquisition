@@ -88,17 +88,14 @@ static uint8_t timeCount;
 /* Counter keep track of external transitions on the digital input */
 static uint32_t counter;
 
-/** @name UART variables */
+/** @name Variables for transmitted essage*/
 /*@{*/
-static volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
-static volatile uint8_t lastError;    /**< Error code for transmission back */
-static volatile uint8_t checkSum;     /**< Checksum on message contents */
+static volatile uint8_t checkSum;     /**< Checksum on sent message contents */
 /*@}*/
 
 static uint32_t timeValue;
+/* These only need to be global because the program is split in two */
 static uint8_t messageState;           /**< Progress in message reception */
-static uint8_t messageReady;           /**< Indicate that a message is ready */
-static uint8_t messageError;
 static uint8_t coordinatorAddress64[8];
 static uint8_t coordinatorAddress16[2];
 
@@ -126,8 +123,30 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
     messageState = 0;
-    messageReady = FALSE;
-    messageError = 0;
+
+    rxFrameType rxMessage;
+    uint8_t messageError = XBEE_INCOMPLETE;
+    bool associated = FALSE;
+
+/* Request for association indication. Don't start until it is associated. */
+    while (! associated)
+    {
+        delay(1);
+        sendATFrame(2,"AI");
+
+/* The frame types we are handling are 0x88 AT Command Response */
+        while (messageError != XBEE_COMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if ((messageError != XBEE_INCOMPLETE) && (messageError != XBEE_COMPLETE))
+                qDebug() << "Message Error" << messageError;
+        }
+        qDebug() << "AT command received" << (char)rxMessage.message.atCommand.atCommand1 << \
+                                             (char)rxMessage.message.atCommand.atCommand2;
+        if (rxMessage.length > 3)
+            qDebug() << "AT parameter received" << rxMessage.message.atCommand.parameter;
+        associated = (rxMessage.message.atCommand.parameter == 0);
+    }
 }
 
 /*****************************/
@@ -137,84 +156,38 @@ The loop is emulated in the emulator program. */
 void mainprog()
 {
 /* Main loop */
-        wdt_reset();
+    wdt_reset();
 
 /* Check for incoming messages */
-/* The Rx message variable is re-used and must be processed before the next */
-        rxFrameType rxMessage;
-/* Wait for data to appear */
-        uint16_t inputChar = getch();
-        messageError = high(inputChar);
-        if (messageError != NO_DATA)
-        {
-/* Pull in the next character and look for message start */
-/* Read in the length (16 bits) and frametype then the rest to a buffer */
-            uint8_t inputValue = low(inputChar);
-            switch(messageState)
-            {
-/* Sync character */
-                case 0:
-                    if (inputChar == 0x7E) messageState++;
-                    break;
-/* Two byte length */
-                case 1:
-                    rxMessage.length = (inputChar << 8);
-                    messageState++;
-                    break;
-                case 2:
-                    rxMessage.length += inputValue;
-                    messageState++;
-                    break;
-/* Frame type */
-                case 3:
-                    rxMessage.frameType = inputValue;
-                    rxMessage.checksum = inputValue;
-                    messageState++;
-                    break;
-/* Rest of message, maybe include addresses or just data */
-                default:
-                    if (messageState > rxMessage.length + 3)
-                        messageError = STATE_MACHINE;
-                    else if (rxMessage.length + 3 > messageState)
-                    {
-                        rxMessage.message.array[messageState-4] = inputValue;
-                        messageState++;
-                        rxMessage.checksum += inputValue;
-                    }
-                    else
-                    {
-                        messageReady = TRUE;
-                        messageState = 0;
-                        if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0)
-                            messageError = CHECKSUM;
-                    }
-            }
-        }
+/* The Rx message variable is re-used and must be processed before the next
+arrives */
+    rxFrameType rxMessage;
+    uint8_t messageError = receiveMessage(&rxMessage, &messageState);
 /* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
-        if (messageReady)
+    if (messageError == XBEE_COMPLETE)
+    {
+        if (rxMessage.frameType == RX_REQUEST)
         {
-            messageReady = FALSE;
-            if (messageError > 0) sendch(messageError);
-            else if (rxMessage.frameType == RX_REQUEST)
-            {
 /* Toggle test port */
 #ifdef TEST_PORT_DIR
-                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
 #endif
 /* Echo */
-                sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                                   rxMessage.message.rxRequest.sourceAddress16,
-                                   0, rxMessage.length-12,
-                                   rxMessage.message.rxRequest.data);
-            }
+            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
+                               rxMessage.message.rxRequest.sourceAddress16,
+                               0, rxMessage.length-12,
+                               rxMessage.message.rxRequest.data);
         }
+    }
+    else if (messageError != XBEE_INCOMPLETE)
+        qDebug() << "Message Error" << messageError;
 }
 
 /****************************************************************************/
 /** @brief Timer 0 ISR.
 
-This ISR sends a dummy data record to the coordinator and toggles PC4
+This ISR sends a count data record to the coordinator and toggles PC4
 where there should be an LED.
 */
 
@@ -238,8 +211,8 @@ void timerISR()
         buffer[11] = 0;             /* String terminator */
         buffer[0] = 'D';            /* Data Command */
         sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-        counter = 0;            /* Reset counter value */
-qDebug() << "Sent Transmission";
+        counter = 0;                /* Reset counter value */
+        qDebug() << "Sent Transmission";
 #ifdef TEST_PORT_DIR
         sbi(TEST_PORT,TEST_PIN);
     }

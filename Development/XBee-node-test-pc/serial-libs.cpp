@@ -1,4 +1,4 @@
-/*      POSIX/QT serial I/O
+/*      POSIX/QT serial I/O library
 
 Substitute functions for XBee-node-test to provide an emulated communications
 environment.

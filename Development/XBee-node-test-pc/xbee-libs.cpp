@@ -1,4 +1,4 @@
-/*  XBee API routines for the AVR UART */
+/*  XBee API library routines for the AVR UART interface */
 
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
@@ -37,7 +37,7 @@
 #define  low(x) ((uint8_t) (x & 0xFF))
 
 /****************************************************************************/
-/** @brief Build and transmit a Tx Request frame
+/** @brief Build and transmit a Tx Request frame to a remote unit
 
 A data message for the XBee API is formed and transmitted.
 
@@ -76,6 +76,34 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
 }
 
 /****************************************************************************/
+/** @brief Build and transmit an AT Query frame to the local XBee
+
+A local AT frame requesting information is formed and transmitted. The AT
+command consists of two ASCII characters followed by binary parameters.
+
+At this stage only a single parameter at most is accepted.
+
+@param[in]:   uint8_t dataLength: the number of elements in the data array.
+@param[in]:   uint8_t data[]: the AT command followed by parameters.
+*/
+void sendATFrame(const uint8_t dataLength, const char data[])
+{
+    txFrameType atFrame;
+    atFrame.frameType = AT_COMMAND;
+    atFrame.message.atCommand.frameID = 0x03;
+    atFrame.length = 4;
+    atFrame.message.atCommand.atCommand1 = data[0];
+    atFrame.message.atCommand.atCommand2 = data[1];
+    if (dataLength > 2)
+    {
+        atFrame.message.atCommand.parameter = data[2];
+        atFrame.length++;
+    }
+    sendBaseFrame(atFrame);
+    qApp->processEvents();      // Allow serial transmission to complete
+}
+
+/****************************************************************************/
 /** @brief Build and transmit a basic frame
 
 Send preamble, then message block, followed by computed checksum.
@@ -102,8 +130,9 @@ void sendBaseFrame(const txFrameType txMessage)
 /****************************************************************************/
 /** @brief Check for incoming messages and respond.
 
-An incoming message is assembled over multiple calls to this function. A status
-is returned indicating completion or error status of the message.
+The USART input is tested for an incoming receiver frame. If a byte is received
+an INCOMPLETE status is returned. When the message has been fully received
+a COMPLETE status is returned. All other results are errors.
 
 The message is built up as serial data is received, and therefore must not be
 changed outside the function until the function returns COMPLETE.
@@ -111,16 +140,15 @@ changed outside the function until the function returns COMPLETE.
 @param[out] rxFrameType *rxMessage: Message received.
 @param[out] uint8_t *messageState: Message build state, must be set to zero on
                                    the first call.
-@returns uint8_t message completion/error state. Zero means character received
-                                   OK but not yet finished.
+@returns uint8_t message completion/error state.
 */
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
     qApp->processEvents();      // Allow serial reception to proceed
 /* Wait for data to appear */
     uint16_t inputChar = getch();
-    uint8_t messageError = high(inputChar);
-    if (messageError != NO_DATA)
+    uint16_t messageError = XBEE_INCOMPLETE;
+    if (high(inputChar) != NO_DATA)
     {
 
         uint8_t state = *messageState;
@@ -151,7 +179,7 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 /* Rest of message, maybe include addresses or just data */
             default:
                 if (state > rxMessage->length + 3)
-                    messageError = STATE_MACHINE;
+                    messageError = XBEE_STATE_MACHINE;
                 else if (rxMessage->length + 3 > state)
                 {
                     rxMessage->message.array[state-4] = inputValue;
@@ -162,8 +190,8 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
                 {
                     state = 0;
                     if (((rxMessage->checksum + inputValue + 1) & 0xFF) > 0)
-                        messageError = CHECKSUM;
-                    else messageError = COMPLETE;
+                        messageError = XBEE_CHECKSUM;
+                    else messageError = XBEE_COMPLETE;
                 }
         }
         *messageState = state;
