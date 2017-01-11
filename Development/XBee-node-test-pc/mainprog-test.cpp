@@ -93,9 +93,11 @@ static uint32_t counter;
 static volatile uint8_t checkSum;     /**< Checksum on sent message contents */
 /*@}*/
 
+/* This needs to be defined as global as the main loop is separated out */
+static uint8_t messageState;
+
 static uint32_t timeValue;
 /* These only need to be global because the program is split in two */
-static uint8_t messageState;           /**< Progress in message reception */
 static uint8_t coordinatorAddress64[8];
 static uint8_t coordinatorAddress16[2];
 
@@ -115,6 +117,7 @@ void mainprogInit()
     uartInit();
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* reset timer */
+    uint8_t messageState;           /**< Progress in message reception */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -122,31 +125,53 @@ event. */
     for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
-    messageState = 0;
 
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
     rxFrameType rxMessage;
-    uint8_t messageError = XBEE_INCOMPLETE;
     bool associated = FALSE;
+    uint8_t n = 0;
 
-/* Request for association indication. Don't start until it is associated. */
     while (! associated)
     {
-        delay(1);
         sendATFrame(2,"AI");
+        qDebug() << "Sent AI request" << n++;
+        sleep(1);
 
-/* The frame types we are handling are 0x88 AT Command Response */
-        while (messageError != XBEE_COMPLETE)
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        messageState = 0;
+        uint8_t messageError = XBEE_INCOMPLETE;
+        while (messageError == XBEE_INCOMPLETE)
         {
             messageError = receiveMessage(&rxMessage, &messageState);
-            if ((messageError != XBEE_INCOMPLETE) && (messageError != XBEE_COMPLETE))
-                qDebug() << "Message Error" << messageError;
+            if (timeout++ > 60000) break;
         }
-        qDebug() << "AT command received" << (char)rxMessage.message.atCommand.atCommand1 << \
-                                             (char)rxMessage.message.atCommand.atCommand2;
-        if (rxMessage.length > 3)
-            qDebug() << "AT parameter received" << rxMessage.message.atCommand.parameter;
-        associated = (rxMessage.message.atCommand.parameter == 0);
+        if (messageError != XBEE_COMPLETE)
+        {
+            qDebug() << "Message Error" << messageError;
+        }
+        else
+        {
+            qDebug() << "Length" << rxMessage.length;
+            qDebug() << "Checksum" << rxMessage.checksum;
+            qDebug() << "Type" << rxMessage.frameType;
+            qDebug() << "AT response received" << (char)rxMessage.message.atResponse.atCommand1 << \
+                                                 (char)rxMessage.message.atResponse.atCommand2;
+            qDebug() << "Status" << rxMessage.message.atResponse.status;
+            if (rxMessage.length > 5)
+                qDebug() << "AT response data received" << rxMessage.message.atResponse.data;
+        }
+        associated = ((messageError == XBEE_COMPLETE) && \
+                     (rxMessage.message.atResponse.data == 0) && \
+                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                     (rxMessage.message.atResponse.atCommand1 == 65) && \
+                     (rxMessage.message.atResponse.atCommand2 == 73));
     }
+    qDebug() << "Associated";
+#ifdef TEST_PORT_DIR
+    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+#endif
 }
 
 /*****************************/
@@ -166,6 +191,7 @@ arrives */
 /* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
     if (messageError == XBEE_COMPLETE)
     {
+        qDebug() << "Message Received" << rxMessage.message.rxRequest.data[0];
         if (rxMessage.frameType == RX_REQUEST)
         {
 /* Toggle test port */

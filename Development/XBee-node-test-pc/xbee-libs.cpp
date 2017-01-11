@@ -100,7 +100,6 @@ void sendATFrame(const uint8_t dataLength, const char data[])
         atFrame.length++;
     }
     sendBaseFrame(atFrame);
-    qApp->processEvents();      // Allow serial transmission to complete
 }
 
 /****************************************************************************/
@@ -144,7 +143,6 @@ changed outside the function until the function returns COMPLETE.
 */
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
-    qApp->processEvents();      // Allow serial reception to proceed
 /* Wait for data to appear */
     uint16_t inputChar = getch();
     uint16_t messageError = XBEE_INCOMPLETE;
@@ -158,6 +156,7 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
         switch(state)
         {
 /* Sync character */
+            qDebug() << inputValue << state;
             case 0:
                 if (inputChar == 0x7E) state++;
                 break;

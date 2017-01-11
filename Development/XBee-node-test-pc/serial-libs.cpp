@@ -51,6 +51,7 @@ void uartInit(void)
 
 void sendch(unsigned char c)
 {
+    qApp->processEvents();      // Allow serial transmission to complete
     port->putChar(c);
 }
 
@@ -65,6 +66,7 @@ returns: unsigned int. The upper byte is zero or NO_DATA if no character present
 
 unsigned int getch(void)
 {
+    qApp->processEvents();      // Allow serial transmission to complete
     unsigned int result = 0;
     if (port->bytesAvailable() == 0) result = (NO_DATA<<8);
     else
@@ -85,6 +87,7 @@ returns: unsigned int. The upper byte is zero or NO_DATA if no character present
 
 unsigned char getchb(void)
 {
+    qApp->processEvents();      // Allow serial transmission to complete
     unsigned int c;
     do
     {

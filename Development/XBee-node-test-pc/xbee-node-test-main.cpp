@@ -59,7 +59,7 @@ int main(int argc,char ** argv)
     uint initialBaudrate = INITIAL_BAUDRATE; //!< Baudrate index to start searching
     int baudParm;
     bool commandLineOnly = false;
-    bool debug = false;
+    bool debug = true;
     bool ok;
     QString filename;
 
