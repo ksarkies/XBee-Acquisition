@@ -8,11 +8,13 @@ The bootloader start address BASEADDR must be given in the makefile.
 This file assigns registers, particular to an AVR type, to common constants.
 It is valid for bootloader and application firmware.
 
+It also defines project specific I/O pins.
+
 I/O pin values for controlling the bootloader operation are given at the end.
 
 Software: AVR-GCC 4.8.2
 Target:   Any AVR with sufficient output ports and a timer
-Tested:   ATMega168 at 8MHz internal clock.
+Tested:   ATMega48, ATMega168 at 8MHz internal clock.
 */
 
 /****************************************************************************
@@ -34,10 +36,7 @@ Tested:   ATMega168 at 8MHz internal clock.
  ***************************************************************************/
 
 #include	<avr/io.h>
-
-/* Choose whether to use hardware flow control for serial comms.
-Needed for the bootloader as the upload is extensive. */
-#define USE_HARDWARE_FLOW
+#include    "project.h"
 
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU                   8000000
@@ -48,33 +47,25 @@ Timer clock scale value 5 gives scale of 1024, (see timer.c)
 This gives a 32ms overflow interrupt.*/
 #define RTC_SCALE               5
 
-/* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered
-automatically */
-#define AUTO_ENTER_APP          1
-
-/* Use the defined output pin to force the XBee to stay awake while in the
-bootloader. This is valid for the XBee sleep mode 1 only. The application
-should move it to other modes if necessary. Note that using this may fail
-because the output pins may be forced to an undesired level during programming. */
-#define XBEE_STAY_AWAKE         1
-
-// Simple serial I/O (must define cpu frequency and baudrate before this include) */
+/* Simple serial I/O. CPU frequency and baudrate must be defined BEFORE this
+include as setbaud.h sets a default value. */
 #include <util/setbaud.h>
 
-/* definitions for UART control */
+/* Register definitions for UART0 control */
 #define	BAUD_RATE_HIGH_REG	    UBRR0H
 #define	BAUD_RATE_LOW_REG	    UBRR0L
+#define	UART_STATUS_REG	        UCSR0A
 #define	UART_CONTROL_REG	    UCSR0B
 #define	UART_FORMAT_REG	        UCSR0C
+#define	UART_DATA_REG	        UDR0
+#define DOUBLE_RATE             U2X0
 #define FRAME_SIZE              UCSZ00
 #define	ENABLE_TRANSMITTER_BIT	TXEN0
 #define	ENABLE_RECEIVER_BIT	    RXEN0
-#define	UART_STATUS_REG	        UCSR0A
 #define	TRANSMIT_COMPLETE_BIT	TXC0
 #define	RECEIVE_COMPLETE_BIT	RXC0
-#define	UART_DATA_REG	        UDR0
-#define DOUBLE_RATE             U2X0
+#define TRANSMIT_COMPLETE_IE    TXCIE0
+#define RECEIVE_COMPLETE_IE     RXCIE0
 
 /* UART Flow control ports */
 #define UART_CTS_PORT           PIND
@@ -84,14 +75,14 @@ because the output pins may be forced to an undesired level during programming. 
 #define UART_RTS_PORT_DIR       DDRD
 #define UART_RTS_PIN            3
 
-/* definitions for peripheral power control */
+/* Register definitions for peripheral power control */
 #define PRR_USART0              PRUSART0
 
-/* definitions for digital input control */
+/* Register definitions for digital input control */
 #define DI_DR0                  DIDR0
 #define DI_DR1                  DIDR1
 
-/* definitions for interrupt control. PCMSK2 bit 5 sets PCINT21 on PD5. */
+/* Register definitions for interrupt control. PCMSK2 bit 5 sets PCINT21 on PD5. */
 #define IMSK                    EIMSK
 #define INT_CR                  EICRA
 #define WDT_CSR                 WDTCSR
@@ -101,15 +92,15 @@ because the output pins may be forced to an undesired level during programming. 
 #define PC_IE                   PCIE2
 #define COUNT_ISR               PCINT2_vect
 
-/* definitions for analogue comparator control */
+/* Register definitions for analogue comparator control */
 #define AC_SR0                  ACSR
 #define AC_D0                   ACD
 
-/* definitions for ADC control */
+/* Register definitions for ADC control */
 #define ADC_ONR                 ADCSRA
 #define AD_EN                   ADEN
 
-/* definitions for SPM control */
+/* Register definitions for SPM control */
 #define	SPMCR_REG	            SPMCSR
 /* Pagesize and addresses are in bytes (note the datasheets use word values).
 These are defined from avr-libc io.h based on processor choice. */

@@ -1,9 +1,11 @@
-/*  Serial routines for the AVR UART */
+/*  Serial routines for the AVR UART
+
+The hardware ports, registers and bit names are defined in the defines-*.h
+files.
+*/
 
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
- *                                                                          *
- *   This file is part of XBee-Acquisition                                  *
+ *   Copyright (C) 2007 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
@@ -36,9 +38,7 @@
 /*-----------------------------------------------------------------------------*/
 /* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
 
-Baud rate is derived from the header call to setbaud.h.
-UBRRL_VALUE and UBRRH_VALUE and USE_2X are returned, the latter requires the
-U2X bit to be set in UCSRA to force a double baud rate clock.
+Baud rate is derived from the header call to the avr-libc setbaud.h.
 */
 
 void uartInit(void)
@@ -50,13 +50,21 @@ void uartInit(void)
 #else
     cbi(UART_STATUS_REG,DOUBLE_RATE);
 #endif
-    UART_FORMAT_REG = (3 << FRAME_SIZE);                // Set 8 bit frames
+    UART_FORMAT_REG = (3 << FRAME_SIZE);                /* Set 8 bit frames */
     UART_CONTROL_REG |= _BV(ENABLE_RECEIVER_BIT) |
-                        _BV(ENABLE_TRANSMITTER_BIT);    // enable receive and transmit 
+                        _BV(ENABLE_TRANSMITTER_BIT);    /* enable receive and transmit */
 #ifdef USE_HARDWARE_FLOW
-    cbi(UART_CTS_PORT_DIR,UART_CTS_PIN);                // Set flow control pins CTS input
-    sbi(UART_RTS_PORT_DIR,UART_RTS_PIN);                // RTS output
-    cbi(UART_RTS_PORT,UART_RTS_PIN);                    // RTS cleared to enable
+    cbi(UART_CTS_PORT_DIR,UART_CTS_PIN);                /* Set flow control pins CTS input */
+    sbi(UART_RTS_PORT_DIR,UART_RTS_PIN);                /* RTS output */
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                    /* RTS cleared to enable */
+#endif
+#ifdef USE_RECEIVE_INTERRUPTS
+/* Enable USART receive complete interrupt */
+    UART_CONTROL_REG |= _BV(RECEIVE_COMPLETE_IE);
+#endif
+#ifdef USE_TRANSMIT_INTERRUPTS
+/* Enable USART receive complete interrupt */
+    UART_CONTROL_REG |= _BV(TRANSMIT_COMPLETE_IE);
 #endif
 }
 
@@ -70,11 +78,11 @@ that the character has been sent.
 void sendch(unsigned char c)
 {
 #ifdef USE_HARDWARE_FLOW
-        while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     // wait for clear to send
+        while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     /* wait for clear to send */
 #endif
-        UART_DATA_REG = c;                                  // send
-        while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    // wait till gone
-        sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         // force reset TXCflag
+        UART_DATA_REG = c;                                  /* send */
+        while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    /* wait till gone */
+        sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         /* force reset TXCflag */
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -90,11 +98,13 @@ returns: unsigned char. The received character.
 unsigned char getchb(void)
 {
 #ifdef USE_HARDWARE_FLOW
-    cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
 #endif
+#ifndef USE_INTERRUPTS
     while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
+#endif
 #ifdef USE_HARDWARE_FLOW
-    sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
+    sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
 #endif
     return UART_DATA_REG;
 }
@@ -103,7 +113,8 @@ unsigned char getchb(void)
 /* Get a character when the Rx is ready (non blocking)
 
 The function asserts RTS low then waits for the receive complete bit is set.
-RTS is then cleared high. The character is then retrieved.
+RTS is then cleared high. The function returns with RTS high if no character is
+present, otherwise the character is retrieved and RTS is cleared.
 
 returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
@@ -111,12 +122,14 @@ returns: unsigned int. The upper byte is zero or NO_DATA if no character present
 unsigned int getch(void)
 {
 #ifdef USE_HARDWARE_FLOW
-    cbi(UART_RTS_PORT,UART_RTS_PIN);                        // Enable RTS
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
 #endif
+#ifndef USE_INTERRUPTS
     if (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)))
         return (NO_DATA << 8);
+#endif
 #ifdef USE_HARDWARE_FLOW
-    sbi(UART_RTS_PORT,UART_RTS_PIN);                        // Disable RTS
+    sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
 #endif
     return UART_DATA_REG;
 }

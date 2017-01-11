@@ -1,9 +1,16 @@
-/*  XBee API routines for the AVR UART */
+/*  XBee API routines for the AVR UART
+
+These provide the interface to the XBee via the serial port. Serial buffers
+are defined and all communications are carried out through these buffers.
+ISRs for transmit and receive of serial characters must be defined elsewhere
+and call back to functions defined here to put and get characters to/from the
+buffers.
+
+The transmit buffer may not be needed and can be disabled to save space.
+*/
 
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
- *                                                                          *
- *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
@@ -19,8 +26,19 @@
  ***************************************************************************/
 
 #include <inttypes.h>
+#include "defines.h"
 #include "xbee.h"
 #include "serial.h"
+#include "buffer.h"
+
+/* Global Variables */
+/* Serial communications buffers. */
+#ifdef USE_SEND_BUFFER
+static uint8_t send_buffer[BUFFER_SIZE+3];
+#endif
+#ifdef USE_RECEIVE_BUFFER
+static uint8_t receive_buffer[BUFFER_SIZE+3];
+#endif
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))
@@ -32,6 +50,24 @@
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #define  high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define  low(x) ((uint8_t) (x & 0xFF))
+
+/****************************************************************************/
+/** @brief Initialise the Communications Buffers
+
+The receive and transmit buffers are confined to this module.
+
+Globals: USE_SEND_BUFFER, receive_buffer
+*/
+
+void initBuffers(void)
+{
+#ifdef USE_SEND_BUFFER
+    buffer_init(send_buffer,BUFFER_SIZE);
+#endif
+#ifdef USE_RECEIVE_BUFFER
+    buffer_init(receive_buffer,BUFFER_SIZE);
+#endif
+}
 
 /****************************************************************************/
 /** @brief Build and transmit a Tx Request frame
@@ -72,6 +108,33 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
 }
 
 /****************************************************************************/
+/** @brief Build and transmit an AT Query frame to the local XBee
+
+A local AT frame requesting information is formed and transmitted. The AT
+command consists of two ASCII characters followed by binary parameters.
+
+At this stage only a single parameter at most is accepted.
+
+@param[in]:   uint8_t dataLength: the number of elements in the data array.
+@param[in]:   uint8_t data[]: the AT command followed by parameters.
+*/
+void sendATFrame(const uint8_t dataLength, const char data[])
+{
+    txFrameType atFrame;
+    atFrame.frameType = AT_COMMAND;
+    atFrame.message.atCommand.frameID = 0x03;
+    atFrame.length = 4;
+    atFrame.message.atCommand.atCommand1 = data[0];
+    atFrame.message.atCommand.atCommand2 = data[1];
+    if (dataLength > 2)
+    {
+        atFrame.message.atCommand.parameter = data[2];
+        atFrame.length++;
+    }
+    sendBaseFrame(atFrame);
+}
+
+/****************************************************************************/
 /** @brief Build and transmit a basic frame
 
 Send preamble, then message block, followed by computed checksum.
@@ -92,7 +155,11 @@ void sendBaseFrame(const txFrameType txMessage)
         sendch(txData);
         checksum += txData;
     }
+#ifdef USE_SEND_BUFFER
+    buffer_put(send_buffer, 0xFF-checksum);
+#else
     sendch(0xFF-checksum);
+#endif
 }
 
 /****************************************************************************/
@@ -113,9 +180,13 @@ changed outside the function until the function returns COMPLETE.
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
 /* Wait for data to appear */
+#ifdef USE_RECEIVE_BUFFER
+    uint16_t inputChar = buffer_get(receive_buffer);
+#else
     uint16_t inputChar = getch();
-    uint8_t messageError = high(inputChar);
-    if (messageError != NO_DATA)
+#endif
+    uint16_t messageError = XBEE_INCOMPLETE;
+    if (high(inputChar) != NO_DATA)
     {
         uint8_t state = *messageState;
 /* Pull in the received character and look for message start */
@@ -145,7 +216,7 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 /* Rest of message, maybe include addresses or just data */
             default:
                 if (state > rxMessage->length + 3)
-                    messageError = STATE_MACHINE;
+                    messageError = XBEE_STATE_MACHINE;
                 else if (rxMessage->length + 3 > state)
                 {
                     rxMessage->message.array[state-4] = inputValue;
@@ -156,14 +227,46 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
                 {
                     state = 0;
                     if (((rxMessage->checksum + inputValue + 1) & 0xFF) > 0)
-                        messageError = CHECKSUM;
-                    else messageError = COMPLETE;
+                        messageError = XBEE_CHECKSUM;
+                    else messageError = XBEE_COMPLETE;
                 }
         }
         *messageState = state;
     }
     return messageError;
 }
+
+/****************************************************************************/
+/** @brief Get Byte from Transmit buffer
+
+This is a callback from an ISR somewhere that transmits characters from a
+serial port. The character is retrieved from the transmit buffer.
+
+Globals: receive_buffer
+*/
+
+#ifdef USE_SEND_BUFFER
+uint16_t getTransmitBuffer(void)
+{
+	return buffer_get(send_buffer);
+}
+#endif
+
+/****************************************************************************/
+/** @brief Put Byte to Receive buffer
+
+This is a callback from an ISR somewhere that receives characters from a
+serial port. The character is placed in the receive buffer.
+
+Globals: receive_buffer
+*/
+
+#ifdef USE_RECEIVE_BUFFER
+void put_receive_buffer(uint8_t data)
+{
+	buffer_put(receive_buffer,data);
+}
+#endif
 
 /****************************************************************************/
 

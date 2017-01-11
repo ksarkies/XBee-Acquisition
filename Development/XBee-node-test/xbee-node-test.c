@@ -3,7 +3,10 @@
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 25 September 2014
-@brief Code for an ATMega48 AVR with an XBee in a Remote Low Power Node 
+@brief Code for an ATTiny841/ATMega48 AVR with an XBee in a Remote Low Power Node
+
+A message containing counts from a digital input is transmitted every few
+seconds.
 
 This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
@@ -46,16 +49,18 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <avr/sfr_defs.h>
 #include <avr/wdt.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include "../../libs/defines.h"
-#include <util/delay.h>
+#include "../../libs/buffer.h"
 #include "../../libs/serial.h"
 #include "../../libs/timer.h"
 #include "../../libs/xbee.h"
+#include <util/delay.h>
 #include "xbee-node-test.h"
 
 /** Convenience macros (we don't use them all) */
@@ -79,6 +84,9 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 The 32 bit time can also be accessed as four bytes. Time scale is defined in
 the information block.
 */
+
+#define BUFFER_SIZE 60
+
 static volatile union timeUnion
 {
   volatile uint32_t timeValue;
@@ -93,22 +101,16 @@ static uint32_t counter;
 
 /** @name UART variables */
 /*@{*/
-static volatile uint16_t uartInput;   /**< Character and errorcode read from uart */
-static volatile uint8_t lastError;    /**< Error code for transmission back */
 static volatile uint8_t checkSum;     /**< Checksum on message contents */
 /*@}*/
 
 static uint32_t timeValue;
-static uint8_t messageState;           /**< Progress in message reception */
-static uint8_t messageReady;           /**< Indicate that a message is ready */
-static uint8_t messageError;
 static uint8_t coordinatorAddress64[8];
 static uint8_t coordinatorAddress16[2];
 
 /* Local Prototypes */
 
 static void inline hardwareInit(void);
-static void inline timer0Init(uint8_t mode,uint16_t timerClock);
 
 /*****************************************************************************/
 /** @brief Main Program */
@@ -120,8 +122,11 @@ int main(void)
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
     uartInit();
+    initBuffers();                  /* Set up communications buffers if used */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
-    timeValue = 0;                  /* reset timer */
+    timeValue = 0;                  /* Reset timer */
+    uint8_t messageState;           /**< Progress in message reception */
+    sei();                          /* Enable global interrupts */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -129,83 +134,65 @@ event. */
     for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
-    messageState = 0;
-    messageReady = FALSE;
-    messageError = 0;
+
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    rxFrameType rxMessage;
+    bool associated = FALSE;
+    while (! associated)
+    {
+#ifdef TEST_PORT_DIR
+        cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+#endif
+        _delay_ms(200);
+#ifdef TEST_PORT_DIR
+        sbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+#endif
+        _delay_ms(200);
+        sendATFrame(2,"AI");
+
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        messageState = 0;
+        uint8_t messageError = XBEE_INCOMPLETE;
+        while (messageError == XBEE_INCOMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if (timeout++ > 30000) break;
+        }
+/* If errors occur, or frame is the wrong type, just try again */
+        associated = ((messageError == XBEE_COMPLETE) && \
+                     (rxMessage.message.atResponse.data == 0) && \
+                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                     (rxMessage.message.atResponse.atCommand1 == 65) && \
+                     (rxMessage.message.atResponse.atCommand2 == 73));
+    }
+#ifdef TEST_PORT_DIR
+    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+#endif
+
 /* Main loop */
+    messageState = 0;
     for(;;)
     {
         wdt_reset();
 
 /* Check for incoming messages */
 /* The Rx message variable is re-used and must be processed before the next */
-        rxFrameType rxMessage;
-/* Wait for data to appear */
-        uint16_t inputChar = getch();
-        messageError = high(inputChar);
-        if (messageError != NO_DATA)
-        {
-/* Pull in the next character and look for message start */
-/* Read in the length (16 bits) and frametype then the rest to a buffer */
-            uint8_t inputValue = low(inputChar);
-            switch(messageState)
-            {
-/* Sync character */
-                case 0:
-                    if (inputChar == 0x7E) messageState++;
-                    break;
-/* Two byte length */
-                case 1:
-                    rxMessage.length = (inputChar << 8);
-                    messageState++;
-                    break;
-                case 2:
-                    rxMessage.length += inputValue;
-                    messageState++;
-                    break;
-/* Frame type */
-                case 3:
-                    rxMessage.frameType = inputValue;
-                    rxMessage.checksum = inputValue;
-                    messageState++;
-                    break;
-/* Rest of message, maybe include addresses or just data */
-                default:
-                    if (messageState > rxMessage.length + 3)
-                        messageError = STATE_MACHINE;
-                    else if (rxMessage.length + 3 > messageState)
-                    {
-                        rxMessage.message.array[messageState-4] = inputValue;
-                        messageState++;
-                        rxMessage.checksum += inputValue;
-                    }
-                    else
-                    {
-                        messageReady = TRUE;
-                        messageState = 0;
-                        if (((rxMessage.checksum + inputValue + 1) & 0xFF) > 0)
-                            messageError = CHECKSUM;
-                    }
-            }
-        }
+        uint8_t messageError = receiveMessage(&rxMessage, &messageState);
 /* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
-        if (messageReady)
+        if ((messageError == XBEE_COMPLETE) && (rxMessage.frameType == RX_REQUEST))
         {
-            messageReady = FALSE;
-            if (messageError > 0) sendch(messageError);
-            else if (rxMessage.frameType == RX_REQUEST)
-            {
 /* Toggle test port */
 #ifdef TEST_PORT_DIR
-                if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-                if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
 #endif
 /* Echo */
-                sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                                   rxMessage.message.rxRequest.sourceAddress16,
-                                   0, rxMessage.length-12,
-                                   rxMessage.message.rxRequest.data);
-            }
+            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
+                               rxMessage.message.rxRequest.sourceAddress16,
+                               0, rxMessage.length-12,
+                               rxMessage.message.rxRequest.data);
         }
     }
 }
@@ -233,8 +220,14 @@ void hardwareInit(void)
 /* PC0 is the board analogue input. */
 /* PC1 is the battery monitor analogue input. */
 /* PC5 is the battery monitor control output. Hold low for lower power drain. */
+#ifdef VBATCON_PIN
+    sbi(VBATCON_PORT_DIR,VBAT_PIN);
+    cbi(VBATCON_PORT,VBAT_PIN);            /* Unset pullup */
+#endif
+#ifdef VBAT_PIN
     cbi(VBAT_PORT_DIR,VBAT_PIN);
     cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
+#endif
 /* PD5 is the counter input. */
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
@@ -243,7 +236,7 @@ void hardwareInit(void)
 /* General output for a LED to be activated by the mirocontroller as desired. */
 #ifdef TEST_PORT_DIR
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pullup */
+    sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
@@ -317,57 +310,17 @@ ISR(TIMER0_OVF_vect)
 }
 
 /****************************************************************************/
-/** @brief   Initialise Timer 0
+/** @brief USART ISR.
 
-This function will initialise the timer with the mode of operation and the
-clock rate to be used. An error will be returned if the timer is busy.
-
-Because ATMega64, ATMega128, ATMega103 offer different scale factors, there
-needs to be a conversion provided between the specification here and the scale
-setting. The additional clock settings provided for those MCUs are not used
-here, nor are the external clock settings of the remaining MCUs.
-
-This code is also valid for the ATTiny4313.
-
-Timer 0 is typically an 8-bit timer and has very basic functionality. Some MCUs
-offer PWM capability while most do not.
-
-    @param  mode
-            Ignored for simple timers.
-    @param  timerClock
-            00  Stopped
-            01  F_CLK
-            02  F_CLK/8
-            03  F_CLK/64
-            04  F_CLK/256
-            05  F_CLK/1024
-
-The timer continues to run until it is stopped by calling this function with
-timerClock=0. At the moment, mode does nothing.
+This ISR triggers when the Rx Complete flag is set, and grabs the incoming byte
+and passes it to a buffer via a callback in the xbee library.
 */
 
-void timer0Init(uint8_t mode,uint16_t timerClock)
+#ifdef USE_RECEIVE_BUFFER
+ISR(USART_RX_vect)
 {
-  if (timerClock > 5) timerClock = 5;
-#if defined(__AVR_ATMega64__) || \
-    defined(__AVR_ATMega128__) || \
-    defined(__AVR_ATMega103)
-/* Rescale clock values to match those of the above MCUs */
-  if (timerClock > 2) ++timerClock;
-  if (timerClock > 4) ++timerClock;
-#endif
-  outb(TIMER_CONT_REG0,((inb(TIMER_CONT_REG0) & 0xF8)|(timerClock & 0x07)));
-#if defined (TCNT0L)
-  outb(TCNT0L,0);                   /* 16 bit - clear both registers */
-  outb(TCNT0H,0);
-#else
-  outb(TCNT0,0);                    /* Clear the register */
-#endif
-#if (TIMER_INTERRUPT_MODE == 1)
-  sbi(TIMER_FLAG_REG0, TOV0);       /* Force clear the interrupt flag */
-  sbi(TIMER_MASK_REG0, TOIE0);      /* Enable the overflow interrupt */
-  sei();
-#endif
+    put_receive_buffer(low(getch()));
 }
+#endif
 
 /****************************************************************************/

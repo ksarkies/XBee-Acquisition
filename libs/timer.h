@@ -1,16 +1,13 @@
-/****************************************************************************/
 /*
  Title  :   C  include file for the Timer Functions library
- Author:    Ken Sarkies
+ author :   Ken Sarkies (www.jiggerjuice.info) adapted from code by Chris Efstathiou
  File:      $Id: timer.h, v 0.1 25/4/2007 $
  Software:  AVR-GCC 3.8.2
  Target:    All AVR MCUs with timer functionality.
  Tested:    ATMega168
 */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
- *                                                                          *
- *   This file is part of XBee-Acquisition                                  *
+ *   Copyright (C) 2007 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
@@ -94,5 +91,8 @@ functions. Any or all may be used. */
 #define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
 #define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+
+void timer0Init(uint8_t mode,uint16_t timerClock);
+uint16_t timer0Read();
 
 #endif

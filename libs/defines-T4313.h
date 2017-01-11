@@ -53,8 +53,8 @@ move it to other modes if necessary. Note that using this may fail because the
 output pins may be forced to an undesired level during programming. */
 #define XBEE_STAY_AWAKE     1
 
-/* Simple serial I/O (must define cpu frequency and baudrate before this
-include) */
+/* Simple serial I/O. CPU frequency and baudrate must be defined BEFORE this
+include as setbaud.h sets a default value. */
 #include <util/setbaud.h>
 
 /* definitions for UART control */

@@ -35,10 +35,14 @@
 /* Xbee parameters */
 #define RF_PAYLOAD              63
 
+/* Frame Types */
 #define RX_REQUEST              0x90
 #define TX_REQUEST              0x10
-
+#define AT_COMMAND_RESPONSE     0x88
 #define AT_COMMAND              0x08
+
+/* Serial buffer size */
+#define BUFFER_SIZE 60
 
 /* The rxFrameType can be expressed as an Rx Request or AT Command Response frame */
 typedef struct
@@ -55,8 +59,9 @@ typedef struct
             uint8_t frameID;
             uint8_t atCommand1;
             uint8_t atCommand2;
-            uint8_t parameter;
-        } atCommand;
+            uint8_t status;
+            uint8_t data;
+        } atResponse;
         struct
         {
             uint8_t sourceAddress64[8];
@@ -106,6 +111,7 @@ typedef struct
 /*----------------------------------------------------------------------*/
 /* Prototypes */
 
+void initBuffers(void);
 void sendTxRequestFrame(const uint8_t sourceAddress64[],
                         const uint8_t sourceAddress16[],
                         const uint8_t radius, const uint8_t dataLength,
@@ -113,6 +119,7 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
 void sendATFrame(const uint8_t dataLength, const char data[]);
 void sendBaseFrame(const txFrameType txMessage);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
+void put_receive_buffer(uint8_t data);
 
 #endif
 

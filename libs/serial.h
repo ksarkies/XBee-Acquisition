@@ -3,9 +3,7 @@
 */
 
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
- *                                                                          *
- *   This file is part of XBee-Acquisition                                  *
+ *   Copyright (C) 2007 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *

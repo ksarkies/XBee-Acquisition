@@ -9,7 +9,7 @@
 # This is the Atmel version of gcc-avr. Earlier open-source version lacks some
 # devices, notably the ATTiny441/841.
 #ifeq ($(MCU),attiny841)
-# DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 #endif
 
 # MCU name
@@ -38,7 +38,9 @@ OPT = s
 TARGET = xbee-node-test
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c ../../libs/serial.c ../../libs/xbee.c
+SRC += $(TARGET).c
+SRC += ../../libs/xbee.c
+SRC += ../../libs/serial.c ../../libs/buffer.c ../../libs/timer.c
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s

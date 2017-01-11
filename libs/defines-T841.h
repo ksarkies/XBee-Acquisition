@@ -55,8 +55,8 @@ move it to other modes if necessary. Note that using this may fail because the
 output pins may be forced to an undesired level during programming. */
 #define XBEE_STAY_AWAKE     1
 
-/* Simple serial I/O (must define cpu frequency and baudrate before this
-include) */
+/* Simple serial I/O. CPU frequency and baudrate must be defined BEFORE this
+include as setbaud.h sets a default value. */
 #include <util/setbaud.h>
 
 /* definitions for UART control */
@@ -122,9 +122,9 @@ These are defined from avr-libc io.h based on processor choice. */
 #define PROG_PIN                0
 
 /* Battery Measurement Control */
-#define VBAT_PORT_DIR           DDRA
-#define VBAT_PORT               PORTA
-#define VBAT_PIN                7
+#define VBATCON_PORT_DIR        DDRA
+#define VBATCON_PORT            PORTA
+#define VBATCON_PIN             7
 
 /* Sleep request Control */
 #define SLEEP_RQ_PORT_DIR       DDRA
