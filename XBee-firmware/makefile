@@ -46,7 +46,7 @@ endif
 # This is the Atmel version of gcc-avr. Earlier open-source version lacks some
 # devices, notably the ATTiny441/841.
 #ifeq ($(MCU),attiny841)
-# DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+DIRAVR = ../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 #endif
 
 # Output format. (can be srec, ihex, binary)

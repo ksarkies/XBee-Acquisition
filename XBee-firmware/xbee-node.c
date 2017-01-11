@@ -29,7 +29,8 @@ Software: AVR-GCC 4.8.2
 @note
 Target:   AVR with sufficient output ports and a USART (USI not supported)
 @note
-Tested:   ATTiny4313 at 1MHz internal clock.
+Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
+          ATTiny841 with 8MHz clock.
 
 */
 /****************************************************************************
@@ -164,6 +165,7 @@ event. */
         sei();
         if (! stayAwake) sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
+        cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
@@ -172,6 +174,8 @@ event. */
 not, return to sleep. Otherwise keep awake until the counts have settled.
 This will avoid rapid wake/sleep cycles when counts are changing.
 Counter is a global and is changed in the ISR. */
+        sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
+
         uint32_t lastCount;
         do
         {
@@ -214,7 +218,7 @@ or command reception. Keep looping until we have a recognised packet or error. *
                     while (true)
                     {
 
-/* ============ Read and verify incoming messages
+/* ============ Read and verify incoming messages */
 
 /* Read in part of an incoming frame. */
                         uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
@@ -222,7 +226,7 @@ or command reception. Keep looping until we have a recognised packet or error. *
                         {
                             timeResponse = 0;
 /* Got a frame complete without error. */
-                            if (messageStatus == COMPLETE)
+                            if (messageStatus == XBEE_COMPLETE)
                             {
 /* XBee Data frame. Copy to a buffer for later processing. */
                                 if (rxMessage.frameType == 0x90)
@@ -239,7 +243,7 @@ or command reception. Keep looping until we have a recognised packet or error. *
 repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
                                 else if (rxMessage.frameType == 0x8B)
                                 {
-                                    txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
+                                    txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
                                 }
 /* Unknown packet type. Discard as error and continue. */
@@ -290,7 +294,7 @@ Otherwise continue waiting. */
                             }
                     }
 
-/* ============ Interpret messages and decide on actions to take
+/* ============ Interpret messages and decide on actions to take */
 
 /* The transmitted data message was (supposedly) delivered. */
                     if (txDelivered)
@@ -482,6 +486,10 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
     sbi(TEST_PORT_DIR,TEST_PIN);
     cbi(TEST_PORT,TEST_PIN);            /* Test port */
 #endif
+#ifdef VBATCON_PIN
+    sbi(VBATCON_PORT_DIR,VBATCON_PIN);        /* Battery Measure Request */
+    cbi(VBATCON_PORT,VBATCON_PIN);
+#endif
 #ifdef VBAT_PIN
     sbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
     cbi(VBAT_PORT,VBAT_PIN);
@@ -502,7 +510,6 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 count signal line. */
     sbi(PC_MSK,PC_INT);
     sbi(IMSK,PC_IE);
-
 }
 
 /****************************************************************************/
