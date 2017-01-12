@@ -32,4 +32,11 @@ Tested:     ATMega48 at 8MHz internal clock, and ATTiny841 at 1MHz.
 
 #include <inttypes.h>
 
+/* Time in ms XBee waits before sleeping */
+#define PIN_WAKE_PERIOD         1
+
+void inline hardwareInit(void);
+void sleepXBee(void);
+void wakeXBee(void);
+
 #endif /*_XBEE_NODE_TEST_H_ */

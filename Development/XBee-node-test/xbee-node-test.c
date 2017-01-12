@@ -64,8 +64,6 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 #include "xbee-node-test.h"
 
 /** Convenience macros (we don't use them all) */
-#define TRUE 1
-#define FALSE 0
 
 #define  _BV(bit) (1 << (bit))
 #define inb(sfr) _SFR_BYTE(sfr)
@@ -74,6 +72,8 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 #define outw(sfr, val) (_SFR_WORD(sfr) = (val))
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#define inbit(sfr, bit) (_SFR_BYTE(sfr) & _BV(bit))
+#define toggle(sfr, bit) (_SFR_BYTE(sfr) ^= _BV(bit))
 #define high(x) ((uint8_t) (x >> 8) & 0xFF)
 #define low(x) ((uint8_t) (x & 0xFF))
 
@@ -108,9 +108,9 @@ static uint32_t timeValue;
 static uint8_t coordinatorAddress64[8];
 static uint8_t coordinatorAddress16[2];
 
-/* Local Prototypes */
+static bool sendMessage;
 
-static void inline hardwareInit(void);
+/* Local Prototypes */
 
 /*****************************************************************************/
 /** @brief Main Program */
@@ -125,8 +125,6 @@ int main(void)
     initBuffers();                  /* Set up communications buffers if used */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* Reset timer */
-    uint8_t messageState;           /**< Progress in message reception */
-    sei();                          /* Enable global interrupts */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -137,8 +135,9 @@ event. */
 
 /* Check for association indication from the XBee.
 Don't start until it is associated. */
+    uint8_t messageState;           /**< Progress in message reception */
     rxFrameType rxMessage;
-    bool associated = FALSE;
+    bool associated = false;
     while (! associated)
     {
 #ifdef TEST_PORT_DIR
@@ -168,10 +167,13 @@ Don't start until it is associated. */
                      (rxMessage.message.atResponse.atCommand2 == 73));
     }
 #ifdef TEST_PORT_DIR
-    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+    cbi(TEST_PORT,TEST_PIN);        /* Set pin off to indicate success */
 #endif
+    sei();                          /* Enable global interrupts */
 
 /* Main loop */
+    sendMessage = false;
+    sleepXBee();
     messageState = 0;
     for(;;)
     {
@@ -194,6 +196,36 @@ Don't start until it is associated. */
                                0, rxMessage.length-12,
                                rxMessage.message.rxRequest.data);
         }
+
+/* Check for the timer interrupt to indicate it is time for a message to go out.
+Wakeup the XBee and send putting it back to sleep afterwards. */
+        if (sendMessage)
+        {
+#ifdef TEST_PORT_DIR
+            sbi(TEST_PORT,TEST_PIN);
+#endif
+            wakeXBee();
+            uint8_t buffer[12];
+            uint8_t i;
+            char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
+            uint32_t value = counter;
+            for (i = 0; i < 10; i++)
+            {
+                if (i == 8) value = checksum;
+                buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+                value >>= 4;
+            }
+            buffer[11] = 0;             /* String terminator */
+            buffer[0] = 'D';            /* Data Command */
+            sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
+            counter = 0;            /* Reset counter value */
+            sleepXBee();
+            sendMessage = false;
+#ifdef TEST_PORT_DIR
+            _delay_ms(200);
+            cbi(TEST_PORT,TEST_PIN);
+#endif
+        }
     }
 }
 
@@ -203,32 +235,33 @@ Don't start until it is associated. */
 */
 void hardwareInit(void)
 {
-/* PB3 is XBee sleep request output. */
+/* XBee sleep request output. */
 #ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on */
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request output pin */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Clear to keep XBee on */
 #endif
-/* PB4 is XBee on/sleep input. High is XBee on, low is asleep. */
+/* XBee on/sleep input. High is XBee on, low is asleep. */
 #ifdef ON_SLEEP_PIN
     cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
 #endif
-/* PB5 is XBee reset output. Pulse low to reset. */
+/* XBee reset output. Pulse low to reset. */
 #ifdef XBEE_RESET_PIN
-    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Reset */
-    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Set to keep XBee on */
+    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);    /* XBee Reset output pin */
+    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);        /* Set to keep XBee on */
 #endif
-/* PC0 is the board analogue input. */
-/* PC1 is the battery monitor analogue input. */
-/* PC5 is the battery monitor control output. Hold low for lower power drain. */
+/* Board analogue input. */
+/* Battery monitor analogue input. */
+/* Battery monitor control output. Hold low for lower power drain. */
 #ifdef VBATCON_PIN
     sbi(VBATCON_PORT_DIR,VBAT_PIN);
-    cbi(VBATCON_PORT,VBAT_PIN);            /* Unset pullup */
+    cbi(VBATCON_PORT,VBAT_PIN);         /* Unset pullup */
 #endif
+/* Battery monitor input. */
 #ifdef VBAT_PIN
     cbi(VBAT_PORT_DIR,VBAT_PIN);
     cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
 #endif
-/* PD5 is the counter input. */
+/* Counter input. */
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
     sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
@@ -236,13 +269,45 @@ void hardwareInit(void)
 /* General output for a LED to be activated by the mirocontroller as desired. */
 #ifdef TEST_PORT_DIR
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+    sbi(TEST_PORT,TEST_PIN);            /* Set pin on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
 count signal line. */
     sbi(PC_MSK,PC_INT);                 /* Mask */
     sbi(PC_IER,PC_IE);                  /* Enable */
+}
+
+/****************************************************************************/
+/** @brief Sleep the XBee
+
+This sets the Sleep_RQ pin high. If the XBee is in pin hibernate mode, it will
+hold it asleep indefinitely until the Sleep_RQ pin is set low again. If the XBee
+is in cyclic/pin wake mode, this will have no effect.
+
+The XBee may take some time before sleeping, however no operations are dependent
+on this time.
+*/
+inline void sleepXBee(void)
+{
+    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
+}
+
+/****************************************************************************/
+/** @brief Wake the XBee
+
+If the XBee is asleep, toggle the Sleep_RQ pin high then low. If the XBee is in
+pin hibernate mode, this will hold it awake until the Sleep_RQ pin is set high
+again or until the XBee wake period has expired. This is the mode the XBee
+should be using in this application. Set the XBee wake period sufficiently long
+if better control of wake time is desired.
+
+The XBee should wake in a short time, about 100ms maximum.
+*/
+inline void wakeXBee(void)
+{
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request or set XBee Wake */
+    while (inbit(ON_SLEEP_PORT,ON_SLEEP_PIN) == 0);
 }
 
 /****************************************************************************/
@@ -284,29 +349,7 @@ ISR(TIMER0_OVF_vect)
     realTime.timeValue++;
     timeCount++;
     if (timeCount == 0)
-    {
-        uint8_t buffer[12];
-        uint8_t i;
-        char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
-        uint32_t value = counter;
-        for (i = 0; i < 10; i++)
-        {
-            if (i == 8) value = checksum;
-            buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-            value >>= 4;
-        }
-        buffer[11] = 0;             /* String terminator */
-        buffer[0] = 'D';            /* Data Command */
-        sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-        counter = 0;            /* Reset counter value */
-#ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);
-    }
-    if (timeCount == 26)
-        cbi(TEST_PORT,TEST_PIN);
-#else
-    }
-#endif
+        sendMessage = true;
 }
 
 /****************************************************************************/

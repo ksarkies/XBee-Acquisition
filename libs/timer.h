@@ -93,6 +93,6 @@ functions. Any or all may be used. */
 #define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
 void timer0Init(uint8_t mode,uint16_t timerClock);
-uint16_t timer0Read();
+uint16_t timer0Read(void);
 
 #endif

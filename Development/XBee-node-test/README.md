@@ -6,8 +6,22 @@ The node hardware is based on the ATMega48 series. The hardware is defined in
 [gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-Test) but is also useable with the watermeter board which uses the ATTiny841.
 
 A message containing counts from an external pulse source is sent to the
-coordinator at timed intervals in the timer ISR. The program will flash an LED
-on the test board.
+coordinator at timed intervals in the timer ISR. The program will flash an
+activity LED on the test board.
+
+Before beginning to monitor the XBee for incoming messages the firmware will
+query it for association indication. This is to ensure that the XBee is not put
+to sleep before association has occurred. Rapid flashing of the activity LED at
+0.5 second indicates that the communication with the XBee is taking place but
+the response is indicating either an error or that association has not occurred.
+A slower flashing of 1 second period indicates that communications not being
+received and is timing out. If this is not resolved the firmware can remain in
+the loop looking for association to be signalled. The XBee will then never be
+put to sleep.
+
+Once associated the XBee is put to sleep (if it is an END device). When a
+timed message is to be sent, the XBee will be woken and put back to sleep after
+the message is sent.
 
 Differences in registers, ports and ISRs between devices are incorporated into
 the defines.h header file in the lib directory, which calls on separate

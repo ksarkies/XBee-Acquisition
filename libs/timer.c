@@ -86,7 +86,6 @@ void timer0Init(uint8_t mode,uint16_t timerClock)
 #if (TIMER_INTERRUPT_MODE == 1)
     sbi(TIMER_FLAG_REG0, TOV0);       /* Force clear the interrupt flag */
     sbi(TIMER_MASK_REG0, TOIE0);      /* Enable the overflow interrupt */
-    sei();
 #endif
 }
 
