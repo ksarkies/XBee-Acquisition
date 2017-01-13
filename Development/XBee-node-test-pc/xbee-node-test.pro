@@ -15,4 +15,4 @@ CONFIG          += qt warn_on release
 FORMS           += xbee-node-test.ui
 HEADERS         += xbee-node-test.h ../../libs/xbee.h ../../libs/serial.h
 SOURCES         += xbee-node-test-main.cpp xbee-node-test.cpp
-SOURCES         += mainprog-test.cpp serial-libs.cpp xbee-libs.cpp
+SOURCES         += mainprog-firmware.cpp serial-libs.cpp xbee-libs.cpp

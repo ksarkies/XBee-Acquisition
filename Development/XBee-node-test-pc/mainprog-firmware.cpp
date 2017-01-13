@@ -178,6 +178,7 @@ until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
 /* Now ready to initiate a data transmission. */
+                wakeXBee();
                 wdtCounter = 0;     /* Reset the WDT counter for next time */
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
@@ -186,6 +187,7 @@ means of notifying the base station that the AVR is awake. */
                 bool cycleComplete = false;
                 uint8_t txCommand = 'C';
                 bool transmit = true;
+                uint8_t errorCount = 0;
                 uint8_t retry = 0;      /* Retries to get base response OK */
                 while (! cycleComplete)
                 {
@@ -213,13 +215,15 @@ or command reception. Keep looping until we have a recognised packet or error. *
                     while (true)
                     {
 
+/* ============ Read and verify incoming messages */
+
 /* Read in part of an incoming frame. */
                         uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
-                        if (messageStatus != NO_DATA)
+                        if (messageStatus != XBEE_INCOMPLETE)
                         {
                             timeResponse = 0;
 /* Got a frame complete without error. */
-                            if (messageStatus == COMPLETE)
+                            if (messageStatus == XBEE_COMPLETE)
                             {
 qDebug() << "Message" << QString("Type %1").arg(rxMessage.frameType,0,16)
          << ", Length" << rxMessage.length;
@@ -243,9 +247,9 @@ qDebug() << msg;
 repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
                                 else if (rxMessage.frameType == 0x8B)
                                 {
-                                    txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
+                                    txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
-qDebug() << "Status Frame: Status?" << rxMessage.message.txStatus.deliveryStatus
+qDebug() << "Status Frame: Status?" << rxMessage.message.rxStatus.deliveryStatus
          << ", Delivered?" << txDelivered;
                                 }
 /* Unknown packet type. Discard as error and continue. */
@@ -264,6 +268,7 @@ qDebug() << "Packet error detected";
 length is wrong). */
                             else if (messageStatus > 0)
                             {
+                                errorCount++;
 /* For any received errored Tx Status frame, we are unsure about its validity,
 so treat it as if the delivery did not occur. This may result in data being
 duplicated if the original message was actually received correctly. */
@@ -277,7 +282,7 @@ qDebug() << "Faulty status frame - treat as errored!";
                                 {
 /* With all other errors in the frame, clear the corrupted message, discard and
 repeat. */
-qDebug() << "Other error detected";
+qDebug() << "Other error detected" << rxMessage.frameType;
                                     rxMessage.frameType = 0;
                                     packetError = true;
                                     txDelivered = false;
@@ -290,6 +295,7 @@ qDebug() << "Other error detected";
 /* Nothing received, check for timeout waiting for a base station response.
 Otherwise continue waiting. */
                         else
+                        {
                             if (timeResponse++ > RESPONSE_DELAY) 
                             {
 qDebug() << "Timeout - Try number" << retry << ", Delivered?" << txDelivered
@@ -300,7 +306,11 @@ qDebug() << "Timeout - Try number" << retry << ", Delivered?" << txDelivered
                                 txStatusReceived = false;
                                 break;
                             }
+                        }
                     }
+                    if (errorCount > 10) break;
+
+/* ============ Interpret messages and decide on actions to take */
 
 /* The transmitted data message was (supposedly) delivered. */
                     if (txDelivered)
@@ -368,6 +378,8 @@ qDebug() << "Process Timeout: Try number" << retry;
                         transmit = true;
                     }
 
+/* ============ Command Packets */
+
 /* If a command packet arrived outside the data transmission protocol then
 this will catch it (i.e. independently of the Tx Status response).
 This is intended for application commands. */
@@ -420,7 +432,7 @@ for transmission. This is sent at the beginning of the string.
 
 void sendDataCommand(const uint8_t command, const uint32_t datum)
 {
-    uint8_t buffer[12];
+    char buffer[12];
     uint8_t i;
     char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
     uint32_t value = datum;
@@ -432,21 +444,20 @@ void sendDataCommand(const uint8_t command, const uint32_t datum)
     }
     buffer[11] = 0;             /* String terminator */
     buffer[0] = command;
-    sendMessage(11,buffer);
+    sendMessage(buffer);
 }
 
 /****************************************************************************/
 /** @brief Send a string message
 
-Wake the XBee and send a string message.
+Send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
-void sendMessage(const uint8_t length,const uint8_t* data)
+void sendMessage(const char* data)
 {
-    wakeXBee();
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
-                       length,data);
+                       strlen(data),(uint8_t*)data);
 }
 
 /****************************************************************************/
