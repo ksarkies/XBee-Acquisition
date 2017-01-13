@@ -48,12 +48,9 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include <inttypes.h>
-#include <stdbool.h>
+#include <string.h>
 #include <avr/sfr_defs.h>
 #include <avr/wdt.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include "../../libs/defines.h"
 #include "../../libs/buffer.h"
@@ -108,7 +105,7 @@ static uint32_t timeValue;
 static uint8_t coordinatorAddress64[8];
 static uint8_t coordinatorAddress16[2];
 
-static bool sendMessage;
+static bool transmitMessage;
 
 /* Local Prototypes */
 
@@ -118,7 +115,6 @@ static bool sendMessage;
 int main(void)
 {
     timeCount = 0;
-    counter = 0;
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
     uartInit();
@@ -171,9 +167,16 @@ Don't start until it is associated. */
 #endif
     sei();                          /* Enable global interrupts */
 
+/*---------------------------------------------------------------------------*/
 /* Main loop */
-    sendMessage = false;
+
+/* Initialise process counter */
+    counter = 0;
+
+/* Start off with XBee asleep and wait for interrupt to wake it up */
     sleepXBee();
+
+    transmitMessage = false;
     messageState = 0;
     for(;;)
     {
@@ -199,7 +202,7 @@ Don't start until it is associated. */
 
 /* Check for the timer interrupt to indicate it is time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
-        if (sendMessage)
+        if (transmitMessage)
         {
 #ifdef TEST_PORT_DIR
             sbi(TEST_PORT,TEST_PIN);
@@ -220,13 +223,53 @@ Wakeup the XBee and send putting it back to sleep afterwards. */
             sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
             counter = 0;            /* Reset counter value */
             sleepXBee();
-            sendMessage = false;
+            transmitMessage = false;
 #ifdef TEST_PORT_DIR
             _delay_ms(200);
             cbi(TEST_PORT,TEST_PIN);
 #endif
         }
     }
+}
+
+/****************************************************************************/
+/** @brief Convert a 32 bit value to ASCII hex form and send with a command.
+
+Also compute an 8-bit modular sum checksum from the data and convert to hex
+for transmission. This is sent at the beginning of the string.
+
+@param[in] int8_t command: ASCII command character to prepend to message.
+@param[in] int32_t datum: integer value to be sent.
+*/
+
+void sendDataCommand(const uint8_t command, const uint32_t datum)
+{
+    char buffer[12];
+    uint8_t i;
+    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
+    uint32_t value = datum;
+    for (i = 0; i < 10; i++)
+    {
+        if (i == 8) value = checksum;
+        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
+    }
+    buffer[11] = 0;             /* String terminator */
+    buffer[0] = command;
+    sendMessage(buffer);
+}
+
+/****************************************************************************/
+/** @brief Send a string message
+
+Send a string message.
+
+@param[in]  uint8_t* data: pointer to a string of data (ending in 0).
+*/
+void sendMessage(const char* data)
+{
+    sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
+                       strlen(data),(uint8_t*)data);
 }
 
 /****************************************************************************/
@@ -250,7 +293,6 @@ void hardwareInit(void)
     sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);        /* Set to keep XBee on */
 #endif
 /* Board analogue input. */
-/* Battery monitor analogue input. */
 /* Battery monitor control output. Hold low for lower power drain. */
 #ifdef VBATCON_PIN
     sbi(VBATCON_PORT_DIR,VBAT_PIN);
@@ -349,7 +391,7 @@ ISR(TIMER0_OVF_vect)
     realTime.timeValue++;
     timeCount++;
     if (timeCount == 0)
-        sendMessage = true;
+        transmitMessage = true;
 }
 
 /****************************************************************************/
