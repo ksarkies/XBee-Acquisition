@@ -30,6 +30,9 @@ data types defined.
 #include <inttypes.h>
 #include <stdbool.h>
 
+/*----------------------------------------------------------------------*/
+/* Prototypes */
+
 void buffer_init(uint8_t buffer[], uint8_t size);
 uint16_t buffer_get(uint8_t buffer[]);
 uint16_t buffer_put(uint8_t buffer[], uint8_t data);

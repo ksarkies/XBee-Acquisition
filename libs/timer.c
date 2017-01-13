@@ -31,11 +31,7 @@ value.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#define TRUE  1
-#define FALSE 0
-
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include "defines.h"
 #include "timer.h"
 
 /****************************************************************************/

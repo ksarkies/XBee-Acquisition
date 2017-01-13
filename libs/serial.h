@@ -29,6 +29,9 @@
 #define STATE_MACHINE           0x10
 #define CHECKSUM                0x11
 
+/*----------------------------------------------------------------------*/
+/* Prototypes */
+
 void uartInit(void);
 void sendch(unsigned char c);
 unsigned char getchb(void);

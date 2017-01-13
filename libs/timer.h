@@ -83,14 +83,8 @@ functions. Any or all may be used. */
 #endif
 #endif
 
-/* Convenience macros (we don't use them all) */
-#define  _BV(bit) (1 << (bit))
-#define  inb(sfr) _SFR_BYTE(sfr)
-#define  inw(sfr) _SFR_WORD(sfr)
-#define  outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+/*----------------------------------------------------------------------*/
+/* Prototypes */
 
 void timer0Init(uint8_t mode,uint16_t timerClock);
 uint16_t timer0Read(void);

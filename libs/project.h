@@ -1,4 +1,4 @@
-/* Definitions specific to the Project
+/* Definitions Specific to the Project
 
 These are independent of the hardware features of the processor.
 */
