@@ -51,34 +51,16 @@ Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include <inttypes.h>
 #include <string.h>
-#include <stdbool.h>
 #include <avr/sfr_defs.h>
-#include <avr/io.h>
 #include <avr/wdt.h>
-#include <avr/interrupt.h>
 #include <avr/sleep.h>
 
 #include "../libs/defines.h"
 #include "../libs/serial.h"
 #include "../libs/xbee.h"
-#include "xbee-node.h"
 #include <util/delay.h>
-
-#define TRUE 1
-#define FALSE 0
-/* Convenience macros (we don't use them all) */
-#define  _BV(bit) (1 << (bit))
-#define  inb(sfr) _SFR_BYTE(sfr)
-#define  inw(sfr) _SFR_WORD(sfr)
-#define  outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#define  inbit(sfr, bit) (_SFR_BYTE(sfr) & _BV(bit))
-#define  high(x) ((uint8_t) (x >> 8) & 0xFF)
-#define  low(x) ((uint8_t) (x & 0xFF))
+#include "xbee-node.h"
 
 /* Global variables */
 uint8_t coordinatorAddress64[8];
@@ -142,6 +124,7 @@ int main(void)
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
+    wdtInit(WDT_TIME);              /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -150,25 +133,62 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    uint8_t messageState;           /**< Progress in message reception */
+    rxFrameType rxMessage;
+    bool associated = false;
+    while (! associated)
+    {
+#ifdef TEST_PORT_DIR
+        cbi(TEST_PORT,TEST_PIN);    /* Set pin off to indicate success */
+#endif
+        _delay_ms(200);
+#ifdef TEST_PORT_DIR
+        sbi(TEST_PORT,TEST_PIN);    /* Set pin off to indicate success */
+#endif
+        _delay_ms(200);
+        sendATFrame(2,"AI");
+
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        messageState = 0;
+        uint8_t messageError = XBEE_INCOMPLETE;
+        while (messageError == XBEE_INCOMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if (timeout++ > 30000) break;
+        }
+/* If errors occur, or frame is the wrong type, just try again */
+        associated = ((messageError == XBEE_COMPLETE) && \
+                     (rxMessage.message.atResponse.data == 0) && \
+                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                     (rxMessage.message.atResponse.atCommand1 == 65) && \
+                     (rxMessage.message.atResponse.atCommand2 == 73));
+    }
+#ifdef TEST_PORT_DIR
+    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
+#endif
+
+/*---------------------------------------------------------------------------*/
+/* Main loop forever. */
+
 /* Initialise process counter */
     counter = 0;
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
-    bool stayAwake = false;         /* Keep awake in response to command */
+    bool stayAwake = false;         /* Keep asleep to start */
 
-    wdtInit(WDT_TIME);              /* Set up watchdog timer */
-/*---------------------------------------------------------------------------*/
-/* Main loop forever. */
     for(;;)
     {
         sei();
         if (! stayAwake) sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
         cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
-        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-        sleep_enable();
-        sleep_cpu();
+//        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  //      sleep_enable();
+    //    sleep_cpu();
 
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
@@ -186,7 +206,11 @@ Counter is a global and is changed in the ISR. */
 until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
+#ifdef TEST_PORT_DIR
+                sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
+#endif
 /* Now ready to initiate a data transmission. */
+                wakeXBee();
                 wdtCounter = 0;     /* Reset the WDT counter for next time */
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
@@ -222,7 +246,7 @@ or command reception. Keep looping until we have a recognised packet or error. *
 
 /* Read in part of an incoming frame. */
                         uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
-                        if (messageStatus != NO_DATA)
+                        if (messageStatus != XBEE_INCOMPLETE)
                         {
                             timeResponse = 0;
 /* Got a frame complete without error. */
@@ -386,6 +410,10 @@ This is intended for application commands. */
 /* Otherwise if the repeats were exceeded, notify the base station of the
 abandonment of this communication attempt. No response is expected. */
                 else sendMessage("X");
+#ifdef TEST_PORT_DIR
+                _delay_ms(200);
+                cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+#endif
             }
 
             _delay_ms(1);
@@ -424,15 +452,14 @@ void sendDataCommand(const uint8_t command, const uint32_t datum)
 /****************************************************************************/
 /** @brief Send a string message
 
-Wake the XBee and send a string message.
+Send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
 void sendMessage(const char* data)
 {
-    wakeXBee();
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
-                       strlen(data),data);
+                       strlen(data),(uint8_t*)data);
 }
 
 /****************************************************************************/
@@ -482,28 +509,33 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 
 /* Set output ports to desired directions and initial settings */
 
-#ifdef TEST_PIN
-    sbi(TEST_PORT_DIR,TEST_PIN);
-    cbi(TEST_PORT,TEST_PIN);            /* Test port */
+#ifdef SLEEP_RQ_PIN
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on to start with */
+#endif
+#ifdef ON_SLEEP_PIN
+    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+#endif
+/* XBee reset output. Pulse low to reset. */
+#ifdef XBEE_RESET_PIN
+    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);    /* XBee Reset output pin */
+    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);        /* Set to keep XBee on */
 #endif
 #ifdef VBATCON_PIN
     sbi(VBATCON_PORT_DIR,VBATCON_PIN);        /* Battery Measure Request */
     cbi(VBATCON_PORT,VBATCON_PIN);
 #endif
 #ifdef VBAT_PIN
-    sbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
+    cbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
     cbi(VBAT_PORT,VBAT_PIN);
-#endif
-#ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
-    sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee off */
 #endif
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
     sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
 #endif
-#ifdef ON_SLEEP_PIN
-    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+#ifdef TEST_PIN
+    sbi(TEST_PORT_DIR,TEST_PIN);        /* Test port */
+    sbi(TEST_PORT,TEST_PIN);            /* Set pin on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
@@ -576,19 +608,12 @@ again or until the XBee wake period has expired. This is the mode the XBee
 should be using in this application. Set the XBee wake period sufficiently long
 if better control of wake time is desired.
 
-The XBee should wake in a very short time.
+The XBee should wake in a short time, about 100ms maximum.
 */
 inline void wakeXBee(void)
 {
-/* If the XBee is asleep: */
-    if (inbit(ON_SLEEP_PORT,ON_SLEEP_PIN) == 0)
-    {
-/* Set Sleep_RQ high in case the XBee is in cyclic/pin wake mode. */
-        sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);
-        _delay_ms(PIN_WAKE_PERIOD);
-    }
     cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request or set XBee Wake */
-    _delay_ms(PIN_WAKE_PERIOD);
+    while (inbit(ON_SLEEP_PORT,ON_SLEEP_PIN) == 0); /* Wait for wakeup */
 }
 
 /****************************************************************************/

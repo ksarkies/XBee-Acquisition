@@ -35,8 +35,8 @@ Tested:     ATtint4313 at 1MHz internal clock.
 /* Timeout setting for WDT to give 8 second ticks */
 #define WDT_TIME                0x09
 
-#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-//#define ACTION_COUNT            1
+//#define ACTION_COUNT    (ACTION_MINUTES*60)/8
+#define ACTION_COUNT            4
 
 /* Xbee parameters */
 #define RF_PAYLOAD              63
@@ -55,12 +55,35 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 /* Time to mute counter update following a transmission */
 #define MUTE_TIME               F_CPU/1000
 
+/* Choose whether to use hardware flow control for serial comms.
+Needed for the bootloader as the upload is extensive. */
+//#define USE_HARDWARE_FLOW
+
+/* Choose whether to use buffering for serial communications. */
+//#define USE_RECEIVE_BUFFER
+//#define USE_SEND_BUFFER
+
+/* Interrupts will normally be needed with serial buffering */
+#if defined USE_RECEIVE_BUFFER || defined USE_SEND_BUFFER
+#define USE_INTERRUPTS
+#endif
+
+/* Use the defined output pin to force the XBee to stay awake while in the
+bootloader. This is valid for the XBee sleep mode 1 only. The application
+should move it to other modes if necessary. Note that using this may fail
+because the output pins may be forced to an undesired level during programming. */
+#define XBEE_STAY_AWAKE         1
+
+/* These defines control how the bootloader interacts with hardware */
+/* Use the defined input pin to decide if the application will be entered
+automatically */
+#define AUTO_ENTER_APP          1
+
 /****************************************************************************/
 /* Prototypes */
 
 void hardwareInit(void);
 void wdtInit(const uint8_t waketime);
-uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
 void sendMessage(const char* data);
 void sleepXBee(void);
