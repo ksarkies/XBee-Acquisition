@@ -37,7 +37,7 @@ Tested:     ATMega48 at 8MHz internal clock, and ATTiny841 at 1MHz.
 
 /* Choose whether to use hardware flow control for serial comms.
 Needed for the bootloader as the upload is extensive. */
-//#define USE_HARDWARE_FLOW
+#define USE_HARDWARE_FLOW
 
 /* Choose whether to use buffering for serial communications. */
 //#define USE_RECEIVE_BUFFER

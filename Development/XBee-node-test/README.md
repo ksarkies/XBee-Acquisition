@@ -23,6 +23,8 @@ Once associated the XBee is put to sleep (if it is an END device). When a
 timed message is to be sent, the XBee will be woken and put back to sleep after
 the message is sent.
 
+**NOTE:** CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
+
 Differences in registers, ports and ISRs between devices are incorporated into
 the defines.h header file in the lib directory, which calls on separate
 defines-xxx.h files.

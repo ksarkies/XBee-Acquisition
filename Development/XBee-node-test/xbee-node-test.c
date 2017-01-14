@@ -24,6 +24,8 @@ The ports and clock scale factor are defined in the libs/defines headers.
 Count interrupt via PCINT2 is handled.
 
 @note
+CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
+@note
 Software: AVR-GCC 4.8.2
 @note
 Target:   Any AVR with sufficient output ports and a timer

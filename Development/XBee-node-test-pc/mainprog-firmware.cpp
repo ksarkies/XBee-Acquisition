@@ -30,6 +30,10 @@ equivalents.
 Other library files need to be copied over and the extension changed from c to
 cpp. Update the .pro file to recognise all headers and source files for
 compilation.
+
+@note
+CTS must be set in the XBee.
+
 */
 /****************************************************************************
  *   Copyright (C) 2016 Ken Sarkies (www.jiggerjuice.info)               *
