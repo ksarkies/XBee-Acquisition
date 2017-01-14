@@ -1,6 +1,6 @@
 /*	Circular Buffer Management
 
-Copyright (C) K. Sarkies <ksarkies@internode.on.net>
+Copyright (C) Ken Sarkies (www.jiggerjuice.info)
 
 19 September 2012
 
@@ -13,7 +13,7 @@ Buffer tail points to the place behind the next item to be taken.
 */
 
 /****************************************************************************
- *   Copyright (C) 2012 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2012 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *

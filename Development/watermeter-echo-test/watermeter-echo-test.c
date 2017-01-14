@@ -16,7 +16,7 @@ Target:   Any AVR with sufficient output ports and a timer
 Tested:   ATTiny841 at 8MHz internal clock.
  */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2013 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

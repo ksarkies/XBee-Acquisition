@@ -1,6 +1,6 @@
 /*          Bootloader Header file
 
-       Ken Sarkies ksarkies@internode.on.net
+       Ken Sarkies (www.jiggerjuice.info)
             25 September 2014
 
 Bootloader for AVRs with a bootload section
@@ -12,7 +12,7 @@ Tested:     ATMega168 at 8MHz internal clock.
 */
 
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2013 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

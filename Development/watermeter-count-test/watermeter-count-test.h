@@ -1,5 +1,5 @@
 /*        AVR Watermeter Node Firmware
-       Ken Sarkies ksarkies@internode.on.net
+       Ken Sarkies (www.jiggerjuice.info)               *
             21 July 2014
 
 version     0.0
@@ -9,7 +9,7 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 
 */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2014 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

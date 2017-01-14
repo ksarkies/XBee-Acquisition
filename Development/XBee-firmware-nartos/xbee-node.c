@@ -1,7 +1,7 @@
 /**
 @mainpage AVR XBee Node Firmware using NARTOS
 @version 0.0
-@author Ken Sarkies (www.jiggerjuice.net)
+@author Ken Sarkies (www.jiggerjuice.info)
 @date 11 December 2014
 
 @brief Code for an AVR with an XBee in a Remote Low Power Node
@@ -29,7 +29,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 
 */
 /****************************************************************************
- *   Copyright (C) 2014 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2014 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

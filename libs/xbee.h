@@ -1,7 +1,7 @@
 /* Header file for AVR XBee */
 
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2013 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *

@@ -1,6 +1,6 @@
 /*        Watermeter Echo Test
 
-       Ken Sarkies ksarkies@internode.on.net
+       Ken Sarkies (www.jiggerjuice.info)
             19 April 2016
 
 version     0.0.0
@@ -10,7 +10,7 @@ Tested:     ATTiny841 at 8MHz internal clock.
 
 */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2013 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

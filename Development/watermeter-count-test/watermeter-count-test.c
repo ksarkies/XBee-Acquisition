@@ -1,7 +1,7 @@
 /**
 @mainpage AVR Watermeter Node Firmware
 @version 0.0
-@author Ken Sarkies (www.jiggerjuice.net)
+@author Ken Sarkies (www.jiggerjuice.info)
 @date 18 July 2014
 
 @brief Code for the watermeter board without XBee for count tests
@@ -27,7 +27,7 @@ Tested:   ATTiny841 at 1MHz internal clock.
 
 */
 /****************************************************************************
- *   Copyright (C) 2014 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2014 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

@@ -1,7 +1,7 @@
 /**
 @mainpage Atmel AVR Timer Library
 @version 0.1
-@author Ken Sarkies (www.jiggerjuice.net) adapted from code by Chris Efstathiou
+@author Ken Sarkies (www.jiggerjuice.info) adapted from code by Chris Efstathiou
 @date 2 September 2007
 @brief Library of timer functions for the Atmel AVR microcontrollers.
 
@@ -16,7 +16,7 @@ value.
 @note Tested:   ATMega88 at 8MHz.
 */
 /****************************************************************************
- *   Copyright (C) 2007 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2007 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  * Licensed under the Apache License, Version 2.0 (the "License");          *
  * you may not use this file except in compliance with the License.         *
