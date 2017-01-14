@@ -31,7 +31,7 @@
 /*@}*/
 
 /* Xbee parameters */
-#define RF_PAYLOAD              63
+#define RF_PAYLOAD              32
 
 /* Frame Types */
 #define RX_REQUEST              0x90

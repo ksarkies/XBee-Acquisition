@@ -185,12 +185,15 @@ Don't start until it is associated. */
     for(;;)
     {
         sei();
-        if (! stayAwake) sleepXBee();
+        if (! stayAwake)
+        {
+            sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
-        cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
-        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-        sleep_enable();
-        sleep_cpu();
+            cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+            set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+            sleep_enable();
+            sleep_cpu();
+        }
 
         sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
 
