@@ -58,7 +58,7 @@ OPT = 1
 
 
 # Target file name (without extension).
-TARGET = xbee-node
+TARGET = xbee-firmware
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c ../libs/serial.c ../libs/xbee.c

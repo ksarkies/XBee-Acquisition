@@ -1,7 +1,7 @@
 /**
 @mainpage AVR XBee Node Firmware
 @version 0.0
-@author Ken Sarkies (www.jiggerjuice.net)
+@author Ken Sarkies (www.jiggerjuice.info)
 @date 18 July 2014
 
 @brief Code for an AVR with an XBee in a Remote Low Power Node
@@ -34,7 +34,7 @@ Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
 
 */
 /****************************************************************************
- *   Copyright (C) 2014 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2014 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
@@ -141,11 +141,11 @@ Don't start until it is associated. */
     while (! associated)
     {
 #ifdef TEST_PORT_DIR
-        cbi(TEST_PORT,TEST_PIN);    /* Set pin off to indicate success */
+        cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
 #endif
         _delay_ms(200);
 #ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);    /* Set pin off to indicate success */
+        sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
 #endif
         _delay_ms(200);
         sendATFrame(2,"AI");
@@ -190,12 +190,12 @@ Don't start until it is associated. */
   //      sleep_enable();
     //    sleep_cpu();
 
+        sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
+
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
 This will avoid rapid wake/sleep cycles when counts are changing.
 Counter is a global and is changed in the ISR. */
-        sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
-
         uint32_t lastCount;
         do
         {
@@ -219,6 +219,7 @@ means of notifying the base station that the AVR is awake. */
                 bool cycleComplete = false;
                 uint8_t txCommand = 'C';
                 bool transmit = true;
+                uint8_t errorCount = 0;
                 uint8_t retry = 0;      /* Retries to get base response OK */
                 while (! cycleComplete)
                 {
@@ -252,7 +253,7 @@ or command reception. Keep looping until we have a recognised packet or error. *
 /* Got a frame complete without error. */
                             if (messageStatus == XBEE_COMPLETE)
                             {
-/* XBee Data frame. Copy to a buffer for later processing. */
+/* 0x90 is a Zigbee Receive Packet frame. Copy to a buffer for later processing. */
                                 if (rxMessage.frameType == 0x90)
                                 {
                                     inMessage.length = rxMessage.length;
@@ -263,8 +264,9 @@ or command reception. Keep looping until we have a recognised packet or error. *
                                             rxMessage.message.rxRequest.data[i];
                                     packetReady = true;
                                 }
-/* XBee Status frame. Check if the transmitted message was delivered. Action to
-repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
+/* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
+transmitted message was delivered. Action to repeat will happen ONLY if
+txDelivered is false and txStatusReceived is true. */
                                 else if (rxMessage.frameType == 0x8B)
                                 {
                                     txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
@@ -285,6 +287,7 @@ repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
 length is wrong). */
                             else if (messageStatus > 0)
                             {
+                                errorCount++;
 /* For any received errored Tx Status frame, we are unsure about its validity,
 so treat it as if the delivery did not occur. This may result in data being
 duplicated if the original message was actually received correctly. */
@@ -308,6 +311,7 @@ duplicated if the original message was actually received correctly. */
 /* Nothing received, check for timeout waiting for a base station response.
 Otherwise continue waiting. */
                         else
+                        {
                             if (timeResponse++ > RESPONSE_DELAY)
                             {
                                 timeResponse = 0;
@@ -316,21 +320,25 @@ Otherwise continue waiting. */
                                 txStatusReceived = false;
                                 break;
                             }
+                        }
                     }
+                    if (errorCount > 10) break;
 
 /* ============ Interpret messages and decide on actions to take */
 
 /* The transmitted data message was (supposedly) delivered. */
                     if (txDelivered)
                     {
-/* A base station response to the data transmission arrived. */
+/* Respond to an XBee Data packet. This could be an ACK/NAK response part of
+the overall protocol, indicating the final status of the protocol, or a
+higher level command. */
                         if (packetReady)
                         {
-/* Respond to an XBee Data packet. */
-/* The first character in the data field is an ACK or NAK. */
+/* Check if the first character in the data field is an ACK or NAK. */
                             uint8_t rxCommand = inMessage.message.rxRequest.data[0];
-/* Base station picked up an error and sent a NAK. Retry three times with an N
-command then give up the entire cycle with an X command. */
+/* Base station picked up an error in the previous response and sent a NAK.
+Retry three times with an N command then give up the entire cycle with an X
+command. */
                             if (rxCommand == 'N')
                             {
                                 if (++retry >= 3) cycleComplete = true;
@@ -343,13 +351,13 @@ command then give up the entire cycle with an X command. */
                             {
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
-to cause it to drop out immediately if the counts had not changed. */
+to zero to cause it to drop out immediately if the counts had not changed. */
                                 counter -= lastCount;
                                 lastCount = 0;
                                 cycleComplete = true;
                                 packetReady = false;
                             }
-/* If not an ACK/NAK, process below as an application data frame */
+/* If not an ACK/NAK, process below as an application data/command frame */
                         }
 /* Errors found in received packet. Retry three times then give up the entire
 cycle. Send an E data packet to signal to the base station. */
@@ -387,7 +395,8 @@ this will catch it (i.e. independently of the Base station status response).
 This is intended for application commands. */
                     if (packetReady)
                     {
-/* The first character in the data field is a command. */
+/* The first character in the data field is a command. Do not use A or N as
+commands as they will be confused with late ACK/NAK messages. */
                         uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Interpret a 'Parameter Change' command. */
                         if (rxCommand == 'P')
@@ -413,6 +422,7 @@ abandonment of this communication attempt. No response is expected. */
 #ifdef TEST_PORT_DIR
                 _delay_ms(200);
                 cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+                _delay_ms(200);
 #endif
             }
 
