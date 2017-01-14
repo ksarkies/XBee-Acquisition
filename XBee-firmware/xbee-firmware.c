@@ -23,6 +23,8 @@ correctly to the base station before new counts are started. Refer to the
 detailed documentation for more information.
 
 @note
+CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
+@note
 Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.
 @note
 Software: AVR-GCC 4.8.2
@@ -60,7 +62,7 @@ Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
 #include "../libs/serial.h"
 #include "../libs/xbee.h"
 #include <util/delay.h>
-#include "xbee-node.h"
+#include "xbee-firmware.h"
 
 /* Global variables */
 uint8_t coordinatorAddress64[8];
@@ -186,9 +188,9 @@ Don't start until it is associated. */
         if (! stayAwake) sleepXBee();
 /* Power down the AVR to deep sleep until an interrupt occurs */
         cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
-//        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-  //      sleep_enable();
-    //    sleep_cpu();
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        sleep_enable();
+        sleep_cpu();
 
         sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
 
@@ -420,9 +422,7 @@ commands as they will be confused with late ACK/NAK messages. */
 abandonment of this communication attempt. No response is expected. */
                 else sendMessage("X");
 #ifdef TEST_PORT_DIR
-                _delay_ms(200);
                 cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-                _delay_ms(200);
 #endif
             }
 

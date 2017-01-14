@@ -32,6 +32,8 @@ The code is written to allow several AVR microcontroller types and currently
 supports ATMega168, ATTiny4313 and ATTiny841, the latter being the one selected
 for the watermeter.
 
+**NOTE:** CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
+
 Open source versions of avr-libc earlier than release 2.0.0 did not support the
 ATTiny841 series. To get around this, either the latest version of avr-libc must
 be compiled and installed. or the latest Atmel toolchain needs to be placed into
