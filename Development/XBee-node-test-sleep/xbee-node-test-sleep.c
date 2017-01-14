@@ -15,12 +15,14 @@ measurements for communication to a base controller.
 
 The code is written to make use of sleep modes and other techniques to
 minimize power consumption. The AVR is woken by a count signal, updates the
-running total, and sleeps.
+running total, and sleeps. This does not receive any messages.
 
 The watchdog timer is used to wake the AVR at intervals to transmit the count
 to the XBee. The XBee is then woken again after a short interval to pass on any
 base station messages to the AVR.
 
+@note
+CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
 @note
 Fuses: Disable the "WDT Always On" fuse and disable the BOD fuse.
 @note
@@ -155,29 +157,9 @@ Don't start until it is associated. */
     {
         sei();
 /* Power down the AVR to deep sleep until an interrupt occurs */
-        cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_enable();
         sleep_cpu();
-
-        sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
-/* Check for incoming messages */
-/* The Rx message variable is re-used and must be processed before the next */
-        uint8_t messageError = receiveMessage(&rxMessage, &messageState);
-/* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
-        if ((messageError == XBEE_COMPLETE) && (rxMessage.frameType == RX_REQUEST))
-        {
-/* Toggle test port */
-#ifdef TEST_PORT_DIR
-            if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-            if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
-#endif
-/* Echo */
-            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                               rxMessage.message.rxRequest.sourceAddress16,
-                               0, rxMessage.length-12,
-                               rxMessage.message.rxRequest.data);
-        }
 
 /* Check for the timer interrupt to indicate it is time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
