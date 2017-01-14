@@ -1306,6 +1306,12 @@ Error is signalled if length or checksum are wrong. */
     if ((command == 'C') || (command == 'T') || (command == 'N')
                          || (command == 'E') || (command == 'S'))
     {
+#ifdef DEBUG
+        if (debug)
+        {
+            printf("Command Received %c\n",command);
+        }
+#endif
         protocolState = 1;                      /* Start of protocol cycle. */
         if (writeLength != 11) error = true;
         if (!error)
@@ -1345,7 +1351,7 @@ the string */
         if (error)
         {
 #ifdef DEBUG
-            if (debug) printf("Sent NAK\n\r");
+            if (debug) printf("Error detected - sent NAK\n\r");
 #endif
 /* Negative Acknowledge */
             txError = xbee_conTx(con, NULL, "N");
@@ -1359,13 +1365,13 @@ the string */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
 /* Acknowledge */
 // txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
-// usleep(500000);                          /* Insert delay for test */
+// usleep(500000);                 /* Insert delay for test */
             txError = xbee_conTx(con, NULL, "A");
 /* Advance the protocol state to indicate acceptance of any response as ACK. */
             protocolState = 2;
         }
 #ifdef DEBUG
-        if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %d\n\r",txError);
+        if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %s\n\r",xbee_errorToStr(txError));
 #endif
     }
 /* This is the response to a Parameter Change command which passes an arbitrary
