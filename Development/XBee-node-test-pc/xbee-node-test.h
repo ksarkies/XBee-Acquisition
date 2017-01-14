@@ -3,7 +3,7 @@ Title:    XBee Node Test
 */
 
 /****************************************************************************
- *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2016 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

@@ -9,7 +9,7 @@ part of the XbeeNodeTest object. This allows it to be used here but defined
 through the command line interface or GUI.
 */
 /****************************************************************************
- *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2016 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *

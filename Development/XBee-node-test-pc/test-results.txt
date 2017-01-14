@@ -1,0 +1,54 @@
+Test Results
+------------
+
+New Cycle: Complete? false 
+Transmit? "C" , Last Count 0 
+
+*** normal Zigbee Transmit status frame from the local XBee in response.
+Message "Type 8b" , Length 7 
+Status Frame: Status? 0 , Delivered? true 
+Delivered, start processing 
+
+*** another Zigbee Transmit status frame from the local XBee.
+New Cycle: Complete? false 
+Message "Type 8b" , Length 7 
+Status Frame: Status? 0 , Delivered? true 
+Delivered, start processing 
+
+*** This is the ACK expected back from the other end.
+New Cycle: Complete? false 
+Message "Type 90" , Length 13 
+"Reply: A 480321741270000000" 
+Delivered, start processing 
+Process Packet ready to check for ACK/NAK 
+ACK 
+Finished Cycle 
+Accepted 
+
+----------------------------------------------------------------------
+
+New Cycle: Complete? false 
+Transmit? "C" , Last Count 0 
+
+*** Modem status, reporting specific conditions
+Message Type "Type 8a" , Length 2 
+Packet error detected: Type "Type 8a" , Length 2 
+New Cycle: Complete? false 
+
+*** normal Zigbee Transmit status frame from the local XBee in response.
+Message Type "Type 8b" , Length 7 
+Zigbee Transmit Status Frame: "04801121341270" 
+Status? 0 , Delivered? true 
+Delivered, start processing 
+Normal Status Frame from local XBee 
+
+*** This is the ACK expected back from the other end.
+New Cycle: Complete? false 
+Message Type "Type 90" , Length 13 
+Got a data frame "A 4801121341270000000" 
+Delivered, start processing 
+Process Packet ready to check for ACK/NAK 
+ACK 
+Finished Cycle 
+Accepted 
+

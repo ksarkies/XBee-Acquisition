@@ -32,7 +32,7 @@ cpp. Update the .pro file to recognise all headers and source files for
 compilation.
 */
 /****************************************************************************
- *   Copyright (C) 2016 by Ken Sarkies ksarkies@internode.on.net            *
+ *   Copyright (C) 2016 Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
@@ -225,9 +225,9 @@ or command reception. Keep looping until we have a recognised packet or error. *
 /* Got a frame complete without error. */
                             if (messageStatus == XBEE_COMPLETE)
                             {
-qDebug() << "Message" << QString("Type %1").arg(rxMessage.frameType,0,16)
+qDebug() << "Message Type" << QString("Type %1").arg(rxMessage.frameType,0,16)
          << ", Length" << rxMessage.length;
-/* XBee Data frame. Copy to a buffer for later processing. */
+/* 0x90 is a Zigbee Receive Packet frame. Copy to a buffer for later processing. */
                                 if (rxMessage.frameType == 0x90)
                                 {
                                     inMessage.length = rxMessage.length;
@@ -236,26 +236,32 @@ qDebug() << "Message" << QString("Type %1").arg(rxMessage.frameType,0,16)
                                     for (uint8_t i=0; i<RF_PAYLOAD; i++)
                                         inMessage.message.rxRequest.data[i] =
                                             rxMessage.message.rxRequest.data[i];
+                                    packetReady = true;
 QChar reply = rxMessage.message.rxRequest.data[0];
-QString msg = QString("Reply: ")+QString::fromRawData(&reply,1)+" ";
+QString msg = QString::fromRawData(&reply,1)+" ";
 for (uint8_t i=1; i<rxMessage.length; i++)
 msg.append(QString("%1").arg(rxMessage.message.rxRequest.data[i]));
-qDebug() << msg;
-                                    packetReady = true;
+qDebug() << "Got a data frame" << msg;
                                 }
-/* XBee Status frame. Check if the transmitted message was delivered. Action to
-repeat will happen ONLY if txDelivered is false and txStatusReceived is true. */
+/* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
+transmitted message was delivered. Action to repeat will happen ONLY if
+txDelivered is false and txStatusReceived is true. */
                                 else if (rxMessage.frameType == 0x8B)
                                 {
                                     txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
                                     txStatusReceived = true;
-qDebug() << "Status Frame: Status?" << rxMessage.message.rxStatus.deliveryStatus
+QString msg;
+for (uint8_t i=0; i<rxMessage.length; i++)
+msg.append(QString("%1").arg(rxMessage.message.rxRequest.data[i]));
+qDebug() << "Zigbee Transmit Status Frame:"<< msg;
+qDebug() << "Status?" << rxMessage.message.rxStatus.deliveryStatus
          << ", Delivered?" << txDelivered;
                                 }
 /* Unknown packet type. Discard as error and continue. */
                                 else
                                 {
-qDebug() << "Packet error detected";
+qDebug() << "Packet error detected: Type" << QString("Type %1").arg(rxMessage.frameType,0,16)
+         << ", Length" << rxMessage.length;
                                     packetError = true;
                                     txDelivered = false;
                                     txStatusReceived = false;
@@ -315,17 +321,20 @@ qDebug() << "Timeout - Try number" << retry << ", Delivered?" << txDelivered
 /* The transmitted data message was (supposedly) delivered. */
                     if (txDelivered)
                     {
-/* A base station response to the data transmission arrived. */
 qDebug() << "Delivered, start processing";
+if (!packetReady) qDebug() << "Normal Zigbee Transmit Status Frame from local XBee";
+/* Respond to an XBee Data packet. This could be an ACK/NAK response part of
+the overall protocol, indicating the final status of the protocol, or a
+higher level command. */
                         if (packetReady)
                         {
-/* Respond to an XBee Data packet. */
-/* The first character in the data field is an ACK or NAK. */
+/* Check if the first character in the data field is an ACK or NAK. */
 qDebug() << "Process Packet ready to check for ACK/NAK";
                             uint8_t rxCommand = inMessage.message.rxRequest.data[0];
-/* Base station picked up an error and sent a NAK. Retry three times then give
-up the entire cycle. */
-                            if (rxCommand == 'N')
+/* Base station picked up an error in the previous response and sent a NAK.
+Retry three times with an N command then give up the entire cycle with an X
+command. */
+                             if (rxCommand == 'N')
                             {
 qDebug() << "NAK";
                                 if (++retry >= 3) cycleComplete = true;
@@ -338,14 +347,14 @@ qDebug() << "NAK";
                             {
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
-to cause it to drop out immediately if the counts had not changed. */
+to zero to cause it to drop out immediately if the counts had not changed. */
 qDebug() << "ACK";
                                 counter -= lastCount;
                                 lastCount = 0;
                                 cycleComplete = true;
                                 packetReady = false;
                             }
-/* If not an ACK/NAK, process below as an application data frame */
+/* If not an ACK/NAK, process below as an application data/command frame */
                         }
 /* Errors found in received packet. Retry three times then give up the entire
 cycle. Send an E packet to signal to the base station. */
@@ -360,7 +369,8 @@ qDebug() << "Process Packet Error";
 /* If the message was signalled as definitely not delivered (or was errored),
 that is, txStatusReceived but not txDelivered, repeat up to three times then
 give up the entire cycle. Send an S packet to signal to the base station which
-should avoid duplication. */
+should avoid any unlikely duplication (even though previous transmissions were
+not received). */
                     else if (txStatusReceived)
                     {
 qDebug() << "Process Not Delivered: Try number" << retry;
