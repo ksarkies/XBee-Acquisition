@@ -191,8 +191,7 @@ Don't start until it is associated. */
 /* Power down the AVR to deep sleep until an interrupt occurs */
             cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
             set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-            sleep_enable();
-            sleep_cpu();
+            sleep_mode();
         }
 
         sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */

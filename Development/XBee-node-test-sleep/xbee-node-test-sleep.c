@@ -158,8 +158,7 @@ Don't start until it is associated. */
         sei();
 /* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-        sleep_enable();
-        sleep_cpu();
+        sleep_mode();
 
 /* Check for the timer interrupt to indicate it is time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */

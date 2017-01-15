@@ -297,8 +297,8 @@ void hardwareInit(void)
 /* Board analogue input. */
 /* Battery monitor control output. Hold low for lower power drain. */
 #ifdef VBATCON_PIN
-    sbi(VBATCON_PORT_DIR,VBAT_PIN);
-    cbi(VBATCON_PORT,VBAT_PIN);         /* Unset pullup */
+    sbi(VBATCON_PORT_DIR,VBATCON_PIN);
+    cbi(VBATCON_PORT,VBATCON_PIN);         /* Unset pullup */
 #endif
 /* Battery monitor input. */
 #ifdef VBAT_PIN
