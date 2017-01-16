@@ -29,7 +29,7 @@ Title:    XBee Acquisition Control process
 #define MAXNODES                25
 #define SIZE                   256
 #define DATA_BUFFER_SIZE        64
-#define FLUSH_LIMIT              8
+#define FLUSH_LIMIT              4
 #define FILE_LIMIT            1024
 
 // Length of data field in a data message

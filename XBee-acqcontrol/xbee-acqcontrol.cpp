@@ -1527,17 +1527,33 @@ void ioCallback(struct xbee *xbee, struct xbee_con *con,
     else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
     fprintf(fp," %s ", timeString);
     fprintf(fp, "I/O ");
+#ifdef DEBUG
+    if (debug)
+    {
+        if (row == numberNodes) printf("Node Unknown ");
+        else printf("Node %s ", nodeInfo[row].nodeIdent);
+        printf(" %s ", timeString);
+        printf( "I/O ");
+    }
+#endif
 /* Compute the digital data fields from the response. Check the mask and
-write the next word field directly as the set of digitial ports. */
-    int index = 4;
+write the next word field directly as the set of digital ports. */
     if ((((*pkt)->data[1] << 8) + (*pkt)->data[2]) > 0)
     {
         fprintf(fp, "Digital Mask %04X Ports %04X ",
                 (((*pkt)->data[1] << 8) + (*pkt)->data[2]),
                 (((*pkt)->data[4] << 8) + (*pkt)->data[5]));
-        index += 2;
+#ifdef DEBUG
+        if (debug)
+        {
+            printf("Digital Mask %04X Ports %04X ",
+                    (((*pkt)->data[1] << 8) + (*pkt)->data[2]),
+                    (((*pkt)->data[4] << 8) + (*pkt)->data[5]));
+        }
+#endif
     }
 /* Compute the analogue data fields from the response */
+    int index = 6;          /* Index into packet data for analogue fields */
     int aBitMask = 0;
     for (int i=0; i<4; i++)
     {
@@ -1546,6 +1562,14 @@ write the next word field directly as the set of digitial ports. */
             fprintf(fp, "A%01d ",i);
             fprintf(fp, "%04d ",
                 ((*pkt)->data[index] << 8) + (*pkt)->data[index+1]);
+#ifdef DEBUG
+            if (debug)
+            {
+                printf("A%01d ",i);
+                printf("%04d ",
+                        ((*pkt)->data[index] << 8) + (*pkt)->data[index+1]);
+#endif
+            }
             index += 2;
         }
     }
@@ -1553,27 +1577,7 @@ write the next word field directly as the set of digitial ports. */
 /* Write to the disk now to ensure it is available */
     dataFileCheck();
 #ifdef DEBUG
-    if (debug)
-    {
-        if (row == numberNodes) printf("Node Unknown ");
-        else printf("Node %s ", nodeInfo[row].nodeIdent);
-        printf("%s ", timeString);
-        printf("I/O ");
-/* Compute the analogue data fields from the response */
-        int jindex = 4;
-        int xBitMask = 0;
-        for (int i=0; i<4; i++)
-        {
-            if (((*pkt)->data[3] & (1<<(xBitMask++))) > 0)
-            {
-                printf("A%01d ",i);
-                printf("%04d ",
-                        ((*pkt)->data[jindex] << 8) + (*pkt)->data[jindex+1]);
-                jindex += 2;
-            }
-        }
-        printf("\n");
-    }
+    if (debug) printf("\n");
 #endif
 /* We are hearing from this node so it is a valid node */
     if (row < numberNodes) nodeInfo[row].valid = TRUE;
