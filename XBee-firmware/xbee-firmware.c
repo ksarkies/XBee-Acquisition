@@ -163,7 +163,7 @@ Don't start until it is associated. */
         }
 /* If errors occur, or frame is the wrong type, just try again */
         associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.data == 0) && \
+                     (rxMessage.message.atResponse.data[0] == 0) && \
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
                      (rxMessage.message.atResponse.atCommand1 == 65) && \
                      (rxMessage.message.atResponse.atCommand2 == 73));
@@ -180,7 +180,7 @@ Don't start until it is associated. */
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
-    bool stayAwake = false;         /* Keep asleep to start */
+    bool stayAwake = false;          /* Keep asleep to start */
 
     for(;;)
     {
@@ -193,8 +193,6 @@ Don't start until it is associated. */
             set_sleep_mode(SLEEP_MODE_PWR_DOWN);
             sleep_mode();
         }
-
-        sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
 
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
@@ -210,12 +208,39 @@ Counter is a global and is changed in the ISR. */
 until enough such events have occurred. */
             if (wdtCounter > ACTION_COUNT)
             {
+                wdtCounter = 0;     /* Reset the WDT counter for next time */
 #ifdef TEST_PORT_DIR
                 sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
 #endif
 /* Now ready to initiate a data transmission. */
                 wakeXBee();
-                wdtCounter = 0;     /* Reset the WDT counter for next time */
+
+/* First get the battery voltage from the XBee. */
+                sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
+                uint8_t messageState;           /**< Progress in message reception */
+                rxFrameType rxMessage;
+                sendATFrame(2,"IS");            /* Force Sample Read */
+
+/* The frame type we are handling is 0x88 AT Command Response */
+                uint16_t timeout = 0;
+                messageState = 0;
+                uint8_t messageError = XBEE_INCOMPLETE;
+                while (messageError == XBEE_INCOMPLETE)
+                {
+                    messageError = receiveMessage(&rxMessage, &messageState);
+                    if (timeout++ > 30000) break;
+                }
+                uint32_t batteryVoltage = 0;
+                if ((messageError == XBEE_COMPLETE) && \
+                    (rxMessage.message.atResponse.status == 0) && \
+                    (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                    (rxMessage.message.atResponse.atCommand1 == 73) && \
+                    (rxMessage.message.atResponse.atCommand2 == 83));
+                {
+                    batteryVoltage = (rxMessage.message.atResponse.data[6] << 8)
+                                   + (rxMessage.message.atResponse.data[7]);
+                }
+
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
                 bool txDelivered = false;
@@ -229,7 +254,7 @@ means of notifying the base station that the AVR is awake. */
                 {
                     if (transmit)
                     {
-                        sendDataCommand(txCommand,lastCount);
+                        sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
                         txDelivered = false;    /* Allow check for Tx Status frame */
                         txStatusReceived = false;
                     }
@@ -240,7 +265,6 @@ or command reception. Keep looping until we have a recognised packet or error. *
                     bool timeout = false;
                     rxFrameType rxMessage;      /* Received frame */
                     rxFrameType inMessage;      /* Buffered data frame */
-                    uint8_t messageState = 0;
                     uint32_t timeResponse = 0;
                     bool packetError = false;
                     bool packetReady = false;

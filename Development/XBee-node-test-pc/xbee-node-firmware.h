@@ -38,9 +38,6 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
 #define ACTION_COUNT            1
 
-/* Xbee parameters */
-#define RF_PAYLOAD              63
-
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1
 

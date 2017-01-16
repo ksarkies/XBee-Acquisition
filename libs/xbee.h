@@ -58,7 +58,7 @@ typedef struct
             uint8_t atCommand1;
             uint8_t atCommand2;
             uint8_t status;
-            uint8_t data;
+            uint8_t data[RF_PAYLOAD+9];
         } atResponse;
         struct
         {
