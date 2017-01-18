@@ -1309,7 +1309,7 @@ Error is signalled if length or checksum are wrong. */
 #ifdef DEBUG
         if (debug)
         {
-            printf("Command Received %c\n",command);
+            printf("Command Received %c",command);
         }
 #endif
         protocolState = 1;                      /* Start of protocol cycle. */
@@ -1320,7 +1320,7 @@ Error is signalled if length or checksum are wrong. */
 the string */
             for (int i=0; i<DATA_LENGTH-2; i++)
             {
-                int digit=0;
+                unsigned int digit=0;
                 char hex = (*pkt)->data[i+3];
                 if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
                 else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
@@ -1328,10 +1328,10 @@ the string */
                 count = (count << 4) + digit;
             }
 /* Convert checksum in first part of string */
-            char checksum = 0;
+            unsigned char checksum = 0;
             for (int i=0; i<2; i++)
             {
-                int digit=0;
+                unsigned int digit=0;
                 char hex = (*pkt)->data[i+1];
                 if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
                 else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
@@ -1344,7 +1344,8 @@ the string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-            printf("Count %lu Checksum %u\n\r",count,checksum);
+            printf(" Count %lu Voltage %f V\n",
+                (count & 0xFF), (float)(count >> 16)*0.004799415);
 #endif
         }
         xbee_err txError;

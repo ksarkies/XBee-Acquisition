@@ -48,24 +48,4 @@ Needed for the bootloader as the upload is extensive. */
 #define USE_INTERRUPTS
 #endif
 
-/* Use the defined output pin to force the XBee to stay awake while in the
-bootloader. This is valid for the XBee sleep mode 1 only. The application
-should move it to other modes if necessary. Note that using this may fail
-because the output pins may be forced to an undesired level during programming. */
-#define XBEE_STAY_AWAKE         1
-
-/* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered
-automatically */
-#define AUTO_ENTER_APP          1
-
-/****************************************************************************/
-/* Prototypes */
-
-void inline hardwareInit(void);
-void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const char* data);
-void sleepXBee(void);
-void wakeXBee(void);
-
 #endif /*_XBEE_NODE_TEST_H_ */

@@ -523,8 +523,7 @@ Set the process counter interrupt to INT0.
 */
 void hardwareInit(void)
 {
-/* Set PRR to disable all peripherals except USART.
-Set input ports to pullups and disable digital input buffers on AIN inputs.
+/* Set input ports to pullups and disable digital input buffers on AIN inputs.
 Refer to the defines files for the defined symbols. */
 
 #ifdef PORTA
@@ -544,41 +543,47 @@ Refer to the defines files for the defined symbols. */
     outb(PORTD,0x1F);   /* set pullups   */
 #endif
 
-/* Set output ports to desired directions and initial settings */
+/* Set I/O ports to desired directions and initial settings */
 
+/* XBee Sleep Request ouput pin */
 #ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on to start with */
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);        /* XBee Sleep Request */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);            /* Set to keep XBee on */
 #endif
+/* XBee On/Sleep Status input pin */
 #ifdef ON_SLEEP_PIN
-    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);
 #endif
 /* XBee reset output. Pulse low to reset. */
 #ifdef XBEE_RESET_PIN
     sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);    /* XBee Reset output pin */
     sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);        /* Set to keep XBee on */
 #endif
+/* Battery Measurement Enable output pin */
 #ifdef VBATCON_PIN
-    sbi(VBATCON_PORT_DIR,VBATCON_PIN);        /* Battery Measure Request */
-    cbi(VBATCON_PORT,VBATCON_PIN);
+    sbi(VBATCON_PORT_DIR,VBATCON_PIN);          /* Battery Measure Enable */
+    cbi(VBATCON_PORT,VBATCON_PIN);              /* Turn off to power down */
 #endif
+/* Battery Measurement Input */
 #ifdef VBAT_PIN
-    cbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
+    cbi(VBAT_PORT_DIR,VBAT_PIN);
     cbi(VBAT_PORT,VBAT_PIN);
 #endif
+/* Counter input */
 #ifdef COUNT_PIN
-    cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
-    sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
+    cbi(COUNT_PORT_DIR,COUNT_PIN);
+    sbi(COUNT_PORT,COUNT_PIN);                  /* Set to pullup */
 #endif
+/* Test port to flash LED for microcontroller status */
 #ifdef TEST_PIN
-    sbi(TEST_PORT_DIR,TEST_PIN);        /* Test port */
-    sbi(TEST_PORT,TEST_PIN);            /* Set pin on to start */
+    sbi(TEST_PORT_DIR,TEST_PIN);
+    sbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
 count signal line. */
-    sbi(PC_MSK,PC_INT);
-    sbi(IMSK,PC_IE);
+    sbi(PC_MSK,PC_INT);                         /* Mask */
+    sbi(PC_IER,PC_IE);                          /* Enable */
 
     powerDown();                        /* Turns off all peripherals */
     powerUp();                          /* Turns on essential peripherals only */

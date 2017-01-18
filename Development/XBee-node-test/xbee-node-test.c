@@ -86,22 +86,11 @@ the information block.
 
 #define BUFFER_SIZE 60
 
-static volatile union timeUnion
-{
-  volatile uint32_t timeValue;
-  volatile uint8_t  timeByte[4];
-} realTime;
-
 /* timeCount measures off timer interrupt ticks to provide an extended time
 between transmissions */
 static uint8_t timeCount;
 /* Counter keep track of external transitions on the digital input */
 static uint32_t counter;
-
-/** @name UART variables */
-/*@{*/
-static volatile uint8_t checkSum;     /**< Checksum on message contents */
-/*@}*/
 
 static uint32_t timeValue;
 static uint8_t coordinatorAddress64[8];
@@ -109,7 +98,15 @@ static uint8_t coordinatorAddress16[2];
 
 static bool transmitMessage;
 
+/****************************************************************************/
 /* Local Prototypes */
+
+void hardwareInit(void);
+void wdtInit(const uint8_t waketime);
+void sendDataCommand(const uint8_t command, const uint32_t datum);
+void sendMessage(const char* data);
+void sleepXBee(void);
+void wakeXBee(void);
 
 /*****************************************************************************/
 /** @brief Main Program */
@@ -280,46 +277,45 @@ void sendMessage(const char* data)
 */
 void hardwareInit(void)
 {
-/* XBee sleep request output. */
+/* XBee Sleep Request ouput pin */
 #ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request output pin */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Clear to keep XBee on */
+    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);        /* XBee Sleep Request */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);            /* Set to keep XBee on */
 #endif
-/* XBee on/sleep input. High is XBee on, low is asleep. */
+/* XBee On/Sleep Status input pin */
 #ifdef ON_SLEEP_PIN
-    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
+    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);
 #endif
 /* XBee reset output. Pulse low to reset. */
 #ifdef XBEE_RESET_PIN
     sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);    /* XBee Reset output pin */
     sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);        /* Set to keep XBee on */
 #endif
-/* Board analogue input. */
-/* Battery monitor control output. Hold low for lower power drain. */
+/* Battery Measurement Enable output pin */
 #ifdef VBATCON_PIN
-    sbi(VBATCON_PORT_DIR,VBATCON_PIN);
-    cbi(VBATCON_PORT,VBATCON_PIN);         /* Unset pullup */
+    sbi(VBATCON_PORT_DIR,VBATCON_PIN);          /* Battery Measure Enable */
+    sbi(VBATCON_PORT,VBATCON_PIN);              /* Turn on */
 #endif
-/* Battery monitor input. */
+/* Battery Measurement Input */
 #ifdef VBAT_PIN
     cbi(VBAT_PORT_DIR,VBAT_PIN);
-    cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
+    cbi(VBAT_PORT,VBAT_PIN);
 #endif
-/* Counter input. */
+/* Counter input */
 #ifdef COUNT_PIN
-    cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
-    sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
+    cbi(COUNT_PORT_DIR,COUNT_PIN);
+    sbi(COUNT_PORT,COUNT_PIN);                  /* Set to pullup */
 #endif
-/* General output for a LED to be activated by the mirocontroller as desired. */
-#ifdef TEST_PORT_DIR
+/* General output for a LED to be activated by the microcontroller as desired. */
+#ifdef TEST_PIN
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pin on to start */
+    sbi(TEST_PORT,TEST_PIN);                    /* Turn on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
 count signal line. */
-    sbi(PC_MSK,PC_INT);                 /* Mask */
-    sbi(PC_IER,PC_IE);                  /* Enable */
+    sbi(PC_MSK,PC_INT);                         /* Mask */
+    sbi(PC_IER,PC_IE);                          /* Enable */
 }
 
 /****************************************************************************/
@@ -390,7 +386,7 @@ transmission is sent every 8.4 seconds.
 
 ISR(TIMER0_OVF_vect)
 {
-    realTime.timeValue++;
+    timeValue++;
     timeCount++;
     if (timeCount == 0)
         transmitMessage = true;

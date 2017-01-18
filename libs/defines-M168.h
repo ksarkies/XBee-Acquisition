@@ -116,7 +116,7 @@ These are defined from avr-libc io.h based on processor choice. */
 #define COUNT_PORT              PIND
 #define COUNT_PIN               5
 
-/* define pin for remaining in bootloader */
+/* Pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
 #define PROG_PORT               PINB
 #define PROG_PIN                2
