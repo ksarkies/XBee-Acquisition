@@ -53,41 +53,41 @@ $EndDescr
 $Comp
 L MOSFET_N-RESCUE-xbee-node-attiny841 Q3
 U 1 1 53D32AE5
-P 9550 2700
-F 0 "Q3" H 9900 2750 60  0000 R CNN
-F 1 "2N7002" H 10100 2650 60  0000 R CNN
-F 2 "PhotoDiode:SOT23GDS" H 9550 2700 60  0001 C CNN
-F 3 "" H 9550 2700 60  0000 C CNN
-	1    9550 2700
+P 9350 2600
+F 0 "Q3" H 9700 2650 60  0000 R CNN
+F 1 "2N7002" H 9900 2550 60  0000 R CNN
+F 2 "PhotoDiode:SOT23GDS" H 9350 2600 60  0001 C CNN
+F 3 "" H 9350 2600 60  0000 C CNN
+	1    9350 2600
 	1    0    0    -1  
 $EndComp
 $Comp
 L R-RESCUE-xbee-node-attiny841 R7
 U 1 1 53D32AFA
-P 9650 2250
-F 0 "R7" V 9730 2250 40  0000 C CNN
-F 1 "15K" V 9657 2251 40  0000 C CNN
-F 2 "PhotoDiode:SM0603_Resistor" V 9580 2250 30  0001 C CNN
-F 3 "" H 9650 2250 30  0000 C CNN
-	1    9650 2250
+P 10250 2050
+F 0 "R7" V 10330 2050 40  0000 C CNN
+F 1 "15K" V 10257 2051 40  0000 C CNN
+F 2 "PhotoDiode:SM0603_Resistor" V 10180 2050 30  0001 C CNN
+F 3 "" H 10250 2050 30  0000 C CNN
+	1    10250 2050
 	1    0    0    -1  
 $EndComp
 $Comp
 L R-RESCUE-xbee-node-attiny841 R8
 U 1 1 53D32B0E
-P 9650 3150
-F 0 "R8" V 9730 3150 40  0000 C CNN
-F 1 "4.7K" V 9657 3151 40  0000 C CNN
-F 2 "PhotoDiode:SM0603_Resistor" V 9580 3150 30  0001 C CNN
-F 3 "" H 9650 3150 30  0000 C CNN
-	1    9650 3150
+P 10250 2550
+F 0 "R8" V 10330 2550 40  0000 C CNN
+F 1 "4.7K" V 10257 2551 40  0000 C CNN
+F 2 "PhotoDiode:SM0603_Resistor" V 10180 2550 30  0001 C CNN
+F 3 "" H 10250 2550 30  0000 C CNN
+	1    10250 2550
 	1    0    0    -1  
 $EndComp
 $Comp
-L R-RESCUE-xbee-node-attiny841 R6
+L R-RESCUE-xbee-node-attiny841 R1
 U 1 1 53D32B68
 P 2950 2900
-F 0 "R6" V 3030 2900 40  0000 C CNN
+F 0 "R1" V 3030 2900 40  0000 C CNN
 F 1 "10K" V 2957 2901 40  0000 C CNN
 F 2 "PhotoDiode:SM0603_Resistor" V 2880 2900 30  0001 C CNN
 F 3 "" H 2950 2900 30  0000 C CNN
@@ -185,12 +185,12 @@ $EndComp
 $Comp
 L GND-RESCUE-xbee-node-attiny841 #PWR07
 U 1 1 53D331C5
-P 9650 3400
-F 0 "#PWR07" H 9650 3400 30  0001 C CNN
-F 1 "GND" H 9650 3330 30  0001 C CNN
-F 2 "" H 9650 3400 60  0000 C CNN
-F 3 "" H 9650 3400 60  0000 C CNN
-	1    9650 3400
+P 9450 2800
+F 0 "#PWR07" H 9450 2800 30  0001 C CNN
+F 1 "GND" H 9450 2730 30  0001 C CNN
+F 2 "" H 9450 2800 60  0000 C CNN
+F 3 "" H 9450 2800 60  0000 C CNN
+	1    9450 2800
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -260,10 +260,10 @@ F 3 "" H 5350 5650 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R-RESCUE-xbee-node-attiny841 R5
+L R-RESCUE-xbee-node-attiny841 R4
 U 1 1 53D35C63
 P 5300 4500
-F 0 "R5" V 5380 4500 40  0000 C CNN
+F 0 "R4" V 5380 4500 40  0000 C CNN
 F 1 "1M" V 5307 4501 40  0000 C CNN
 F 2 "PhotoDiode:SM0603_Resistor" V 5230 4500 30  0001 C CNN
 F 3 "" H 5300 4500 30  0000 C CNN
@@ -282,10 +282,10 @@ F 3 "" H 4000 6050 60  0000 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L R-RESCUE-xbee-node-attiny841 R2
+L R-RESCUE-xbee-node-attiny841 R3
 U 1 1 53D35F1D
 P 4100 4700
-F 0 "R2" V 4180 4700 40  0000 C CNN
+F 0 "R3" V 4180 4700 40  0000 C CNN
 F 1 "270K" V 4107 4701 40  0000 C CNN
 F 2 "PhotoDiode:SM0603_Resistor" V 4030 4700 30  0001 C CNN
 F 3 "" H 4100 4700 30  0000 C CNN
@@ -348,10 +348,10 @@ F 3 "" H 2950 5350 60  0000 C CNN
 	0    -1   1    0   
 $EndComp
 $Comp
-L R-RESCUE-xbee-node-attiny841 R1
+L R-RESCUE-xbee-node-attiny841 R2
 U 1 1 53DCC4A4
 P 2950 4700
-F 0 "R1" V 3030 4700 40  0000 C CNN
+F 0 "R2" V 3030 4700 40  0000 C CNN
 F 1 "33K" V 2957 4701 40  0000 C CNN
 F 2 "PhotoDiode:SM0603_Resistor" V 2880 4700 30  0001 C CNN
 F 3 "" H 2950 4700 30  0000 C CNN
@@ -387,7 +387,7 @@ F 3 "" H 7250 4700 60  0000 C CNN
 	1    7250 4700
 	1    0    0    -1  
 $EndComp
-Text Label 9350 2900 2    60   ~ 0
+Text Label 10450 2300 0    60   ~ 0
 VBatt
 Text Label 7500 4550 0    60   ~ 0
 VBatt
@@ -502,23 +502,23 @@ $EndComp
 $Comp
 L GND-RESCUE-xbee-node-attiny841 #PWR021
 U 1 1 53E26458
-P 10050 1500
-F 0 "#PWR021" H 10050 1500 30  0001 C CNN
-F 1 "GND" H 10050 1430 30  0001 C CNN
-F 2 "" H 10050 1500 60  0000 C CNN
-F 3 "" H 10050 1500 60  0000 C CNN
-	1    10050 1500
+P 7650 2300
+F 0 "#PWR021" H 7650 2300 30  0001 C CNN
+F 1 "GND" H 7650 2230 30  0001 C CNN
+F 2 "" H 7650 2300 60  0000 C CNN
+F 3 "" H 7650 2300 60  0000 C CNN
+	1    7650 2300
 	1    0    0    -1  
 $EndComp
 $Comp
 L PWR_FLAG #FLG022
 U 1 1 53E267FB
-P 10050 1500
-F 0 "#FLG022" H 10050 1595 30  0001 C CNN
-F 1 "PWR_FLAG" H 10050 1680 30  0000 C CNN
-F 2 "" H 10050 1500 60  0000 C CNN
-F 3 "" H 10050 1500 60  0000 C CNN
-	1    10050 1500
+P 7650 2300
+F 0 "#FLG022" H 7650 2395 30  0001 C CNN
+F 1 "PWR_FLAG" H 7650 2480 30  0000 C CNN
+F 2 "" H 7650 2300 60  0000 C CNN
+F 3 "" H 7650 2300 60  0000 C CNN
+	1    7650 2300
 	-1   0    0    -1  
 $EndComp
 Text Label 5950 2850 0    60   ~ 0
@@ -676,7 +676,7 @@ F 3 "" H 8300 2100 60  0000 C CNN
 $EndComp
 Text Label 5950 3150 0    60   ~ 0
 PowerControl
-Text Label 9350 2700 2    60   ~ 0
+Text Label 9150 2600 2    60   ~ 0
 PowerControl
 $Comp
 L CONN_01X01 P12
@@ -832,7 +832,7 @@ F 3 "" H 8650 3500 60  0000 C CNN
 	1    8650 3500
 	1    0    0    -1  
 $EndComp
-Text Label 9050 1400 0    60   ~ 0
+Text Label 8500 1550 0    60   ~ 0
 Battery
 Text Label 7500 5600 0    60   ~ 0
 Battery
@@ -848,10 +848,10 @@ F 3 "" H 3800 5350 60  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L R-RESCUE-xbee-node-attiny841 R9
+L R-RESCUE-xbee-node-attiny841 R5
 U 1 1 54823620
 P 7000 3000
-F 0 "R9" V 7080 3000 40  0000 C CNN
+F 0 "R5" V 7080 3000 40  0000 C CNN
 F 1 "1M" V 7007 3001 40  0000 C CNN
 F 2 "PhotoDiode:SM0603_Resistor" V 6930 3000 30  0001 C CNN
 F 3 "" H 7000 3000 30  0000 C CNN
@@ -926,74 +926,18 @@ F 3 "" H 4450 1950 60  0000 C CNN
 	1    4450 1950
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	2950 4950 2950 5150
-Wire Wire Line
-	2950 5550 2950 6250
-Connection ~ 9650 1400
-Wire Wire Line
-	3800 4450 3800 5150
-Connection ~ 4100 5150
-Wire Wire Line
-	3800 5550 3800 6050
-Wire Wire Line
-	4100 4950 4100 5850
-Wire Wire Line
-	4950 5150 4950 4500
-Wire Wire Line
-	4100 5150 4950 5150
-Wire Wire Line
-	4950 4500 5050 4500
-Wire Wire Line
-	5950 4500 5550 4500
-Wire Wire Line
-	5950 5250 5950 4500
-Wire Wire Line
-	6900 1400 9650 1400
-Wire Wire Line
-	9650 1400 9650 2000
-Connection ~ 7300 1400
-Connection ~ 6150 1550
-Connection ~ 5900 1550
-Connection ~ 4450 1550
-Connection ~ 5400 1550
-Connection ~ 5950 5250
-Connection ~ 4950 5150
-Connection ~ 9650 2900
-Wire Wire Line
-	9650 2900 9350 2900
-Wire Wire Line
-	8500 1700 8700 1700
-Wire Wire Line
-	8500 1700 8500 1400
-Connection ~ 8500 1400
-Connection ~ 8700 1700
-Connection ~ 8600 1700
-Wire Wire Line
-	5050 1550 6300 1550
-Wire Wire Line
-	4000 1550 4550 1550
-Connection ~ 5100 1550
-Wire Wire Line
-	5100 1550 6000 1550
-Wire Wire Line
-	5250 1300 5250 1550
-Connection ~ 5250 1550
 Text Label 4000 1550 2    60   ~ 0
 VDDA
 Text Label 5350 4850 1    60   ~ 0
 VDDA
 Text Label 5350 5950 1    60   ~ 0
 VDDA
-Connection ~ 4150 1550
 Text Label 3800 4450 1    60   ~ 0
 VDDA
 Text Label 2950 4450 1    60   ~ 0
 VDDA
 Text Label 4100 4450 1    60   ~ 0
 VDDA
-Connection ~ 6900 1400
-Connection ~ 6300 1550
 Text Label 7500 4450 0    60   ~ 0
 Battery
 Text Notes 8300 2350 0    60   ~ 0
@@ -1067,4 +1011,102 @@ F 3 "" H 8950 3500 60  0000 C CNN
 	1    8950 3500
 	1    0    0    -1  
 $EndComp
+$Comp
+L MOSFET_N-RESCUE-xbee-node-attiny841 Q1
+U 1 1 587F3C83
+P 9900 1500
+F 0 "Q1" V 10300 1450 60  0000 R CNN
+F 1 "BSS84" V 10200 1550 60  0000 R CNN
+F 2 "PhotoDiode:SOT23GDS" H 9900 1500 60  0001 C CNN
+F 3 "" H 9900 1500 60  0000 C CNN
+	1    9900 1500
+	0    1    -1   0   
+$EndComp
+$Comp
+L R-RESCUE-xbee-node-attiny841 R6
+U 1 1 587F435F
+P 9450 1650
+F 0 "R6" V 9530 1650 40  0000 C CNN
+F 1 "15K" V 9457 1651 40  0000 C CNN
+F 2 "PhotoDiode:SM0603_Resistor" V 9380 1650 30  0001 C CNN
+F 3 "" H 9450 1650 30  0000 C CNN
+	1    9450 1650
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND-RESCUE-xbee-node-attiny841 #PWR039
+U 1 1 587F441B
+P 10250 2800
+F 0 "#PWR039" H 10250 2800 30  0001 C CNN
+F 1 "GND" H 10250 2730 30  0001 C CNN
+F 2 "" H 10250 2800 60  0000 C CNN
+F 3 "" H 10250 2800 60  0000 C CNN
+	1    10250 2800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2950 4950 2950 5150
+Wire Wire Line
+	2950 5550 2950 6250
+Connection ~ 9450 1400
+Wire Wire Line
+	3800 4450 3800 5150
+Connection ~ 4100 5150
+Wire Wire Line
+	3800 5550 3800 6050
+Wire Wire Line
+	4100 4950 4100 5850
+Wire Wire Line
+	4950 5150 4950 4500
+Wire Wire Line
+	4100 5150 4950 5150
+Wire Wire Line
+	4950 4500 5050 4500
+Wire Wire Line
+	5950 4500 5550 4500
+Wire Wire Line
+	5950 5250 5950 4500
+Connection ~ 7300 1400
+Connection ~ 6150 1550
+Connection ~ 5900 1550
+Connection ~ 4450 1550
+Connection ~ 5400 1550
+Connection ~ 5950 5250
+Connection ~ 4950 5150
+Connection ~ 10250 2300
+Wire Wire Line
+	8500 1700 8700 1700
+Wire Wire Line
+	8500 1400 8500 1700
+Connection ~ 8500 1400
+Connection ~ 8700 1700
+Connection ~ 8600 1700
+Wire Wire Line
+	5050 1550 6300 1550
+Wire Wire Line
+	4000 1550 4550 1550
+Connection ~ 5100 1550
+Wire Wire Line
+	5100 1550 6000 1550
+Wire Wire Line
+	5250 1300 5250 1550
+Connection ~ 5250 1550
+Connection ~ 4150 1550
+Connection ~ 6900 1400
+Connection ~ 6300 1550
+Wire Wire Line
+	6900 1400 9700 1400
+Wire Wire Line
+	9450 1900 9450 2400
+Wire Wire Line
+	10100 1400 10250 1400
+Wire Wire Line
+	10250 1400 10250 1800
+Wire Wire Line
+	9900 1700 9900 2150
+Wire Wire Line
+	9900 2150 9450 2150
+Connection ~ 9450 2150
+Wire Wire Line
+	10250 2300 10450 2300
 $EndSCHEMATC
