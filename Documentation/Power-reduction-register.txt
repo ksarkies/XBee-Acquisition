@@ -1,0 +1,30 @@
+ATTiny841
+
+Bit 7 – PRTWI: Power Reduction TWI
+Bit 6 – PRUSART1: Power Reduction USART1
+Bit 5 – PRUSART0: Power Reduction USART0
+Bit 4 – PRSPI: Power Reduction SPI
+Bit 3 – PRTIM2: Power Reduction Timer/Counter2
+Bit 2 – PRTIM1: Power Reduction Timer/Counter1
+Bit 1 – PRTIM0: Power Reduction Timer/Counter0
+Bit 0 – PRADC: Power Reduction ADC
+
+ATMega48
+
+Bit 7 - PRTWI: Power Reduction TWI
+Bit 6 - PRTIM2: Power Reduction Timer/Counter2
+Bit 5 - PRTIM0: Power Reduction Timer/Counter0
+Bit 4 - Res: Reserved bit
+Bit 3 - PRTIM1: Power Reduction Timer/Counter1
+Bit 2 - PRSPI: Power Reduction SPI
+Bit 1 - PRUSART0: Power Reduction USART0
+Bit 0 - PRADC: Power Reduction ADC
+
+ATTiny4313
+
+Bits 7..4 – Res: Reserved Bits
+Bit 3 – PRTIM1: Power Reduction Timer/Counter1
+Bit 2 – PRTIM0: Power Reduction Timer/Counter0
+Bit 1 – PRUSI: Power Reduction USI
+Bit 0 – PRUSART: Power Reduction USART
+

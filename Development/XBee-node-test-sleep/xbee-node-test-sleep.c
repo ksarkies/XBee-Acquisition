@@ -63,6 +63,7 @@ Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
 #include <util/delay.h>
 #include "xbee-node-test-sleep.h"
 
+/****************************************************************************/
 /* Global variables */
 uint8_t coordinatorAddress64[8];
 uint8_t coordinatorAddress16[2];
@@ -70,10 +71,20 @@ uint8_t rxOptions;
 
 /* Counter keep track of external transitions on the digital input */
 static uint32_t counter;
-
 static uint8_t wdtCounter;             /* Data Transmission Timer */
-
 static bool transmitMessage;
+
+/****************************************************************************/
+/* Local Prototypes */
+
+void hardwareInit(void);
+void wdtInit(const uint8_t waketime);
+void sendDataCommand(const uint8_t command, const uint32_t datum);
+void sendMessage(const char* data);
+void sleepXBee(void);
+void wakeXBee(void);
+void powerDown(void);
+void powerUp(void);
 
 /*---------------------------------------------------------------------------*/
 /** @brief      Main Program
@@ -156,6 +167,7 @@ Don't start until it is associated. */
     for(;;)
     {
         sei();
+        powerDown();            /* Turn off all peripherals for sleep */
 /* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_mode();
@@ -167,6 +179,8 @@ Wakeup the XBee and send putting it back to sleep afterwards. */
 #ifdef TEST_PORT_DIR
             sbi(TEST_PORT,TEST_PIN);
 #endif
+/* Power up only essential peripherals for transmission of results. */
+            powerUp();
             wakeXBee();
             uint8_t buffer[12];
             uint8_t i;
@@ -244,11 +258,6 @@ void hardwareInit(void)
 /* Set PRR to disable all peripherals except USART.
 Set input ports to pullups and disable digital input buffers on AIN inputs. */
 
-#ifdef ADC_ONR
-    cbi(ADC_ONR,AD_EN); /* Power off ADC */
-#endif
-    outb(PRR,0xFF);     /* power down all controllable peripherals */
-    cbi(PRR,PRR_USART0);/* power up USART */
 #ifdef PORTA
     outb(DDRA,0);       /* set as inputs */
     outb(PORTA,0x07);   /* set pullups   */
@@ -313,6 +322,46 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
 count signal line. */
     sbi(PC_MSK,PC_INT);
     sbi(IMSK,PC_IE);
+
+    powerDown();                        /* Turns off all peripherals */
+    powerUp();                          /* Turns on essential peripherals only */
+}
+
+/****************************************************************************/
+/** @brief Power down all peripherals for Sleep
+
+*/
+void powerDown(void)
+{
+#ifdef ADC_ONR
+    cbi(ADC_ONR,AD_EN); /* Disable the ADC first to ensure power down works */
+#endif
+    outb(PRR,0xFF);     /* power down all controllable peripherals */
+#ifdef AC_SR0
+    sbi(AC_SR0,AC_D0);  /* turn off Analogue Comparator 0 */
+#endif
+#ifdef AC_SR1
+    sbi(AC_SR1,AC_D1);  /* turn off Analogue Comparator 1 */
+#endif
+#ifdef DID_R0
+    outb(DI_DR0,3);     /* turn off digital input buffers */
+#endif
+#ifdef DID_R1
+    outb(DI_DR1,3);
+#endif
+}
+
+/****************************************************************************/
+/** @brief Initialize the hardware for process measurement
+
+Set unused ports to inputs and disable power to all unused peripherals.
+Set the process counter interrupt to INT0.
+*/
+void powerUp(void)
+{
+#ifdef PRR_USART0
+    cbi(PRR,PRR_USART0);/* power up USART0 */
+#endif
 }
 
 /****************************************************************************/

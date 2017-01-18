@@ -67,14 +67,4 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 /* Time to mute counter update following a transmission */
 #define MUTE_TIME               F_CPU/1000
 
-/****************************************************************************/
-/* Prototypes */
-
-void hardwareInit(void);
-void wdtInit(const uint8_t waketime);
-void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const char* data);
-void sleepXBee(void);
-void wakeXBee(void);
-
 #endif /*_XBEE_NODE_H_ */

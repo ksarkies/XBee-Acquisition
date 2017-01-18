@@ -76,14 +76,4 @@ because the output pins may be forced to an undesired level during programming. 
 automatically */
 #define AUTO_ENTER_APP          1
 
-/****************************************************************************/
-/* Prototypes */
-
-void hardwareInit(void);
-void wdtInit(const uint8_t waketime);
-void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const char* data);
-void sleepXBee(void);
-void wakeXBee(void);
-
 #endif /*_XBEE_NODE_H_ */
