@@ -1,4 +1,4 @@
-update=Wed 18 Jan 2017 15:28:26 ACDT
+update=Thu 19 Jan 2017 16:40:23 ACDT
 version=1
 last_client=kicad
 [pcbnew]
@@ -27,7 +27,7 @@ NetIExt=net
 version=1
 [eeschema]
 version=1
-LibDir=
+LibDir=symbols
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -64,3 +64,4 @@ LibName32=symbols/MiscellaneousDevices
 LibName33=symbols/RF_OEM_Parts
 LibName34=symbols/Sensors
 LibName35=symbols/TransistorParts
+LibName36=symbols/kicad-library-by-simlun
