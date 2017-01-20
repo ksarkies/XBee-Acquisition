@@ -80,13 +80,15 @@ include as setbaud.h sets a default value. */
 #define DI_DR0                  DIDR0
 #define DI_DR1                  DIDR1
 
-/* definitions for interrupt control. PCMSK1 bit 1 sets PCINT9. */
+/* definitions for interrupt control.
+Pin Change Interrupts needed to wake from sleep.
+PCINT1 is for PCINT11-8, PCINT0 is for PCINT7-0 */
 #define IMSK                    GIMSK
 #define INT_CR                  MCUCR
 #define WDT_CSR                 WDTCSR
 #define PC_IER                  GIMSK
 #define PC_MSK                  PCMSK1
-#define PC_INT                  1
+#define PC_INT                  1               /* Mask bit for PCINT9 */
 #define PC_IE                   PCIE1
 #define COUNT_ISR               PCINT1_vect
 

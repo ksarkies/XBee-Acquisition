@@ -38,7 +38,7 @@ Tested:     ATtint4313 at 1MHz internal clock.
 #define WDT_TIME                0x09
 
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-#define ACTION_COUNT            4
+#define ACTION_COUNT            1
 
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1

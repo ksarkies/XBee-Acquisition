@@ -114,43 +114,6 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
-/* Check for association indication from the XBee.
-Don't start until it is associated. */
-    uint8_t messageState;           /**< Progress in message reception */
-    rxFrameType rxMessage;
-    bool associated = false;
-    while (! associated)
-    {
-#ifdef TEST_PORT_DIR
-        cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-#endif
-        _delay_ms(200);
-#ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
-#endif
-        _delay_ms(200);
-        sendATFrame(2,"AI");
-
-/* The frame type we are handling is 0x88 AT Command Response */
-        uint16_t timeout = 0;
-        messageState = 0;
-        uint8_t messageError = XBEE_INCOMPLETE;
-        while (messageError == XBEE_INCOMPLETE)
-        {
-            messageError = receiveMessage(&rxMessage, &messageState);
-            if (timeout++ > 30000) break;
-        }
-/* If errors occur, or frame is the wrong type, just try again */
-        associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.data[0] == 0) && \
-                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                     (rxMessage.message.atResponse.atCommand1 == 65) && \
-                     (rxMessage.message.atResponse.atCommand2 == 73));
-    }
-#ifdef TEST_PORT_DIR
-    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
-#endif
-
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
 
@@ -159,29 +122,63 @@ Don't start until it is associated. */
 
     counter = 0;
 
-/* Start off with XBee asleep and wait for interrupt to wake it up */
-    sleepXBee();
-
     transmitMessage = false;
-    messageState = 0;
     for(;;)
     {
-        sei();
-        powerDown();            /* Turn off all peripherals for sleep */
-/* Power down the AVR to deep sleep until an interrupt occurs */
-        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-        sleep_mode();
-
 /* Check for the timer interrupt to indicate it is time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
+        sei();
         if (transmitMessage)
         {
 #ifdef TEST_PORT_DIR
-            sbi(TEST_PORT,TEST_PIN);
+            cbi(TEST_PORT,TEST_PIN);
 #endif
 /* Power up only essential peripherals for transmission of results. */
             powerUp();
             wakeXBee();
+
+/* First check for association indication from the XBee.
+Don't proceed until it is associated. */
+            uint8_t messageState = 0;
+            rxFrameType rxMessage;
+            bool associated = false;
+            while (! associated)
+            {
+                sendATFrame(2,"AI");
+
+/* The frame type we are handling is 0x88 AT Command Response */
+                uint16_t timeout = 0;
+                messageState = 0;
+                uint8_t messageError = XBEE_INCOMPLETE;
+                while (messageError == XBEE_INCOMPLETE)
+/* Wait for response. If it doesn't come, try sending again. */
+                {
+                    messageError = receiveMessage(&rxMessage, &messageState);
+                    if (timeout++ > 30000) break;
+                }
+/* If errors occur, or frame is the wrong type, just try again */
+                associated = ((messageError == XBEE_COMPLETE) && \
+                             (rxMessage.message.atResponse.data[0] == 0) && \
+                             (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                             (rxMessage.message.atResponse.atCommand1 == 65) && \
+                             (rxMessage.message.atResponse.atCommand2 == 73));
+#ifdef TEST_PORT_DIR
+                if (! associated)
+                {
+                    _delay_ms(200);
+                    sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
+                    _delay_ms(200);
+                    cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+                }
+#endif
+            }
+#ifdef TEST_PORT_DIR
+            _delay_ms(200);
+            sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+#endif
+
+/* Get the battery voltage from the XBee. */
+            sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
             uint8_t buffer[12];
             uint8_t i;
             char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
@@ -195,14 +192,21 @@ Wakeup the XBee and send putting it back to sleep afterwards. */
             buffer[11] = 0;             /* String terminator */
             buffer[0] = 'D';            /* Data Command */
             sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-            counter = 0;            /* Reset counter value */
-            sleepXBee();
+            counter = 0;                /* Reset counter value */
             transmitMessage = false;
 #ifdef TEST_PORT_DIR
             _delay_ms(200);
             cbi(TEST_PORT,TEST_PIN);
 #endif
         }
+/* Put XBee to sleep and wait for interrupt to wake it up */
+        sei();
+        sleepXBee();
+        powerDown();            /* Turn off all peripherals for sleep */
+/* Power down the AVR to deep sleep until an interrupt occurs */
+        cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        sleep_mode();
 
     }
 }
@@ -309,12 +313,12 @@ Refer to the defines files for the defined symbols. */
 /* General output for a LED to be activated by the microcontroller as desired. */
 #ifdef TEST_PIN
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
+    cbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
 count signal line. */
-    sbi(PC_MSK,PC_INT);                         /* Mask */
+    sbi(PC_MSK,PC_INT);                         /* Pin Change Mask */
     sbi(PC_IER,PC_IE);                          /* Enable */
 
     powerDown();                        /* Turns off all peripherals */

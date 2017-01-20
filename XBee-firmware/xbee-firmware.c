@@ -148,43 +148,6 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
-/* Check for association indication from the XBee.
-Don't start until it is associated. */
-    uint8_t messageState;           /**< Progress in message reception */
-    rxFrameType rxMessage;
-    bool associated = false;
-    while (! associated)
-    {
-#ifdef TEST_PORT_DIR
-        cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-#endif
-        _delay_ms(200);
-#ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
-#endif
-        _delay_ms(200);
-        sendATFrame(2,"AI");
-
-/* The frame type we are handling is 0x88 AT Command Response */
-        uint16_t timeout = 0;
-        messageState = 0;
-        uint8_t messageError = XBEE_INCOMPLETE;
-        while (messageError == XBEE_INCOMPLETE)
-        {
-            messageError = receiveMessage(&rxMessage, &messageState);
-            if (timeout++ > 30000) break;
-        }
-/* If errors occur, or frame is the wrong type, just try again */
-        associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.data[0] == 0) && \
-                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                     (rxMessage.message.atResponse.atCommand1 == 65) && \
-                     (rxMessage.message.atResponse.atCommand2 == 73));
-    }
-#ifdef TEST_PORT_DIR
-    cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
-#endif
-
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
 
@@ -198,16 +161,6 @@ Don't start until it is associated. */
     for(;;)
     {
         sei();
-        if (! stayAwake)
-        {
-            sleepXBee();
-            powerDown();            /* Turn off all peripherals for sleep */
-/* Power down the AVR to deep sleep until an interrupt occurs */
-            cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
-            set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-            sleep_mode();
-        }
-
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
 This will avoid rapid wake/sleep cycles when counts are changing.
@@ -227,35 +180,75 @@ until enough such events have occurred. */
 
                 wdtCounter = 0;     /* Reset the WDT counter for next time */
 #ifdef TEST_PORT_DIR
-                sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
+                cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
 #endif
 /* Now ready to initiate a data transmission. */
                 wakeXBee();
 
-/* First get the battery voltage from the XBee. */
-                sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
-                uint8_t messageState;           /**< Progress in message reception */
+/* First check for association indication from the XBee.
+Don't proceed until it is associated. */
+                uint8_t messageState = 0;   /* Progress in message reception */
                 rxFrameType rxMessage;
-                sendATFrame(2,"IS");            /* Force Sample Read */
+                bool associated = false;
+                while (! associated)
+                {
+                    sendATFrame(2,"AI");
 
 /* The frame type we are handling is 0x88 AT Command Response */
-                uint16_t timeout = 0;
-                messageState = 0;
-                uint8_t messageError = XBEE_INCOMPLETE;
-                while (messageError == XBEE_INCOMPLETE)
-                {
-                    messageError = receiveMessage(&rxMessage, &messageState);
-                    if (timeout++ > 30000) break;
+                    uint16_t timeout = 0;
+                    uint8_t messageError = XBEE_INCOMPLETE;
+/* Wait for response. If it doesn't come, try sending again. */
+                    while (messageError == XBEE_INCOMPLETE)
+                    {
+                        messageError = receiveMessage(&rxMessage, &messageState);
+                        if (timeout++ > 30000) break;
+                    }
+/* If errors occur, or frame is the wrong type, just try again */
+                    associated = ((messageError == XBEE_COMPLETE) && \
+                                 (rxMessage.message.atResponse.data[0] == 0) && \
+                                 (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                                 (rxMessage.message.atResponse.atCommand1 == 65) && \
+                                 (rxMessage.message.atResponse.atCommand2 == 73));
+#ifdef TEST_PORT_DIR
+                    if (! associated)
+                    {
+                        _delay_ms(200);
+                        sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
+                        _delay_ms(200);
+                        cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+                    }
+#endif
                 }
+#ifdef TEST_PORT_DIR
+                _delay_ms(200);
+                sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+#endif
+
+/* Get the battery voltage from the XBee. */
+                sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
                 uint32_t batteryVoltage = 0;
-                if ((messageError == XBEE_COMPLETE) && \
-                    (rxMessage.message.atResponse.status == 0) && \
-                    (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                    (rxMessage.message.atResponse.atCommand1 == 73) && \
-                    (rxMessage.message.atResponse.atCommand2 == 83));
+                bool ok = false;
+                while (! ok)
                 {
-                    batteryVoltage = (rxMessage.message.atResponse.data[6] << 8)
-                                   + (rxMessage.message.atResponse.data[7]);
+                    sendATFrame(2,"IS");                /* Force Sample Read */
+
+/* The frame type we are handling is 0x88 AT Command Response */
+                    uint16_t timeout = 0;
+                    messageState = 0;
+                    uint8_t messageError = XBEE_INCOMPLETE;
+                    while (messageError == XBEE_INCOMPLETE)
+                    {
+                        messageError = receiveMessage(&rxMessage, &messageState);
+                        if (timeout++ > 30000) break;
+                    }
+                    ok = ((messageError == XBEE_COMPLETE) && \
+                          (rxMessage.message.atResponse.status == 0) && \
+                          (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                          (rxMessage.message.atResponse.atCommand1 == 73) && \
+                          (rxMessage.message.atResponse.atCommand2 == 83));
+                    if (ok)
+                        batteryVoltage = (rxMessage.message.atResponse.data[6] << 8)
+                                       + (rxMessage.message.atResponse.data[7]);
                 }
 
 /* Initiate a data transmission to the base station. This also serves as a
@@ -472,6 +465,18 @@ abandonment of this communication attempt. No response is expected. */
             _delay_ms(1);
         }
         while (counter != lastCount);
+
+/* Power down the AVR to deep sleep until an interrupt occurs */
+        sei();
+        if (! stayAwake)
+        {
+            sleepXBee();
+            powerDown();            /* Turn off all peripherals for sleep */
+            cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+            set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+            sleep_mode();
+        }
+
     }
 }
 
@@ -577,7 +582,7 @@ Refer to the defines files for the defined symbols. */
 /* Test port to flash LED for microcontroller status */
 #ifdef TEST_PIN
     sbi(TEST_PORT_DIR,TEST_PIN);
-    sbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
+    cbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
