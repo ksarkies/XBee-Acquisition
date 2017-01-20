@@ -56,6 +56,7 @@ Compiler: gcc 4.8.2
 #include <unistd.h>
 #include <stdint.h>
 #include <time.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -116,8 +117,8 @@ int main(int argc,char ** argv)
 /* Parse the command line arguments.
 P - serial port to use, (default /dev/ttyUSB0)
 b - baud rate, (default 38400 baud)
-d - directory for results file (default /data/XBee/)
-D - Debug mode.
+D - directory for results file (default /data/XBee/)
+d - Debug mode.
  */
     strcpy(inPort,SERIAL_PORT);
     baudrate = BAUDRATE;
@@ -125,14 +126,14 @@ D - Debug mode.
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:b:d:D")) != -1)
+    while ((c = getopt (argc, argv, "P:b:D:d")) != -1)
     {
         switch (c)
         {
-        case 'd':
+        case 'D':
             strcpy(dirname,optarg);
             break;
-        case 'D':
+        case 'd':
             debug = true;
             break;
         case 'P':
@@ -1375,14 +1376,6 @@ the string */
         if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %s\n\r",xbee_errorToStr(txError));
 #endif
     }
-/* This is the response to a Parameter Change command which passes an arbitrary
-string to the remote node. */
-    else if (command == 'P')
-    {
-        dataResponseRcvd = true;
-        for (int i=1; i< min(SIZE,writeLength); i++)
-            dataResponseData[i] = (*pkt)->data[i+1];
-    }
 /* If the protocol state has reached the final stage, any response apart from
 the Parameter Change or data commands is accepted as ACK since this is the
 only response possible. The only way now that a cycle can give a wrong
@@ -1405,6 +1398,24 @@ has detected ongoing errors and will now not reset its count. */
         if (debug) printf("Remote Abandoned\n\r");
 #endif
         storeData = false;
+    }
+
+/* This is the response to a Parameter Change command which passes an arbitrary
+string to the remote node. */
+    else if (command == 'P')
+    {
+        dataResponseRcvd = true;
+        for (int i=1; i< min(SIZE,writeLength); i++)
+            dataResponseData[i] = (*pkt)->data[i+1];
+    }
+
+/* This is a transmission from a simple test firmware that doesn't follow the
+protocol but only sends a single transmission. */
+    else if (command == 'D')
+    {
+        storeData = true;
+/* Store data field aside for later recording. */
+        for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
     }
 
 /* Print out received data to the file once it is verified. */
@@ -1600,12 +1611,13 @@ The file descriptor fp and the record counters.
 
 int dataFileCheck()
 {
-    if (flushCount++ > FLUSH_LIMIT)
+    int error = 0;
+    if ((fp != NULL) && (flushCount++ > FLUSH_LIMIT))
     {
         flushCount = 0;
         fflush(fp);
     }
-    if (fileCount++ > FILE_LIMIT)
+    if ((fp != NULL) && (fileCount++ > FILE_LIMIT))
     {
         fileCount = 0;
         fclose(fp);
@@ -1614,7 +1626,8 @@ int dataFileCheck()
 /* Create the file if the file descriptor hasn't been set or file was closed. */
     if (fp == NULL)
     {
-        mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
+        error = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
+        if (error) printf("Storage directory creation: %s\n",strerror(errno));
         time_t now;
         now = time(NULL);
         char time_string[20];
@@ -1658,7 +1671,7 @@ The file record counters.
 
 int readConfigFileHex()
 {
-    char ch;
+    int ch;
 /* Skip blanks */
     while(1)
     {
@@ -1715,7 +1728,7 @@ int configFillNodeTable()
 /* Skip leading white space to possible EOF (quit). */
         while(1)
         {
-            char ch = fgetc(fpd);
+            int ch = fgetc(fpd);
             if (ch == EOF) return TRUE;
             if ((ch != ' ') && (ch != '\n'))
             {
@@ -1728,7 +1741,7 @@ int configFillNodeTable()
         nodeInfo[numberNodes].SH = readConfigFileHex();
         nodeInfo[numberNodes].SL = readConfigFileHex();
 /* Read Node identifier from first non blank up to next blank. */
-        char ch;
+        int ch;
         while((ch = fgetc(fpd)) == ' '); /* Skip leading blanks */
         int i = 0;
         while (ch != ' ')
@@ -1750,7 +1763,7 @@ int configFillNodeTable()
 /* Skip all trailing rubbish to EOL (next entry) or EOF (quit). */
         while(1)
         {
-            char ch = fgetc(fpd);
+            int ch = fgetc(fpd);
             if (ch == EOF) return TRUE;
             if (ch == '\n') break;
         }
