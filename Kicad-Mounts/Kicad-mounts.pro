@@ -42,7 +42,6 @@ NetIExt=net
 version=1
 LibDir=symbols
 [eeschema/libraries]
-LibName1=Kicad-mounts-rescue
 LibName2=power
 LibName3=device
 LibName4=transistors

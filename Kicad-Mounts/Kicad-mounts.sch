@@ -1,5 +1,4 @@
 EESchema Schematic File Version 2
-LIBS:Kicad-mounts-rescue
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -69,17 +68,6 @@ F 2 "Photodiode:SIL-3" H 6800 5700 60  0001 C CNN
 F 3 "" H 6800 5700 60  0000 C CNN
 	1    6800 5700
 	1    0    0    -1  
-$EndComp
-$Comp
-L LED-RESCUE-Kicad-mounts D1
-U 1 1 53F67A70
-P 5900 5700
-F 0 "D1" H 5900 5800 50  0000 C CNN
-F 1 "LED" H 5900 5600 50  0000 C CNN
-F 2 "Photodiode:LED-mount" H 5900 5700 60  0001 C CNN
-F 3 "" H 5900 5700 60  0000 C CNN
-	1    5900 5700
-	0    -1   -1   0   
 $EndComp
 Text Label 3450 4900 2    60   ~ 0
 Bootloader
@@ -298,9 +286,11 @@ Wire Wire Line
 Wire Wire Line
 	6600 5500 5900 5500
 Wire Wire Line
-	6600 5700 6600 5900
+	6600 5700 6600 5800
 Wire Wire Line
-	6600 5900 5900 5900
+	6600 5800 6600 5800
+Wire Wire Line
+	6600 5800 5900 5800
 Wire Wire Line
 	2200 3400 3000 3400
 Wire Wire Line
@@ -343,9 +333,15 @@ Wire Wire Line
 	5100 4300 6000 4300
 Connection ~ 6600 5800
 Wire Wire Line
-	2650 6050 3400 6050
+	2650 6050 2800 6050
 Wire Wire Line
-	4000 6200 5200 6200
+	2800 6050 3400 6050
+Wire Wire Line
+	4000 6200 4600 6200
+Wire Wire Line
+	4600 6200 5000 6200
+Wire Wire Line
+	5000 6200 5200 6200
 Connection ~ 5000 6200
 Connection ~ 4600 6200
 Connection ~ 2800 6050
@@ -362,4 +358,15 @@ F 3 "" H 3700 5050 60  0000 C CNN
 $EndComp
 Text Label 5100 3400 0    60   ~ 0
 Commissioning
+$Comp
+L LED_ALT D1
+U 1 1 5887D976
+P 5900 5650
+F 0 "D1" V 5900 5800 50  0000 C CNN
+F 1 "SFH4056" V 6150 5650 50  0000 C CNN
+F 2 "" H 5900 5650 50  0000 C CNN
+F 3 "" H 5900 5650 50  0000 C CNN
+	1    5900 5650
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC
