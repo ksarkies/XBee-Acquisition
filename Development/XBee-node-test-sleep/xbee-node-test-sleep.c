@@ -78,7 +78,7 @@ static bool transmitMessage;
 /* Local Prototypes */
 
 void hardwareInit(void);
-void wdtInit(const uint8_t waketime);
+void wdtInit(const uint8_t waketime, bool wdeSet);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
 void sendMessage(const char* data);
 void sleepXBee(void);
@@ -105,7 +105,7 @@ int main(void)
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    wdtInit(WDT_TIME);              /* Set up watchdog timer */
+    wdtInit(WDT_TIME, true);        /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -125,7 +125,11 @@ event. */
     transmitMessage = false;
     for(;;)
     {
-/* Check for the timer interrupt to indicate it is time for a message to go out.
+/* The WDIE bit must be set each time an interrupt occurs in case the WDT
+reset-after-interrupt was enabled. This will prevent a reset from occurring
+unless the MCU has lost it's way. */
+        sbi(WDTCSR,WDIE);
+/* Check for the timer interrupt to indicate it's time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
         sei();
         if (transmitMessage)
@@ -373,21 +377,26 @@ reset.
 The timeout settings give the same time interval for each AVR, regardless of the
 clock frequency used by the WDT.
 
-The interrupt enable mode is set. The WDE bit is left off to ensure that the WDT
-remains in interrupt mode. Note that the changing of these modes must follow
+The interrupt enable mode is set. If the WDE bit is zero the WDT remains in
+interrupt mode. Otherwise a reset will occur following the next interrupt if the
+WDT is not reset.
+
+Note that the changing of these modes must follow
 a strict protocol as outlined in the datasheet.
 
 IMPORTANT: Disable the "WDT Always On" fuse.
 
 @param[in] uint8_t waketime: a register setting, 9 or less (see datasheet).
+@param[in] bool wdeSet: set the WDE bit to enable reset and interrupt to occur
 */
-void wdtInit(const uint8_t waketime)
+void wdtInit(const uint8_t waketime, bool wdeSet)
 {
     uint8_t timeout = waketime;
     if (timeout > 9) timeout = 9;
     uint8_t wdtcsrSetting = (timeout & 0x07);
     if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
-    wdtcsrSetting |= _BV(WDIE); /* Set WDT interrupt enable */
+    wdtcsrSetting |= _BV(WDIE);             /* Set WDT interrupt enable */
+    if (wdeSet) wdtcsrSetting |= _BV(WDE);  /* Set reset-after-interrupt */
     outb(MCUSR,0);              /* Clear the WDRF flag to allow WDE to reset */
 #ifdef WDCE
 /* This is the required change sequence to clear WDE and set enable and scale
@@ -395,7 +404,8 @@ as required for ATMega48 and most other devices. */
     outb(WDTCSR,_BV(WDCE) | _BV(WDE));  /* Set change enable */
 #else
 /* For later devices, notably ATTiny441 series, the CPU CCP register needs to be
-written with a change enable key. Then setting WDIE will also clear WDE. */
+written with a change enable key if the MCU is set to safety level 2 (WDT
+always on). */
     outb(CCP,0xD8);
 #endif
     outb(WDTCSR,wdtcsrSetting); /* Set scaling factor and enable WDT interrupt */
@@ -470,7 +480,6 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
-    sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case changed */
     if (wdtCounter > ACTION_COUNT)
     {
         transmitMessage = true;
