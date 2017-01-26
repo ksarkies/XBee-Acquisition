@@ -56,11 +56,13 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 /* Prototypes */
 
 void hardwareInit(void);
-void wdtInit(const uint8_t waketime);
+void wdtInit(const uint8_t waketime, bool wdeSet);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
 void sendMessage(const char* data);
 void sleepXBee(void);
 void wakeXBee(void);
+void powerDown(void);
+void powerUp(void);
 
 #endif /*_XBEE_FIRMWARE_NODE_H_ */
