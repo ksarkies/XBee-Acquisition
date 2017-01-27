@@ -70,20 +70,25 @@ uint8_t coordinatorAddress64[8];
 uint8_t coordinatorAddress16[2];
 uint8_t rxOptions;
 
-uint32_t counter;               /* Event Counter */
-uint8_t wdtCounter;             /* Data Transmission Timer */
+static uint32_t counter;            /* Event Counter */
+static uint8_t wdtCounter;          /* Data Transmission Timer */
+static bool transmitMessage;        /* Permission to send a message */
+static bool stayAwake;              /* Keep XBee awake until further notice */
 
 /****************************************************************************/
 /* Local Prototypes */
 
-void hardwareInit(void);
-void wdtInit(const uint8_t waketime);
-void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const char* data);
-void sleepXBee(void);
-void wakeXBee(void);
-void powerDown(void);
-void powerUp(void);
+static void interpretCommand(rxFrameType* inMessage);
+static packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
+                                    bool* txDelivered, rxFrameType* inMessage);
+static void hardwareInit(void);
+static void wdtInit(const uint8_t waketime, bool wdeSet);
+static void sendDataCommand(const uint8_t command, const uint32_t datum);
+static void sendMessage(const char* data);
+static void sleepXBee(void);
+static void wakeXBee(void);
+static void powerDown(void);
+static void powerUp(void);
 
 /****************************************************************************/
 /** @brief      Main Program
@@ -139,7 +144,7 @@ int main(void)
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    wdtInit(WDT_TIME);              /* Set up watchdog timer */
+    wdtInit(WDT_TIME, true);            /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -148,18 +153,24 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
+    checkAssociated();
+
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
 
-/* Initialise process counter */
-    counter = 0;
-
 /* Initialise watchdog timer count */
     wdtCounter = 0;
-    bool stayAwake = false;          /* Keep asleep to start */
+/* Initialise process counter */
+    counter = 0;
+    stayAwake = false;              /* Keep asleep to start */
+    transmitMessage = false;
 
     for(;;)
     {
+/* The WDIE bit must be set each time an interrupt occurs in case the WDT
+reset-after-interrupt was enabled. This will prevent a reset from occurring
+unless the MCU has lost it's way. */
+        sbi(WDTCSR,WDIE);
         sei();
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
@@ -173,293 +184,141 @@ Counter is a global and is changed in the ISR. */
 /* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
 8 seconds will be too short to do anything useful, so go back to sleep again
 until enough such events have occurred. */
-            if (wdtCounter > ACTION_COUNT)
+            if (transmitMessage)
             {
+                transmitMessage = false;
+#ifdef TEST_PORT_DIR
+                sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+#endif
+                wdtCounter = 0;     /* Reset the WDT counter for next time */
+/* Now ready to initiate a data transmission. */
 /* Power up only essential peripherals for transmission of results. */
                 powerUp();
-
-                wdtCounter = 0;     /* Reset the WDT counter for next time */
-#ifdef TEST_PORT_DIR
-                cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-#endif
-/* Now ready to initiate a data transmission. */
                 wakeXBee();
 
 /* First check for association indication from the XBee.
 Don't proceed until it is associated. */
-                uint8_t messageState = 0;   /* Progress in message reception */
-                rxFrameType rxMessage;
-                bool associated = false;
-                while (! associated)
+                if (checkAssociated())
                 {
-                    sendATFrame(2,"AI");
 
-/* The frame type we are handling is 0x88 AT Command Response */
-                    uint16_t timeout = 0;
-                    uint8_t messageError = XBEE_INCOMPLETE;
-/* Wait for response. If it doesn't come, try sending again. */
-                    while (messageError == XBEE_INCOMPLETE)
-                    {
-                        messageError = receiveMessage(&rxMessage, &messageState);
-                        if (timeout++ > 30000) break;
-                    }
-/* If errors occur, or frame is the wrong type, just try again */
-                    associated = ((messageError == XBEE_COMPLETE) && \
-                                 (rxMessage.message.atResponse.data[0] == 0) && \
-                                 (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                                 (rxMessage.message.atResponse.atCommand1 == 65) && \
-                                 (rxMessage.message.atResponse.atCommand2 == 73));
-#ifdef TEST_PORT_DIR
-                    if (! associated)
-                    {
-                        _delay_ms(200);
-                        sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
-                        _delay_ms(200);
-                        cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-                    }
+/* Read the battery voltage from the XBee. */
+#ifdef VBATCON_PIN
+                    sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
 #endif
-                }
-#ifdef TEST_PORT_DIR
-                _delay_ms(200);
-                sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
-#endif
-
-/* Get the battery voltage from the XBee. */
-                sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
-                uint32_t batteryVoltage = 0;
-                bool ok = false;
-                while (! ok)
-                {
-                    sendATFrame(2,"IS");                /* Force Sample Read */
-
-/* The frame type we are handling is 0x88 AT Command Response */
-                    uint16_t timeout = 0;
-                    messageState = 0;
-                    uint8_t messageError = XBEE_INCOMPLETE;
-                    while (messageError == XBEE_INCOMPLETE)
-                    {
-                        messageError = receiveMessage(&rxMessage, &messageState);
-                        if (timeout++ > 30000) break;
-                    }
-                    ok = ((messageError == XBEE_COMPLETE) && \
-                          (rxMessage.message.atResponse.status == 0) && \
-                          (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                          (rxMessage.message.atResponse.atCommand1 == 73) && \
-                          (rxMessage.message.atResponse.atCommand2 == 83));
-                    if (ok)
-                        batteryVoltage = (rxMessage.message.atResponse.data[6] << 8)
-                                       + (rxMessage.message.atResponse.data[7]);
-                }
+                    uint8_t data[12];
+                    int8_t dataLength = readXBeeIO(data);
+                    uint32_t batteryVoltage = 0;
+                    if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
 
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
-                bool txDelivered = false;
-                bool txStatusReceived = false;
-                bool cycleComplete = false;
-                uint8_t txCommand = 'C';
-                bool transmit = true;
-                uint8_t errorCount = 0;
-                uint8_t retry = 0;      /* Retries to get base response OK */
-                while (! cycleComplete)
-                {
-                    if (transmit)
+                    bool txDelivered = false;
+                    bool txStatusReceived = false;
+                    bool cycleComplete = false;
+                    uint8_t txCommand = 'C';
+                    bool transmit = true;
+                    uint8_t errorCount = 0;
+                    uint8_t retry = 0;      /* Retries to get base response OK */
+                    while (! cycleComplete)
                     {
-                        sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
-                        txDelivered = false;    /* Allow check for Tx Status frame */
-                        txStatusReceived = false;
-                    }
-                    transmit = false;   /* Prevent any more transmissions until told */
-
-/* Deal with incoming message assembly for Tx Status and base station response
-or command reception. Keep looping until we have a recognised packet or error. */
-                    bool timeout = false;
-                    rxFrameType rxMessage;      /* Received frame */
-                    rxFrameType inMessage;      /* Buffered data frame */
-                    uint32_t timeResponse = 0;
-                    bool packetError = false;
-                    bool packetReady = false;
-                    while (true)
-                    {
-
-/* ============ Read and verify incoming messages */
-
-/* Read in part of an incoming frame. */
-                        uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
-                        if (messageStatus != XBEE_INCOMPLETE)
+                        if (transmit)
                         {
-                            timeResponse = 0;
-/* Got a frame complete without error. */
-                            if (messageStatus == XBEE_COMPLETE)
-                            {
-/* 0x90 is a Zigbee Receive Packet frame. Copy to a buffer for later processing. */
-                                if (rxMessage.frameType == 0x90)
-                                {
-                                    inMessage.length = rxMessage.length;
-                                    inMessage.checksum = rxMessage.checksum;
-                                    inMessage.frameType = rxMessage.frameType;
-                                    for (uint8_t i=0; i<RF_PAYLOAD; i++)
-                                        inMessage.message.rxRequest.data[i] =
-                                            rxMessage.message.rxRequest.data[i];
-                                    packetReady = true;
-                                }
-/* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
-transmitted message was delivered. Action to repeat will happen ONLY if
-txDelivered is false and txStatusReceived is true. */
-                                else if (rxMessage.frameType == 0x8B)
-                                {
-                                    txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
-                                    txStatusReceived = true;
-                                }
-/* Unknown packet type. Discard as error and continue. */
-                                else
-                                {
-                                    packetError = true;
-                                    txDelivered = false;
-                                    txStatusReceived = false;
-                                }
-                                messageState = 0;   /* Reset packet counter */
-                                break;
-                            }
-/* Zero message status means it is part way through so just continue on. */
-/* If nonzero then this means other errors occurred (namely checksum or packet
-length is wrong). */
-                            else if (messageStatus > 0)
-                            {
-                                errorCount++;
-/* For any received errored Tx Status frame, we are unsure about its validity,
-so treat it as if the delivery did not occur. This may result in data being
-duplicated if the original message was actually received correctly. */
-                                if (rxMessage.frameType == 0x8B)
-                                {
-                                    txDelivered = false;
-                                    txStatusReceived = true;
-                                }
-                                else
-                                {
-/* With all other errors in the frame, discard everything and repeat. */
-                                    rxMessage.frameType = 0;
-                                    packetError = true;
-                                    txDelivered = false;
-                                    txStatusReceived = false;
-                                }
-                                messageState = 0;   /* Reset packet counter */
-                                break;
-                            }
+                            sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
+                            txDelivered = false;    /* Allow check for Tx Status frame */
+                            txStatusReceived = false;
                         }
-/* Nothing received, check for timeout waiting for a base station response.
-Otherwise continue waiting. */
-                        else
-                        {
-                            if (timeResponse++ > RESPONSE_DELAY)
-                            {
-                                timeResponse = 0;
-                                timeout = true;
-                                txDelivered = false;
-                                txStatusReceived = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (errorCount > 10) break;
+                        transmit = false;   /* Prevent any more transmissions until told */
+
+/* Wait for incoming messages. */
+                        rxFrameType inMessage;      /* Buffered data frame */
+                        bool packetReady = false;
+                        packet_error packetError =
+                            readIncomingMessages(&packetReady, &txStatusReceived,
+                                                 &txDelivered, &inMessage);
+/* Drop out if there are too many errors */
+                        if (packetError != no_error) errorCount++;
+                        if (errorCount > 10) break;
 
 /* ============ Interpret messages and decide on actions to take */
 
 /* The transmitted data message was (supposedly) delivered. */
-                    if (txDelivered)
-                    {
+                        if (txDelivered)
+                        {
 /* Respond to an XBee Data packet. This could be an ACK/NAK response part of
 the overall protocol, indicating the final status of the protocol, or a
 higher level command. */
-                        if (packetReady)
-                        {
+                            if (packetReady)
+                            {
 /* Check if the first character in the data field is an ACK or NAK. */
-                            uint8_t rxCommand = inMessage.message.rxRequest.data[0];
+                                uint8_t rxCommand = inMessage.message.rxRequest.data[0];
 /* Base station picked up an error in the previous response and sent a NAK.
 Retry three times with an N command then give up the entire cycle with an X
 command. */
-                            if (rxCommand == 'N')
-                            {
-                                if (++retry >= 3) cycleComplete = true;
-                                txCommand = 'N';
-                                transmit = true;
-                                packetReady = false;
-                            }
+                                if (rxCommand == 'N')
+                                {
+                                    if (++retry >= 3) cycleComplete = true;
+                                    txCommand = 'N';
+                                    transmit = true;
+                                    packetReady = false;
+                                }
 /* Got an ACK: aaaah that feels good. */
-                            else if (rxCommand == 'A')
-                            {
+                                else if (rxCommand == 'A')
+                                {
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to zero to cause it to drop out immediately if the counts had not changed. */
-                                counter -= lastCount;
-                                lastCount = 0;
-                                cycleComplete = true;
-                                packetReady = false;
-                            }
+                                    counter -= lastCount;
+                                    lastCount = 0;
+                                    cycleComplete = true;
+                                    packetReady = false;
+                                }
 /* If not an ACK/NAK, process below as an application data/command frame */
-                        }
+                            }
 /* Errors found in received packet. Retry three times then give up the entire
 cycle. Send an E data packet to signal to the base station. */
-                        else if (packetError)
-                        {
-                            if (++retry >= 3) cycleComplete = true;
-                            txCommand = 'E';
-                            transmit = true;
+                            else if (packetError != no_error)
+                            {
+                                if (++retry >= 3) cycleComplete = true;
+                                txCommand = 'E';
+                                transmit = true;
+                            }
                         }
-                    }
 /* If the message was signalled as definitely not delivered (or was errored),
 that is, txStatusReceived but not txDelivered, repeat up to three times then
 give up the entire cycle. Send an S packet to signal to the base station which
 should avoid any unlikely duplication (even though previous transmissions were
 not received). */
-                    else if (txStatusReceived)
-                    {
-                        if (++retry >= 3) cycleComplete = true;
-                        txCommand = 'S';
-                        transmit = true;
-                    }
+                        else if (txStatusReceived)
+                        {
+                            if (++retry >= 3) cycleComplete = true;
+                            txCommand = 'S';
+                            transmit = true;
+                        }
 /* If timeout, repeat, or for the initial transmission, send back a timeout
 notification */
-                    else if (timeout)
-                    {
-                        if (++retry >= 3) cycleComplete = true;
-                        txCommand = 'T';
-                        transmit = true;
-                    }
+                        else if (packetError == timeout)
+                        {
+                            if (++retry >= 3) cycleComplete = true;
+                            txCommand = 'T';
+                            transmit = true;
+                        }
 
 /* ============ Command Packets */
 
 /* If a command packet arrived outside the data transmission protocol then
 this will catch it (i.e. independently of the Base station status response).
 This is intended for application commands. */
-                    if (packetReady)
-                    {
-/* The first character in the data field is a command. Do not use A or N as
-commands as they will be confused with late ACK/NAK messages. */
-                        uint8_t rxCommand = inMessage.message.rxRequest.data[0];
-/* Interpret a 'Parameter Change' command. */
-                        if (rxCommand == 'P')
-                        {
-                        }
-/* Keep XBee awake until further notice for possible reconfiguration. */
-                        else if (rxCommand == 'W')
-                        {
-                            stayAwake = true;
-                        }
-/* Send XBee to sleep. */
-                        else if (rxCommand == 'S')
-                        {
-                            stayAwake = false;
-                        }
+                        if (packetReady) interpretCommand(&inMessage);
                     }
-                }
 /* Notify acceptance. No response is expected. */
-                if (retry < 3) sendMessage("A");
+                    if (retry < 3) sendMessage("A");
 /* Otherwise if the repeats were exceeded, notify the base station of the
 abandonment of this communication attempt. No response is expected. */
-                else sendMessage("X");
+                    else sendMessage("X");
 #ifdef TEST_PORT_DIR
-                cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+                    cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
 #endif
+                }
             }
 
             _delay_ms(1);
@@ -472,12 +331,149 @@ abandonment of this communication attempt. No response is expected. */
         {
             sleepXBee();
             powerDown();            /* Turn off all peripherals for sleep */
+#ifdef VBATCON_PIN
             cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+#endif
+/* Power down the AVR to deep sleep until an interrupt occurs */
             set_sleep_mode(SLEEP_MODE_PWR_DOWN);
             sleep_mode();
         }
 
     }
+}
+
+/****************************************************************************/
+/** @brief Interpret a Command Message from the Base Station.
+
+Deal with commands, parameters and data intended for the attached processor
+system. Anything not recognised is ignored.
+
+Globals: all changeable parameters: stayAwake.
+
+@param[in] rxFrameType* inMessage: The received frame with the message.
+*/
+
+void interpretCommand(rxFrameType* inMessage)
+{
+/* The first character in the data field is a command. Do not use A or N as
+commands as they will be confused with late ACK/NAK messages. */
+    uint8_t rxCommand = inMessage->message.rxRequest.data[0];
+/* Interpret a 'Parameter Change' command. */
+    if (rxCommand == 'P')
+    {
+    }
+/* Keep XBee awake until further notice for possible reconfiguration. */
+    else if (rxCommand == 'W')
+    {
+        stayAwake = true;
+    }
+/* Send XBee to sleep. */
+    else if (rxCommand == 'S')
+    {
+        stayAwake = false;
+    }
+}
+
+/****************************************************************************/
+/** @brief Read a Received Data Message from the XBee.
+
+Deal with incoming message assembly for Tx Status and base station response
+or command reception. A message is expected as a result of a previous
+transmission, therefore this loops until a message is received, an error or a
+timeout occurs.
+
+@param[out] bool* packetReady
+@param[out] bool* txStatusReceived
+@param[out] bool* txDelivered
+@param[out] rxFrameType* inMessage: The received frame.
+@returns bool: error status.
+*/
+
+packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
+                             bool* txDelivered, rxFrameType* inMessage)
+{
+    rxFrameType rxMessage;              /* Received frame */
+    uint32_t timeResponse = 0;
+    packet_error packetError = no_error;
+    uint8_t messageState = 0;
+/* Loop until the message is received or an error occurs. */
+    while (true)
+    {
+
+/* Read in part of an incoming frame. */
+        uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
+        if (messageStatus != XBEE_INCOMPLETE)
+        {
+            timeResponse = 0;               /* reset timeout counter */
+/* Got a frame complete without error. */
+            if (messageStatus == XBEE_COMPLETE)
+            {
+/* 0x90 is a Zigbee Receive Packet frame that will contain command and data
+from the base station system. Copy to a buffer for later processing. */
+                if (rxMessage.frameType == 0x90)
+                {
+                    inMessage->length = rxMessage.length;
+                    inMessage->checksum = rxMessage.checksum;
+                    inMessage->frameType = rxMessage.frameType;
+                    for (uint8_t i=0; i<RF_PAYLOAD; i++)
+                        inMessage->message.rxRequest.data[i] =
+                            rxMessage.message.rxRequest.data[i];
+                    *packetReady = true;
+                }
+/* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
+transmitted message was delivered. Action to repeat will happen ONLY if
+txDelivered is false and txStatusReceived is true. */
+                else if (rxMessage.frameType == 0x8B)
+                {
+                    *txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
+                    *txStatusReceived = true;
+                }
+/* Unknown packet type. Discard as error and continue. */
+                else
+                {
+                    packetError = unknown_type;
+                    *txDelivered = false;
+                    *txStatusReceived = false;
+                }
+                messageState = 0;   /* Reset packet counter */
+                break;
+            }
+/* If message status is anything else, then this means other errors occurred
+(namely checksum or packet length is wrong). */
+            else
+            {
+/* For any received errored Tx Status frame, we are unsure about its validity,
+so treat it as if the delivery did not occur. This may result in data being
+duplicated if the original message was actually received correctly. */
+                *txDelivered = false;
+                if (rxMessage.frameType == 0x8B)
+                    *txStatusReceived = true;
+                else
+                {
+/* With all other errors in the frame, discard everything and repeat. */
+                    rxMessage.frameType = 0;
+                    packetError = unknown_error;
+                    *txStatusReceived = false;
+                }
+                messageState = 0;   /* Reset packet counter */
+                break;
+            }
+        }
+/* Nothing received, check for timeout waiting for a base station response.
+Otherwise continue waiting. */
+        else
+        {
+            if (timeResponse++ > RESPONSE_DELAY)
+            {
+                timeResponse = 0;
+                packetError = timeout;
+                *txDelivered = false;
+                *txStatusReceived = false;
+                break;
+            }
+        }
+    }
+    return packetError;
 }
 
 /****************************************************************************/
@@ -642,21 +638,26 @@ reset.
 The timeout settings give the same time interval for each AVR, regardless of the
 clock frequency used by the WDT.
 
-The interrupt enable mode is set. The WDE bit is left off to ensure that the WDT
-remains in interrupt mode. Note that the changing of these modes must follow
-a strict protocol as outlined in the datasheet.
+The interrupt enable mode is set. If the WDE bit is zero the WDT remains in
+interrupt mode. Otherwise a reset will occur following the next interrupt if the
+WDT is not reset.
+
+Note that the changing of these modes must follow a strict protocol as outlined
+in the datasheet.
 
 IMPORTANT: Disable the "WDT Always On" fuse.
 
 @param[in] uint8_t waketime: a register setting, 9 or less (see datasheet).
+@param[in] bool wdeSet: set the WDE bit to enable reset and interrupt to occur
 */
-void wdtInit(const uint8_t waketime)
+void wdtInit(const uint8_t waketime, bool wdeSet)
 {
     uint8_t timeout = waketime;
     if (timeout > 9) timeout = 9;
     uint8_t wdtcsrSetting = (timeout & 0x07);
     if (timeout > 7) wdtcsrSetting |= _BV(WDP3);
-    wdtcsrSetting |= _BV(WDIE); /* Set WDT interrupt enable */
+    wdtcsrSetting |= _BV(WDIE);             /* Set WDT interrupt enable */
+    if (wdeSet) wdtcsrSetting |= _BV(WDE);  /* Set reset-after-interrupt */
     outb(MCUSR,0);              /* Clear the WDRF flag to allow WDE to reset */
 #ifdef WDCE
 /* This is the required change sequence to clear WDE and set enable and scale
@@ -664,7 +665,8 @@ as required for ATMega48 and most other devices. */
     outb(WDTCSR,_BV(WDCE) | _BV(WDE));  /* Set change enable */
 #else
 /* For later devices, notably ATTiny441 series, the CPU CCP register needs to be
-written with a change enable key. Then setting WDIE will also clear WDE. */
+written with a change enable key if the MCU is set to safety level 2 (WDT
+always on). */
     outb(CCP,0xD8);
 #endif
     outb(WDTCSR,wdtcsrSetting); /* Set scaling factor and enable WDT interrupt */
@@ -739,6 +741,10 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
-    sbi(WDTCSR,WDIE);       /* Set interrupt enable again in case changed */
+    if (wdtCounter > ACTION_COUNT)
+    {
+        transmitMessage = true;
+        wdtCounter = 0;
+    }
 }
 

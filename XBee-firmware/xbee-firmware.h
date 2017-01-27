@@ -29,6 +29,17 @@ Tested:     ATTiny4313 at 1MHz internal clock.
 #ifndef _XBEE_NODE_H_
 #define _XBEE_NODE_H_
 
+/* Use the defined output pin to force the XBee to stay awake while in the
+bootloader. This is valid for the XBee sleep mode 1 only. The application
+should move it to other modes if necessary. Note that using this may fail
+because the output pins may be forced to an undesired level during programming. */
+#define XBEE_STAY_AWAKE         1
+
+/* These defines control how the bootloader interacts with hardware */
+/* Use the defined input pin to decide if the application will be entered
+automatically */
+#define AUTO_ENTER_APP          1
+
 /* WDT count to give desired time between activations of the AVR */
 #define ACTION_MINUTES          2
 
@@ -44,13 +55,13 @@ Tested:     ATTiny4313 at 1MHz internal clock.
 /* Time to wait for a response from the base station. Time units depend on
 the code execution time needed to check for a received character, and F_CPU.
 Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
-#define RESPONSE_DELAY          F_CPU/10000*200
+#define RESPONSE_DELAY          F_CPU/10000*100
 
 /* Response for a Tx Status frame should be smaller. Aim at 100ms */
 #define TX_STATUS_DELAY         F_CPU/10000*100
 
 /* Time to mute counter update following a transmission */
-#define MUTE_TIME               F_CPU/10000*100
+#define MUTE_TIME               F_CPU/10000*10
 
 /* Choose whether to use hardware flow control for serial comms.
 Needed for the bootloader as the upload is extensive. */
@@ -65,15 +76,6 @@ Needed for the bootloader as the upload is extensive. */
 #define USE_INTERRUPTS
 #endif
 
-/* Use the defined output pin to force the XBee to stay awake while in the
-bootloader. This is valid for the XBee sleep mode 1 only. The application
-should move it to other modes if necessary. Note that using this may fail
-because the output pins may be forced to an undesired level during programming. */
-#define XBEE_STAY_AWAKE         1
-
-/* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered
-automatically */
-#define AUTO_ENTER_APP          1
+typedef enum {no_error, timeout, unknown_type, unknown_error} packet_error;
 
 #endif /*_XBEE_NODE_H_ */
