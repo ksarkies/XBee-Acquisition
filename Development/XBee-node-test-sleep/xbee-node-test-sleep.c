@@ -77,14 +77,14 @@ static bool transmitMessage;
 /****************************************************************************/
 /* Local Prototypes */
 
-void hardwareInit(void);
-void wdtInit(const uint8_t waketime, bool wdeSet);
-void sendDataCommand(const uint8_t command, const uint32_t datum);
-void sendMessage(const char* data);
-void sleepXBee(void);
-void wakeXBee(void);
-void powerDown(void);
-void powerUp(void);
+static void hardwareInit(void);
+static void wdtInit(const uint8_t waketime, bool wdeSet);
+static void sendDataCommand(const uint8_t command, const uint32_t datum);
+static void sendMessage(const char* data);
+static void sleepXBee(void);
+static void wakeXBee(void);
+static void powerDown(void);
+static void powerUp(void);
 
 /*---------------------------------------------------------------------------*/
 /** @brief      Main Program
@@ -120,6 +120,7 @@ event. */
 /* Initialise watchdog timer count */
     wdtCounter = 0;
 
+/* Initialise process counter */
     counter = 0;
 
     transmitMessage = false;
@@ -129,11 +130,12 @@ event. */
 reset-after-interrupt was enabled. This will prevent a reset from occurring
 unless the MCU has lost it's way. */
         sbi(WDTCSR,WDIE);
+        sei();
 /* Check for the timer interrupt to indicate it's time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
-        sei();
         if (transmitMessage)
         {
+            transmitMessage = false;
 #ifdef TEST_PORT_DIR
             cbi(TEST_PORT,TEST_PIN);
 #endif
@@ -142,62 +144,24 @@ Wakeup the XBee and send putting it back to sleep afterwards. */
             wakeXBee();
 
 /* First check for association indication from the XBee.
-Don't proceed until it is associated. */
-            uint8_t messageState = 0;
-            rxFrameType rxMessage;
-            bool associated = false;
-            while (! associated)
+Don't proceed until it is associated but go back to sleep as the coordinator
+may be unreachable. */
+            if (checkAssociated())
             {
-                sendATFrame(2,"AI");
 
-/* The frame type we are handling is 0x88 AT Command Response */
-                uint16_t timeout = 0;
-                messageState = 0;
-                uint8_t messageError = XBEE_INCOMPLETE;
-                while (messageError == XBEE_INCOMPLETE)
-/* Wait for response. If it doesn't come, try sending again. */
-                {
-                    messageError = receiveMessage(&rxMessage, &messageState);
-                    if (timeout++ > 30000) break;
-                }
-/* If errors occur, or frame is the wrong type, just try again */
-                associated = ((messageError == XBEE_COMPLETE) && \
-                             (rxMessage.message.atResponse.data[0] == 0) && \
-                             (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                             (rxMessage.message.atResponse.atCommand1 == 65) && \
-                             (rxMessage.message.atResponse.atCommand2 == 73));
-#ifdef TEST_PORT_DIR
-                if (! associated)
-                {
-                    _delay_ms(200);
-                    sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
-                    _delay_ms(200);
-                    cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
-                }
+/* Read the battery voltage from the XBee. */
+#ifdef VBATCON_PIN
+                sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
 #endif
-            }
-#ifdef TEST_PORT_DIR
-            _delay_ms(200);
-            sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
-#endif
+                uint8_t data[12];
+                int8_t dataLength = readXBeeIO(data);
+                uint32_t batteryVoltage = 0;
+                if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
 
-/* Get the battery voltage from the XBee. */
-            sbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn on battery measurement */
-            uint8_t buffer[12];
-            uint8_t i;
-            char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
-            uint32_t value = counter;
-            for (i = 0; i < 10; i++)
-            {
-                if (i == 8) value = checksum;
-                buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-                value >>= 4;
+                uint8_t txCommand = 'D';
+                sendDataCommand(txCommand,counter+(batteryVoltage << 16));
+                counter = 0;                /* Reset counter value */
             }
-            buffer[11] = 0;             /* String terminator */
-            buffer[0] = 'D';            /* Data Command */
-            sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-            counter = 0;                /* Reset counter value */
-            transmitMessage = false;
 #ifdef TEST_PORT_DIR
             _delay_ms(200);
             cbi(TEST_PORT,TEST_PIN);
@@ -207,8 +171,10 @@ Don't proceed until it is associated. */
         sei();
         sleepXBee();
         powerDown();            /* Turn off all peripherals for sleep */
-/* Power down the AVR to deep sleep until an interrupt occurs */
+#ifdef VBATCON_PIN
         cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+#endif
+/* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_mode();
 
@@ -381,8 +347,8 @@ The interrupt enable mode is set. If the WDE bit is zero the WDT remains in
 interrupt mode. Otherwise a reset will occur following the next interrupt if the
 WDT is not reset.
 
-Note that the changing of these modes must follow
-a strict protocol as outlined in the datasheet.
+Note that the changing of these modes must follow a strict protocol as outlined
+in the datasheet.
 
 IMPORTANT: Disable the "WDT Always On" fuse.
 

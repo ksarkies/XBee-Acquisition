@@ -29,6 +29,7 @@ The transmit buffer may not be needed and can be disabled to save space.
 #include "xbee.h"
 #include "serial.h"
 #include "buffer.h"
+#include <util/delay.h>
 
 /* Global Variables */
 /* Serial communications buffers. */
@@ -222,6 +223,136 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
         *messageState = state;
     }
     return messageError;
+}
+
+/****************************************************************************/
+/** @brief Check for association indication from the local XBee.
+
+The XBee is queried for association indication. This loops until association
+is verified. If a test port is defined the test port is flashed.
+
+*/
+
+bool checkAssociated(void)
+{
+    uint8_t messageState = 0;   /* Progress in message reception */
+    rxFrameType rxMessage;
+    uint8_t count = 0;
+    bool associated = false;
+    while (! associated)
+    {
+        sendATFrame(2,"AI");
+
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        messageState = 0;
+        uint8_t messageError = XBEE_INCOMPLETE;
+/* Wait for response. If it doesn't come, try sending again. */
+        while (messageError == XBEE_INCOMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if (timeout++ > 30000) break;
+        }
+/* If errors occur, or frame is the wrong type, just try again */
+        associated = ((messageError == XBEE_COMPLETE) && \
+                     (rxMessage.message.atResponse.data[0] == 0) && \
+                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                     (rxMessage.message.atResponse.atCommand1 == 65) && \
+                     (rxMessage.message.atResponse.atCommand2 == 73));
+#ifdef TEST_PORT_DIR
+        if (! associated)
+        {
+            _delay_ms(200);
+            sbi(TEST_PORT,TEST_PIN);    /* Set pin on */
+            _delay_ms(200);
+            cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+        }
+#endif
+        if (count++ > 10) break;
+    }
+#ifdef TEST_PORT_DIR
+    _delay_ms(200);
+    sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+#endif
+    return associated;
+}
+
+/****************************************************************************/
+/** @brief Read the I/O ports on the local XBee.
+
+Data frame from a force read of the XBee ports.
+Byte 0 always 1
+Byte 1,2 mask of all enabled of the 12 digital I/O ports.
+Byte 3 mask of all enabled of the 4 analogue I/O ports and supply voltage.
+Byte 4,5 value of the enabled I/O ports, or missing if the mask is zero.
+Following this (byte 6 on or byte 4 on if no digital data is present) is blocks
+of two bytes giving the values of the A/D ports.
+
+@param[out] uint8_t* data; data field from the command response.
+@returns int8_t length of data field. Returns -1 if read fails after 3 attempts.
+*/
+
+int8_t readXBeeIO(uint8_t* data)
+{
+    int8_t length = -1;
+    uint8_t count = 0;
+    while (count++ < 3)
+    {
+        sendATFrame(2,"IS");                /* Force Sample Read */
+
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        uint8_t messageState = 0;
+        rxFrameType rxMessage;
+        uint8_t messageError = XBEE_INCOMPLETE;
+        while (messageError == XBEE_INCOMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if (timeout++ > 30000) break;
+        }
+        bool ok = ((messageError == XBEE_COMPLETE) && \
+              (rxMessage.message.atResponse.status == 0) && \
+              (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+              (rxMessage.message.atResponse.atCommand1 == 73) && \
+              (rxMessage.message.atResponse.atCommand2 == 83));
+        if (ok)
+        {
+            length = rxMessage.length-5;    /* length of data field */
+            uint8_t i = 0;
+            for (i = 0; i < length; i++)
+                data[i] = rxMessage.message.atResponse.data[i];
+            break;
+        }
+    }
+    return length;
+}
+
+/****************************************************************************/
+/** @brief Access ADC data from the XBee.
+
+The XBee returns a variable length data field
+depending on what ports have been enabled.
+
+@param[in] uint8_t* data: data field from the XBee after a readXBeeIO.
+@returns uint16_t AD2 value; XBee A/D converter is 10 bits.
+*/
+
+uint16_t getXBeeADC(uint8_t* data, uint8_t adcPort)
+{
+    uint16_t value = 0;
+    uint8_t i = 4;
+    if ((data[1] > 0) || (data[2] > 0)) i = 6;  /* Skip digital data present */
+    uint8_t port = 0;                       /* Check through ADC data mask */
+    for (port = 0; port < 5; port++)
+    {
+        if (port == adcPort)
+        {
+            value = (data[i] << 8) + data[i+1];
+            break;
+        }
+        if ((data[3] & _BV(port)) > 0) i += 2;  /* Skip enabled ADCs */
+    }
+    return value;
 }
 
 /****************************************************************************/
