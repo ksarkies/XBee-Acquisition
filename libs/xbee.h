@@ -46,9 +46,7 @@
 typedef struct
 {
     uint16_t length;
-    uint8_t checksum;
     uint8_t frameType;
-    uint8_t frameId;
     union
     {
         uint8_t array[RF_PAYLOAD+13];
@@ -66,23 +64,23 @@ typedef struct
             uint8_t sourceAddress16[2];
             uint8_t options;
             uint8_t data[RF_PAYLOAD];
-        } rxRequest;
+        } rxPacket;
         struct
         {
-            uint8_t frameId;
+            uint8_t frameID;
             uint8_t sourceAddress16[2];
             uint8_t retryCount;
             uint8_t deliveryStatus;
             uint8_t discoveryStatus;
-        } rxStatus;
+        } txStatus;
     } message;
+    uint8_t checksum;
 } rxFrameType;
 
 /* The txFrameType can be expressed as a Tx Request or AT Command frame */
 typedef struct
 {
     uint16_t length;
-    uint8_t checksum;
     uint8_t frameType;
     union
     {
@@ -104,6 +102,7 @@ typedef struct
             uint8_t data[RF_PAYLOAD];
         } txRequest;
     } message;
+    uint8_t checksum;
 } txFrameType;
 
 /*----------------------------------------------------------------------*/

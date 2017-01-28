@@ -250,7 +250,7 @@ higher level command. */
                             if (packetReady)
                             {
 /* Check if the first character in the data field is an ACK or NAK. */
-                                uint8_t rxCommand = inMessage.message.rxRequest.data[0];
+                                uint8_t rxCommand = inMessage.message.rxPacket.data[0];
 /* Base station picked up an error in the previous response and sent a NAK.
 Retry three times with an N command then give up the entire cycle with an X
 command. */
@@ -357,7 +357,7 @@ void interpretCommand(rxFrameType* inMessage)
 {
 /* The first character in the data field is a command. Do not use A or N as
 commands as they will be confused with late ACK/NAK messages. */
-    uint8_t rxCommand = inMessage->message.rxRequest.data[0];
+    uint8_t rxCommand = inMessage->message.rxPacket.data[0];
 /* Interpret a 'Parameter Change' command. */
     if (rxCommand == 'P')
     {
@@ -416,8 +416,8 @@ from the base station system. Copy to a buffer for later processing. */
                     inMessage->checksum = rxMessage.checksum;
                     inMessage->frameType = rxMessage.frameType;
                     for (uint8_t i=0; i<RF_PAYLOAD; i++)
-                        inMessage->message.rxRequest.data[i] =
-                            rxMessage.message.rxRequest.data[i];
+                        inMessage->message.rxPacket.data[i] =
+                            rxMessage.message.rxPacket.data[i];
                     *packetReady = true;
                 }
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
@@ -425,7 +425,7 @@ transmitted message was delivered. Action to repeat will happen ONLY if
 txDelivered is false and txStatusReceived is true. */
                 else if (rxMessage.frameType == 0x8B)
                 {
-                    *txDelivered = (rxMessage.message.rxStatus.deliveryStatus == 0);
+                    *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                     *txStatusReceived = true;
                 }
 /* Unknown packet type. Discard as error and continue. */

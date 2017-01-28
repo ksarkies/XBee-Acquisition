@@ -189,14 +189,14 @@ Don't start until it is associated. */
         {
 /* Toggle test port */
 #ifdef TEST_PORT_DIR
-            if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-            if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxPacket.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxPacket.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
 #endif
 /* Echo */
-            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                               rxMessage.message.rxRequest.sourceAddress16,
+            sendTxRequestFrame(rxMessage.message.rxPacket.sourceAddress64,
+                               rxMessage.message.rxPacket.sourceAddress16,
                                0, rxMessage.length-12,
-                               rxMessage.message.rxRequest.data);
+                               rxMessage.message.rxPacket.data);
         }
 
 /* Check for the timer interrupt to indicate it is time for a message to go out.
