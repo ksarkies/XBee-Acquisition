@@ -84,6 +84,7 @@ uint8_t localATLength;
 char localATResponseData[SIZE]; /* The data record received with a local AT response */
 FILE *fp;                       /* File for results */
 FILE *fpd;                      /* File for configuration XBee list */
+FILE *log;                      /* File for libxbee logging */
 int flushCount;                 /* Number of records to flush buffers to disk. */
 int fileCount;                  /* Number of records close file and open new. */
 char dirname[40];
@@ -209,7 +210,19 @@ If failed to contact XBee, abort. */
 
 #ifdef DEBUG
     if (debug)
+    {
+        if ((log = fopen(LOG_FILE, "w")) == NULL)
+            printf("Unable to open logging file %s\n", LOG_FILE);
+        else
+/* Set logging for receive and transmit operations */
+        {
+            xbee_logTargetSet(xbee,log);
+            xbee_logLevelSet(xbee, LOG_LEVEL);
+            xbee_logRxSet(xbee,true);
+            xbee_logTxSet(xbee,true);
+        }
         printf("XBee Instance Started\n");
+    }
 #endif
     openRemoteConnections();
     nodeProbe();

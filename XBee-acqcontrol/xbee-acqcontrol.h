@@ -36,6 +36,8 @@ Title:    XBee Acquisition Control process
 #define DATA_LENGTH             10
 
 #define DATA_PATH           "/data/XBee/"
+#define LOG_FILE            DATA_PATH"/libxbee.log"
+#define LOG_LEVEL           10
 
 #define SERIAL_PORT         "/dev/ttyUSB0"
 #define BAUDRATE            38400
