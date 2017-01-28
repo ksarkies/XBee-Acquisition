@@ -232,6 +232,7 @@ bool checkAssociated(void)
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
                      (rxMessage.message.atResponse.atCommand1 == 65) && \
                      (rxMessage.message.atResponse.atCommand2 == 73));
+        if (count++ > 10) break;
     }
     return associated;
 }

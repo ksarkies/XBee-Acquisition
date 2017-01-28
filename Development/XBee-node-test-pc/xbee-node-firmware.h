@@ -53,7 +53,7 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 #define MUTE_TIME               F_CPU/1000
 
 /**********************************************************/
-/* Prototypes */
+/* Prototypes - These are common to a number of modules. */
 
 void hardwareInit(void);
 void wdtInit(const uint8_t waketime, bool wdeSet);
@@ -64,5 +64,7 @@ void sleepXBee(void);
 void wakeXBee(void);
 void powerDown(void);
 void powerUp(void);
+
+typedef enum {no_error, timeout, unknown_type, unknown_error} packet_error;
 
 #endif /*_XBEE_FIRMWARE_NODE_H_ */
