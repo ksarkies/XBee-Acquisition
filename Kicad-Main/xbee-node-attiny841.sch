@@ -35,7 +35,6 @@ LIBS:KB1LQC
 LIBS:MiscellaneousDevices
 LIBS:TransistorParts
 LIBS:Sensors
-LIBS:xbee-node-attiny841-cache
 EELAYER 25 0
 EELAYER END
 $Descr A4 11693 8268
@@ -872,17 +871,6 @@ $EndComp
 Text Label 7000 2750 0    60   ~ 0
 Sleep-Rq
 $Comp
-L INDUCTOR_SMALL L1
-U 1 1 548D0C86
-P 4800 1550
-F 0 "L1" H 4800 1650 50  0000 C CNN
-F 1 "INDUCTOR_SMALL" H 4800 1500 50  0000 C CNN
-F 2 "PhotoDiode:R_0805" H 4800 1550 60  0001 C CNN
-F 3 "" H 4800 1550 60  0000 C CNN
-	1    4800 1550
-	1    0    0    -1  
-$EndComp
-$Comp
 L C-RESCUE-xbee-node-attiny841 C8
 U 1 1 548D0F6B
 P 5100 1750
@@ -1082,9 +1070,9 @@ Connection ~ 8500 1400
 Connection ~ 8700 1700
 Connection ~ 8600 1700
 Wire Wire Line
-	5050 1550 6300 1550
+	4900 1550 6300 1550
 Wire Wire Line
-	4000 1550 4550 1550
+	4000 1550 4700 1550
 Connection ~ 5100 1550
 Wire Wire Line
 	5100 1550 6000 1550
@@ -1109,4 +1097,15 @@ Wire Wire Line
 Connection ~ 9450 2150
 Wire Wire Line
 	10250 2300 10450 2300
+$Comp
+L L_Small L1
+U 1 1 589058F4
+P 4800 1550
+F 0 "L1" V 4900 1500 50  0000 L CNN
+F 1 "100nH" V 4700 1450 50  0000 L CNN
+F 2 "photodiode:R_0805" H 4800 1550 50  0001 C CNN
+F 3 "" H 4800 1550 50  0000 C CNN
+	1    4800 1550
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC
