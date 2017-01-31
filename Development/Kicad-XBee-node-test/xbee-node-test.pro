@@ -1,4 +1,4 @@
-update=Thu 19 Jan 2017 16:40:23 ACDT
+update=Mon 30 Jan 2017 18:52:47 ACDT
 version=1
 last_client=kicad
 [pcbnew]
@@ -65,3 +65,4 @@ LibName33=symbols/RF_OEM_Parts
 LibName34=symbols/Sensors
 LibName35=symbols/TransistorParts
 LibName36=symbols/kicad-library-by-simlun
+LibName37=switches
