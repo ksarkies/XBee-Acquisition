@@ -59,17 +59,4 @@ Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
 /* Time to mute counter update following a transmission */
 #define MUTE_TIME               F_CPU/1000
 
-/* Choose whether to use hardware flow control for serial comms.
-Needed for the bootloader as the upload is extensive. */
-#define USE_HARDWARE_FLOW
-
-/* Choose whether to use buffering for serial communications. */
-//#define USE_RECEIVE_BUFFER
-//#define USE_SEND_BUFFER
-
-/* Interrupts will normally be needed with serial buffering */
-#if defined USE_RECEIVE_BUFFER || defined USE_SEND_BUFFER
-#define USE_INTERRUPTS
-#endif
-
 #endif /*_XBEE_NODE_H_ */

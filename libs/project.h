@@ -36,7 +36,7 @@ Needed for the bootloader as the upload is extensive. */
 bootloader. This is valid for the XBee sleep mode 1 only. The application
 should move it to other modes if necessary. Note that using this may fail
 because the output pins may be forced to an undesired level during programming. */
-#define XBEE_STAY_AWAKE         1
+#define XBEE_STAY_AWAKE         false
 
 /* These defines control how the bootloader interacts with hardware */
 /* Use the defined input pin to decide if the application will be entered

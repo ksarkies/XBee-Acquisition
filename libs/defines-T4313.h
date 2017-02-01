@@ -29,6 +29,7 @@ Tested:   ATTiny4313 at 1MHz internal clock.
  ***************************************************************************/
 
 #include	<avr/io.h>
+#include    "project.h"
 
 /* Choose whether to use hardware flow control for serial comms. */
 //#define USE_HARDWARE_FLOW
@@ -41,17 +42,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 Timer clock scale value 5 gives scale of 1024, (see timer.c)
 This gives a 32ms overflow interrupt.*/
 #define RTC_SCALE               5
-
-/* These defines control how the bootloader interacts with hardware */
-/* Use the defined input pin to decide if the application will be entered
-automatically */
-#define AUTO_ENTER_APP      1
-
-/* Use the defined output pin to force the XBee to stay awake while in the
-bootloader. This is valid for the XBee sleep mode 1 only. The application should
-move it to other modes if necessary. Note that using this may fail because the
-output pins may be forced to an undesired level during programming. */
-#define XBEE_STAY_AWAKE     1
 
 /* Simple serial I/O. CPU frequency and baudrate must be defined BEFORE this
 include as setbaud.h sets a default value. */

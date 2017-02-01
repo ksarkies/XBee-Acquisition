@@ -39,17 +39,4 @@ Tested:     ATMega48 at 8MHz internal clock, and ATTiny841 at 1MHz.
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1
 
-/* Choose whether to use hardware flow control for serial comms.
-Needed for the bootloader as the upload is extensive. */
-#define USE_HARDWARE_FLOW
-
-/* Choose whether to use buffering for serial communications. */
-//#define USE_RECEIVE_BUFFER
-//#define USE_SEND_BUFFER
-
-/* Interrupts will normally be needed with serial buffering */
-#if defined USE_RECEIVE_BUFFER || defined USE_SEND_BUFFER
-#define USE_INTERRUPTS
-#endif
-
 #endif /*_XBEE_NODE_TEST_H_ */
