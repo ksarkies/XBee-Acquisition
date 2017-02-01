@@ -153,17 +153,23 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
-    checkAssociated();
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    while (checkAssociated());
 
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
+
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
 /* Initialise process counter */
     counter = 0;
-    stayAwake = false;              /* Keep asleep to start */
+    stayAwake = XBEE_STAY_AWAKE;
     transmitMessage = false;
+
+/* Turn off until some counts start to arrive */
+    if (!stayAwake) sleepXBee();
 
     for(;;)
     {
@@ -203,7 +209,7 @@ Don't proceed until it is associated. */
 
 /* Read the battery voltage from the XBee. */
 #ifdef VBATCON_PIN
-                    sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
+                    sbi(VBATCON_PORT,VBATCON_PIN);  /* Turn on battery measurement */
 #endif
                     uint8_t data[12];
                     int8_t dataLength = readXBeeIO(data);
@@ -332,7 +338,7 @@ abandonment of this communication attempt. No response is expected. */
             sleepXBee();
             powerDown();            /* Turn off all peripherals for sleep */
 #ifdef VBATCON_PIN
-            cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+            cbi(VBATCON_PORT,VBATCON_PIN);   /* Turn off battery measurement */
 #endif
 /* Power down the AVR to deep sleep until an interrupt occurs */
             set_sleep_mode(SLEEP_MODE_PWR_DOWN);
