@@ -34,6 +34,11 @@ Tested:     ATtint4313 at 1MHz internal clock.
 /* WDT count to give desired time between activations of the AVR */
 #define ACTION_MINUTES          2
 
+/* Adapt operation to sleep the XBee and allow battery measurement */
+#define SLEEP_XBEE
+#define BATTERY_MEASURE
+#define MCU_SLEEP
+
 /* Timeout setting for WDT to give 8 second ticks */
 #define WDT_TIME                0x09
 

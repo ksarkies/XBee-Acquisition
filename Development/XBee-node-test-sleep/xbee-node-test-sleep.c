@@ -7,7 +7,15 @@
 @brief Code for an AVR with an XBee in a Remote Low Power Node
 
 A message containing counts from a digital input is transmitted every few
-seconds.
+seconds. Battery voltage is also transmitted from a voltage divider connected
+to the XBee and read from ADC1.
+
+The XBee is tested for association with the coordinator. The program does not
+progress until association has occurred.
+
+This code allows the microcontroller to sleep as well as the XBee for low power
+operation. Thus only the watchdog timer is left running and must be used in
+interrupt mode to allow the system to be woken up at the specified intervals.
 
 This code forms the interface between an XBee networking device using ZigBee
 stack, and a counter signal providing count and battery voltage
@@ -16,10 +24,6 @@ measurements for communication to a base controller.
 The code is written to make use of sleep modes and other techniques to
 minimize power consumption. The AVR is woken by a count signal, updates the
 running total, and sleeps. This does not receive any messages.
-
-The watchdog timer is used to wake the AVR at intervals to transmit the count
-to the XBee. The XBee is then woken again after a short interval to pass on any
-base station messages to the AVR.
 
 @note
 CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
@@ -106,6 +110,10 @@ int main(void)
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
     wdtInit(WDT_TIME, true);        /* Set up watchdog timer */
+/* Initialise process counter */
+    counter = 0;
+/* Initialise watchdog timer count */
+    wdtCounter = 0;
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -114,14 +122,17 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    while (! checkAssociated());
+
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
 
-/* Initialise watchdog timer count */
-    wdtCounter = 0;
-
-/* Initialise process counter */
-    counter = 0;
+/* Start off with XBee asleep and wait for interrupt to wake it up */
+#ifdef SLEEP_XBEE
+    sleepXBee();
+#endif
 
     transmitMessage = false;
     for(;;)
@@ -136,47 +147,52 @@ Wakeup the XBee and send putting it back to sleep afterwards. */
         if (transmitMessage)
         {
             transmitMessage = false;
-#ifdef TEST_PORT_DIR
+#ifdef TEST_PORT
             cbi(TEST_PORT,TEST_PIN);
 #endif
 /* Power up only essential peripherals for transmission of results. */
+#ifdef MCU_SLEEP
             powerUp();
+#endif
+#ifdef SLEEP_XBEE
             wakeXBee();
+#endif
 
 /* First check for association indication from the XBee.
 Don't proceed until it is associated but go back to sleep as the coordinator
 may be unreachable. */
             if (checkAssociated())
             {
-
+                uint32_t batteryVoltage = 0;
 /* Read the battery voltage from the XBee. */
-#ifdef VBATCON_PIN
-                sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
-#endif
+#if defined VBATCON_PIN && defined BATTERY_MEASURE
+                sbi(VBATCON_PORT,VBATCON_PIN);  /* Turn on battery measurement */
                 uint8_t data[12];
                 int8_t dataLength = readXBeeIO(data);
-                uint32_t batteryVoltage = 0;
                 if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
-
+#endif
                 uint8_t txCommand = 'D';
                 sendDataCommand(txCommand,counter+(batteryVoltage << 16));
                 counter = 0;                /* Reset counter value */
             }
-#ifdef TEST_PORT_DIR
+#ifdef SLEEP_XBEE
+            sleepXBee();
+#endif
+#ifdef TEST_PORT
             _delay_ms(200);
             cbi(TEST_PORT,TEST_PIN);
 #endif
         }
-/* Put XBee to sleep and wait for interrupt to wake it up */
         sei();
-        sleepXBee();
+#ifdef MCU_SLEEP
         powerDown();            /* Turn off all peripherals for sleep */
 #ifdef VBATCON_PIN
-        cbi(VBATCON_PORT_DIR,VBATCON_PIN);   /* Turn off battery measurement */
+        cbi(VBATCON_PORT,VBATCON_PIN);   /* Turn off battery measurement */
 #endif
 /* Power down the AVR to deep sleep until an interrupt occurs */
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
         sleep_mode();
+#endif
 
     }
 }
@@ -291,8 +307,10 @@ count signal line. */
     sbi(PC_MSK,PC_INT);                         /* Pin Change Mask */
     sbi(PC_IER,PC_IE);                          /* Enable */
 
+#ifdef MCU_SLEEP
     powerDown();                        /* Turns off all peripherals */
     powerUp();                          /* Turns on essential peripherals only */
+#endif
 }
 
 /****************************************************************************/
