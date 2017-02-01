@@ -3,10 +3,15 @@
 @version 0.0.0
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 25 September 2014
-@brief Code for an ATTiny841/ATMega48 AVR with an XBee in a Remote Low Power Node
+@brief Code for an ATTiny841/ATMega48 AVR with an XBee in Remote Low Power Node
 
 A message containing counts from a digital input is transmitted every few
-seconds.
+seconds. Battery voltage is also transmitted from a voltage divider connected
+to the XBee and read from ADC1. Options for XBee sleep and battery measurement
+are provided at compile time.
+
+The XBee is tested for association with the coordinator. The program does not
+progress until association has occurred.
 
 This code forms the core of an interface between an XBee networking device
 using ZigBee stack, and a data acquisition unit making a variety of
@@ -120,6 +125,8 @@ int main(void)
     initBuffers();                  /* Set up communications buffers if used */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* Reset timer */
+/* Initialise process counter */
+    counter = 0;
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -130,100 +137,54 @@ event. */
 
 /* Check for association indication from the XBee.
 Don't start until it is associated. */
-    uint8_t messageState;           /**< Progress in message reception */
-    rxFrameType rxMessage;
-    bool associated = false;
-    while (! associated)
-    {
-#ifdef TEST_PORT_DIR
-        cbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
-#endif
-        _delay_ms(200);
-#ifdef TEST_PORT_DIR
-        sbi(TEST_PORT,TEST_PIN);            /* Set pin off to indicate success */
-#endif
-        _delay_ms(200);
-        sendATFrame(2,"AI");
-
-/* The frame type we are handling is 0x88 AT Command Response */
-        uint16_t timeout = 0;
-        messageState = 0;
-        uint8_t messageError = XBEE_INCOMPLETE;
-        while (messageError == XBEE_INCOMPLETE)
-        {
-            messageError = receiveMessage(&rxMessage, &messageState);
-            if (timeout++ > 30000) break;
-        }
-/* If errors occur, or frame is the wrong type, just try again */
-        associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.data[0] == 0) && \
-                     (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                     (rxMessage.message.atResponse.atCommand1 == 65) && \
-                     (rxMessage.message.atResponse.atCommand2 == 73));
-    }
-#ifdef TEST_PORT_DIR
-    cbi(TEST_PORT,TEST_PIN);        /* Set pin off to indicate success */
-#endif
-    sei();                          /* Enable global interrupts */
+    while (! checkAssociated());
 
 /*---------------------------------------------------------------------------*/
 /* Main loop */
 
-/* Initialise process counter */
-    counter = 0;
-
 /* Start off with XBee asleep and wait for interrupt to wake it up */
+#ifdef SLEEP_XBEE
     sleepXBee();
+#endif
 
     transmitMessage = false;
-    messageState = 0;
     for(;;)
     {
+        sei();                          /* Enable global interrupts */
         wdt_reset();
-
-/* Check for incoming messages */
-/* The Rx message variable is re-used and must be processed before the next */
-        uint8_t messageError = receiveMessage(&rxMessage, &messageState);
-/* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
-        if ((messageError == XBEE_COMPLETE) && (rxMessage.frameType == RX_REQUEST))
-        {
-/* Toggle test port */
-#ifdef TEST_PORT_DIR
-            if (rxMessage.message.rxPacket.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-            if (rxMessage.message.rxPacket.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
-#endif
-/* Echo */
-            sendTxRequestFrame(rxMessage.message.rxPacket.sourceAddress64,
-                               rxMessage.message.rxPacket.sourceAddress16,
-                               0, rxMessage.length-12,
-                               rxMessage.message.rxPacket.data);
-        }
 
 /* Check for the timer interrupt to indicate it is time for a message to go out.
 Wakeup the XBee and send putting it back to sleep afterwards. */
         if (transmitMessage)
         {
-#ifdef TEST_PORT_DIR
+            transmitMessage = false;
+#ifdef TEST_PORT
             sbi(TEST_PORT,TEST_PIN);
 #endif
+#ifdef SLEEP_XBEE
             wakeXBee();
-            uint8_t buffer[12];
-            uint8_t i;
-            char checksum = -(counter + (counter >> 8) + (counter >> 16) + (counter >> 24));
-            uint32_t value = counter;
-            for (i = 0; i < 10; i++)
+#endif
+
+/* First check for association indication from the XBee.
+Don't proceed until it is associated but go back to sleep as the coordinator
+may be unreachable. */
+            if (checkAssociated())
             {
-                if (i == 8) value = checksum;
-                buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-                value >>= 4;
+                uint32_t batteryVoltage = 0;
+/* Read the battery voltage from the XBee. */
+#ifdef BATTERY_MEASURE
+                uint8_t data[12];
+                int8_t dataLength = readXBeeIO(data);
+                if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
+#endif
+                uint8_t txCommand = 'D';
+                sendDataCommand(txCommand,counter+(batteryVoltage << 16));
+                counter = 0;                /* Reset counter value */
             }
-            buffer[11] = 0;             /* String terminator */
-            buffer[0] = 'D';            /* Data Command */
-            sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,11,buffer);
-            counter = 0;            /* Reset counter value */
+#ifdef SLEEP_XBEE
             sleepXBee();
-            transmitMessage = false;
-#ifdef TEST_PORT_DIR
+#endif
+#ifdef TEST_PORT
             _delay_ms(200);
             cbi(TEST_PORT,TEST_PIN);
 #endif

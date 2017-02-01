@@ -32,6 +32,10 @@ Tested:     ATMega48 at 8MHz internal clock, and ATTiny841 at 1MHz.
 
 #include <inttypes.h>
 
+/* Adapt operation to sleep the XBee and allow battery measurement */
+#define SLEEP_XBEE
+#define BATTERY_MEASURE
+
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1
 

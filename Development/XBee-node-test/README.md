@@ -3,11 +3,14 @@ XBee Data Acquisition Remote Test Firmware
 
 This is a test firmware for a remote unit. Written in C under avr-gcc.
 The node hardware is based on the ATMega48 series. The hardware is defined in
-[gEDA-XBee](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-Test) but is also useable with the watermeter board which uses the ATTiny841.
+[gEDA-XBee-Node-Test](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/gEDA-XBee-node-test) and [Kicad-XBee-Node-Test](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/Kicad-XBee-node-test) but is also useable with the watermeter board
+which uses the ATTiny841.
 
 A message containing counts from an external pulse source is sent to the
-coordinator at timed intervals in the timer ISR. The program will flash an
-activity LED on the test board.
+coordinator at timed intervals in the timer ISR. If enabled, battery voltage is
+also transmitted from a voltage divider connected to the XBee and read from
+ADC1. Options for XBee sleep and battery measurement are provided at compile
+time. The program will flash an activity LED on the test board.
 
 Before beginning to monitor the XBee for incoming messages the firmware will
 query it for association indication. This is to ensure that the XBee is not put
@@ -19,9 +22,9 @@ received and is timing out. If this is not resolved the firmware can remain in
 the loop looking for association to be signalled. The XBee will then never be
 put to sleep.
 
-Once associated the XBee is put to sleep (if it is an END device). When a
-timed message is to be sent, the XBee will be woken and put back to sleep after
-the message is sent.
+Once associated the XBee is put to sleep (if it is an END device and sleep has
+been enabled). When a timed message is to be sent, the XBee will be woken and
+put back to sleep after the message is sent.
 
 **NOTE:** CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
 
@@ -40,5 +43,5 @@ The makefile target is ATMega48 by default. To use another target eg ATTiny841.
 $ make MCU=attiny841
 
 K. Sarkies
-8 December 2016
+1 February 2017
 

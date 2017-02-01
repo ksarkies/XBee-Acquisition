@@ -229,8 +229,9 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 /** @brief Check for association indication from the local XBee.
 
 The XBee is queried for association indication. This loops until association
-is verified. If a test port is defined the test port is flashed.
+is verified or until it times out. If a test port is defined it is flashed.
 
+@returns bool: associated
 */
 
 bool checkAssociated(void)
@@ -259,7 +260,7 @@ bool checkAssociated(void)
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
                      (rxMessage.message.atResponse.atCommand1 == 65) && \
                      (rxMessage.message.atResponse.atCommand2 == 73));
-#ifdef TEST_PORT_DIR
+#ifdef TEST_PORT
         if (! associated)
         {
             _delay_ms(200);
@@ -270,10 +271,6 @@ bool checkAssociated(void)
 #endif
         if (count++ > 10) break;
     }
-#ifdef TEST_PORT_DIR
-    _delay_ms(200);
-    sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
-#endif
     return associated;
 }
 
