@@ -91,6 +91,8 @@ char dirname[40];
 char inPort[40];
 uint baudrate;
 char debug;
+bool xbeeLogging;
+int xbeeLogLevel;
 
 /* Callback Prototypes for libxbee */
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
@@ -114,6 +116,7 @@ int min(int x, int y) {if (x>y) return y; else return x;}
 int main(int argc,char ** argv)
 {
     debug = false;
+    xbeeLogging = false;
 /*--------------------------------------------------------------------------*/
 /* Parse the command line arguments.
 P - serial port to use, (default /dev/ttyUSB0)
@@ -127,7 +130,7 @@ d - Debug mode.
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:b:D:d")) != -1)
+    while ((c = getopt (argc, argv, "P:b:D:L:d")) != -1)
     {
         switch (c)
         {
@@ -139,6 +142,9 @@ d - Debug mode.
             break;
         case 'P':
             strcpy(inPort,optarg);
+        case 'L':
+            xbeeLogging = true;
+            xbeeLogLevel = atoi(optarg);
             break;
         case 'b':
             baudrate = atoi(optarg);
@@ -208,8 +214,10 @@ If failed to contact XBee, abort. */
         return 1;
     }
 
+/* Setup XBee only logging. */
+
 #ifdef DEBUG
-    if (debug)
+    if (debug && xbeeLogging)
     {
         if ((log = fopen(LOG_FILE, "w")) == NULL)
             printf("Unable to open logging file %s\n", LOG_FILE);
@@ -217,7 +225,7 @@ If failed to contact XBee, abort. */
 /* Set logging for receive and transmit operations */
         {
             xbee_logTargetSet(xbee,log);
-            xbee_logLevelSet(xbee, LOG_LEVEL);
+            xbee_logLevelSet(xbee, xbeeLogLevel);
             xbee_logRxSet(xbee,true);
             xbee_logTxSet(xbee,true);
         }
