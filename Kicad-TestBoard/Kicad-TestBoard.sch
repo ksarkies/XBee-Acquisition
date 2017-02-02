@@ -4,7 +4,6 @@ LIBS:74xx
 LIBS:ac-dc
 LIBS:actel
 LIBS:adc-dac
-LIBS:allegro
 LIBS:Altera
 LIBS:analog_devices
 LIBS:analog_switches
@@ -37,7 +36,6 @@ LIBS:Lattice
 LIBS:linear
 LIBS:logo
 LIBS:maxim
-LIBS:mechanical
 LIBS:memory
 LIBS:microchip
 LIBS:microchip_dspic33dsc
@@ -49,7 +47,6 @@ LIBS:microchip_pic32mcu
 LIBS:microcontrollers
 LIBS:motor_drivers
 LIBS:motorola
-LIBS:motors
 LIBS:msp430
 LIBS:nordicsemi
 LIBS:nxp_armmcu
@@ -78,11 +75,9 @@ LIBS:transistors
 LIBS:ttl_ieee
 LIBS:valves
 LIBS:video
-LIBS:wiznet
 LIBS:Worldsemi
 LIBS:Xicor
 LIBS:xilinx
-LIBS:zetex
 LIBS:Zilog
 LIBS:Kicad-TestBoard-cache
 EELAYER 25 0
