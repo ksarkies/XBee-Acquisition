@@ -163,7 +163,7 @@ d - Debug mode.
             }
             break;
         case '?':
-            if ((optopt == 'P') || (optopt == 'b') || (optopt == 'd'))
+            if ((optopt == 'P') || (optopt == 'b') || (optopt == 'D'))
                 fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             else if (isprint(optopt))
                 fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -941,7 +941,7 @@ void closeRemoteConnection(int node)
     nodeInfo[node].ioCon = NULL;
     if (nodeInfo[node].atCon != NULL) xbee_conEnd(nodeInfo[node].atCon);
     nodeInfo[node].atCon = NULL;
-    nodeInfo[node].valid = FALSE;
+    nodeInfo[node].valid = false;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1050,7 +1050,7 @@ int nodeProbe()
 {
     xbee_err ret;
     unsigned char txRet;
-    int sleeping = FALSE;
+    int sleeping = false;
     struct xbee_con *probeATCon;
 /* Check if the local AT connection is open and put it to sleep */
     if (xbee_conValidate(localATCon) == XBEE_ENONE)
@@ -1061,7 +1061,7 @@ int nodeProbe()
                    xbee_errorToStr(ret));
             return ret;
         }
-        sleeping = TRUE;
+        sleeping = true;
     }
 
 /* Open a local AT connection without callback. */
@@ -1219,14 +1219,14 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
         fflush(fpd);
 
 /* Disable all connections on new entry to allow them to be created below. */
-        nodeInfo[node].valid = FALSE;
+        nodeInfo[node].valid = false;
         nodeInfo[node].dataCon = NULL;
         nodeInfo[node].ioCon = NULL;
         nodeInfo[node].atCon = NULL;
     }
 /* Add (for new nodes) or rebuild (for failed attempts earlier) connections. */
     openRemoteConnection(node);
-    nodeInfo[node].valid = TRUE;
+    nodeInfo[node].valid = true;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1451,7 +1451,7 @@ protocol but only sends a single transmission. */
         fprintf(fp, "\n\r");
         dataFileCheck();
 /* If we are hearing from this then it is a valid node */
-        if (row < numberNodes) nodeInfo[row].valid = TRUE;
+        if (row < numberNodes) nodeInfo[row].valid = true;
     }
 
 }
@@ -1613,7 +1613,7 @@ write the next word field directly as the set of digital ports. */
     if (debug) printf("\n");
 #endif
 /* We are hearing from this node so it is a valid node */
-    if (row < numberNodes) nodeInfo[row].valid = TRUE;
+    if (row < numberNodes) nodeInfo[row].valid = true;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1668,13 +1668,13 @@ name. */
         if (fp == NULL)
         {
             syslog(LOG_INFO, "Cannot open new results file\n");
-            return FALSE;
+            return false;
         }
         flushCount = 0;
         fileCount = 0;
     }
 
-    return TRUE;
+    return true;
 }
 /*--------------------------------------------------------------------------*/
 /** @brief Read a hex field from the config file.
@@ -1738,7 +1738,7 @@ int configFillNodeTable()
         if (fpd == NULL)
         {
             syslog(LOG_INFO, "Cannot open or create configuration file\n");
-            return FALSE;
+            return false;
         }
     }
 /* Start reading the file and fill the node table */
@@ -1750,7 +1750,7 @@ int configFillNodeTable()
         while(1)
         {
             int ch = fgetc(fpd);
-            if (ch == EOF) return TRUE;
+            if (ch == EOF) return true;
             if ((ch != ' ') && (ch != '\n'))
             {
                 ungetc(ch,fpd);     /* Put character back for reading again */
@@ -1776,7 +1776,7 @@ int configFillNodeTable()
         nodeInfo[numberNodes].status = readConfigFileHex();
         nodeInfo[numberNodes].profileID = readConfigFileHex();
         nodeInfo[numberNodes].manufacturerID = readConfigFileHex();
-        nodeInfo[numberNodes].valid = FALSE;
+        nodeInfo[numberNodes].valid = false;
         nodeInfo[numberNodes].dataCon = NULL;
         nodeInfo[numberNodes].ioCon = NULL;
         nodeInfo[numberNodes].atCon = NULL;
@@ -1785,10 +1785,10 @@ int configFillNodeTable()
         while(1)
         {
             int ch = fgetc(fpd);
-            if (ch == EOF) return TRUE;
+            if (ch == EOF) return true;
             if (ch == '\n') break;
         }
     }
-    return TRUE;
+    return true;
 }
 

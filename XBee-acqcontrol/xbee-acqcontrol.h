@@ -47,9 +47,6 @@ Title:    XBee Acquisition Control process
 #include "xbee.h"
 #include <stdint.h>
 
-#define FALSE   0
-#define TRUE    1
-
 /* Serial Port Parameters */
 
 enum DataBitsType
