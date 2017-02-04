@@ -516,6 +516,7 @@ Send a string message.
 
 @param[in]  uint8_t* data: pointer to a string of data (ending in 0).
 */
+
 void sendMessage(const char* data)
 {
     sendTxRequestFrame(coordinatorAddress64, coordinatorAddress16,0,
@@ -600,6 +601,7 @@ count signal line. */
 /** @brief Power down all peripherals for Sleep
 
 */
+
 void powerDown(void)
 {
 #ifdef ADC_ONR
@@ -621,15 +623,18 @@ void powerDown(void)
 }
 
 /****************************************************************************/
-/** @brief Initialize the hardware for process measurement
+/** @brief Power up the hardware
 
-Set unused ports to inputs and disable power to all unused peripherals.
-Set the process counter interrupt to INT0.
+Only essential peripherals are turned on, namely the UART and the A/D converter.
 */
+
 void powerUp(void)
 {
 #ifdef PRR_USART0
     cbi(PRR,PRR_USART0);/* power up USART0 */
+#endif
+#ifdef ADC_ONR
+    sbi(ADC_ONR,AD_EN); /* Enable the ADC */
 #endif
 }
 
@@ -656,6 +661,7 @@ IMPORTANT: Disable the "WDT Always On" fuse.
 @param[in] uint8_t waketime: a register setting, 9 or less (see datasheet).
 @param[in] bool wdeSet: set the WDE bit to enable reset and interrupt to occur
 */
+
 void wdtInit(const uint8_t waketime, bool wdeSet)
 {
     uint8_t timeout = waketime;
@@ -689,6 +695,7 @@ is in cyclic/pin wake mode, this will have no effect.
 The XBee may take some time before sleeping, however no operations are dependent
 on this time.
 */
+
 inline void sleepXBee(void)
 {
     sbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request XBee Sleep */
@@ -705,6 +712,7 @@ if better control of wake time is desired.
 
 The XBee should wake in a short time, about 100ms maximum.
 */
+
 inline void wakeXBee(void)
 {
     cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Request or set XBee Wake */
@@ -724,6 +732,7 @@ follow a transmission. The specific phenomenon dealt with is the presence
 of a short positive pulse at the time of a transmission, when the counter
 input is at low level.
 */
+
 ISR(COUNT_ISR)
 {
     uint8_t countSignal = inbit(COUNT_PORT,COUNT_PIN);
@@ -740,6 +749,7 @@ ISR(COUNT_ISR)
 
 Increment the counter to signal state of WDT.
 */
+
 #if (MCU_TYPE==4313)
 ISR(WDT_OVERFLOW_vect)
 #else
