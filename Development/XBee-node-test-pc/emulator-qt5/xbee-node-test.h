@@ -20,8 +20,8 @@ Title:    XBee Node Test
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef XBEE_NODE_TEST_H
-#define XBEE_NODE_TEST_H
+#ifndef XBEE_NODE_TEST_H_QT5
+#define XBEE_NODE_TEST_H_QT5
 
 #include <QDialog>
 #include <QCloseEvent>
@@ -50,12 +50,15 @@ public:
     bool success();
     QString error();
 private slots:
-    void on_quitButton_clicked();
-    void on_runButton_clicked();
     void on_debugModeCheckBox_clicked();
+    void on_baudrateComboBox_activated(int newBaudrate);
+    void on_serialComboBox_activated(int newBaudrate);
+    void on_runButton_clicked();
+    void on_quitButton_clicked();
 private:
 // User Interface object
     Ui::XbeeNodeTestDialog xbeeNodeTestFormUi;
+    bool openSerialPort(QString serialPort, int baudrate);
     void setComboBoxes(uint initialBaudrate);
     void codeRun();             // This is where the actual test code is run
 
@@ -63,6 +66,7 @@ private:
     bool commandLineOnly;
     bool debugMode;
     bool running;
+    int baudrate;
 };
 
 #endif

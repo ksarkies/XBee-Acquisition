@@ -2,14 +2,10 @@ XBee Data Acquisition Remote Test Code
 --------------------------------------
 
 This is a POSIX system based test code for a XBee remote unit. Written in C but
-embedded in a wrapper that emulates the environment for the test code.
+embedded in a QT/C++ wrapper which emulates the environment for the test code.
 It can be run with any adapter interface board that contains a USB-serial
 converter, or with a board having a serial interface plus an external USB-serial
 converter.
-
-Both a QT5 based emulator and an emulator based on libc are provided, the latter
-being command-line only, of course. It is intended for small headless machines
-running Linux such as the Raspberry Pi or BeagleBone.
 
 The purpose is to provide a PC Linux based testbed for emulating remote system
 firmware that is capable of communicating directly with an XBee over a serial
@@ -18,15 +14,15 @@ it provides a means to run the Xbee firmware core on a PC for debugging.
 
 NOTE: gcc is required to allow function override for timerISR.
 
-The program runs from the command line. A debug mode is available for extended
-printout.
+The program can be run without a GUI from the command line with the -n option.
+A debug mode is available for extended printout.
 
-$ xbee-node-test -d -P /dev/ttyUSB0 -b 38400
+$ xbee-node-test -d -P /dev/ttyUSB0 -b 38400 -n
 
 In command line mode, the program can only be stopped by ctl-C or process kill.
 
 The following main program modules allow different tests to be run. Change the
-Makefile to compile the different tests.
+XBee-node-test.pro file to compile the different tests.
 
 ***mainprog-test***
 -------------------
@@ -42,7 +38,7 @@ This is taken from the [xbee-firmware](https://github.com/ksarkies/XBee-Acquisit
 -----------------------------------
 
 The following files may be used as the environment emulator for other code tests
-with appropriate adaption of the .pro and mainprog-*.cpp files:
+with appropriate adaption of the .pro and mainprog.cpp files:
 
 * xbee-node-test-main.cpp
 * xbee-node-test.cpp
@@ -55,13 +51,13 @@ serial-libs.cpp is a substitute set of communication functions calling on
 POSIX/QT serial I/O. This should contain functions that match the calls in the
 test code.
 
-**mainprog-*.cpp** must be provided with the code to be tested in the following
+**mainprog.cpp** must be provided with the code to be tested in the following
 way:
 
 Split the code to be tested into an initialization part and an operational
 part that normally falls within an infinite loop. Place the initialization part
 into the function called mainprogInit(), and the operational part into
-mainprog(). Both these are called from the xbee-node-test wrapper, with the
+mainprog(). Both these are called from the xbee-node-test.cpp wrapper, with the
 operational part having its loop emulated in the wrapper code.
 
 There should be no compilable processor specific statements. These can be
@@ -85,5 +81,5 @@ copied from the library directory with its extension changed from c to cpp to
 satisfy the g++ compiler (otherwise it is not correctly linked).
 
 K. Sarkies
-3 February 2017
+3 April 2016
 

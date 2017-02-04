@@ -64,7 +64,7 @@ int main(int argc,char ** argv)
     QString filename;
 
     opterr = 0;
-    while ((c = getopt (argc, argv, "w:r:s:e:P:ndvxb:")) != -1)
+    while ((c = getopt (argc, argv, "P:ndb:")) != -1)
     {
         switch (c)
         {
@@ -95,7 +95,7 @@ int main(int argc,char ** argv)
             }
             break;
         case '?':
-            if (optopt == 'P')
+            if ((optopt == 'P') || (optopt == 'b'))
                 fprintf (stderr, "Option -%c requires an argument.\n", optopt);
             else if (isprint (optopt))
                 fprintf (stderr, "Unknown option `-%c'.\n", optopt);

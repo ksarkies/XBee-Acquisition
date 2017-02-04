@@ -111,18 +111,13 @@ initialises some GUI elements.
 XbeeNodeTest::XbeeNodeTest(QString* p,uint initialBaudrate,bool commandLine,
                               bool debug,QWidget* parent): QDialog(parent)
 {
-    port = new QSerialPort(*p);
-    bool ok = port->open(QIODevice::ReadWrite);
+    baudrate = initialBaudrate;
+    bool ok = openSerialPort(*p, initialBaudrate);
     if (ok)
     {
-        port->setBaudRate(bauds[initialBaudrate]);
-        port->setDataBits(QSerialPort::Data8);
-        port->setParity(QSerialPort::NoParity);
-        port->setStopBits(QSerialPort::OneStop);
-        port->setFlowControl(QSerialPort::NoFlowControl);
         commandLineOnly = commandLine;
         debugMode = debug;
-        if (debugMode) qDebug() << "Debug Mode";
+        if (debugMode) qDebug() << "Default Debug Mode";
 // Set up the GUI if we are not using the command line
         if (success())
         {
@@ -152,12 +147,24 @@ XbeeNodeTest::~XbeeNodeTest()
 }
 
 //*****************************************************************************
-/** @brief Change debuhg mode when button is clicked
+/** @brief Create Serial Port Object
 
+@param[in] QString serialPort: device name for serial port.
 */
-void XbeeNodeTest::on_debugModeCheckBox_clicked()
+bool XbeeNodeTest::openSerialPort(QString serialPort, int baudrate)
 {
-    debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
+    if (port != NULL) delete port;
+    port = new QSerialPort(serialPort);
+    bool ok = port->open(QIODevice::ReadWrite);
+    if (ok)
+    {
+        port->setBaudRate(bauds[baudrate]);
+        port->setDataBits(QSerialPort::Data8);
+        port->setParity(QSerialPort::NoParity);
+        port->setStopBits(QSerialPort::OneStop);
+        port->setFlowControl(QSerialPort::NoFlowControl);
+    }
+    return ok;
 }
 
 //*****************************************************************************
@@ -188,17 +195,6 @@ QString XbeeNodeTest::error()
 }
 
 //*****************************************************************************
-/** @brief Close when "Quit" is activated.
-
-No further action is taken.
-*/
-
-void XbeeNodeTest::on_quitButton_clicked()
-{
-    running = false;
-}
-
-//*****************************************************************************
 /** @brief Setup Serial ComboBoxes
 
 Test existence of serial ports (ACM and USB) and build both combobox entries
@@ -207,23 +203,23 @@ with ttyS0 for machines with a serial port.
 
 void XbeeNodeTest::setComboBoxes(uint initialBaudrate)
 {
-    QString port;
+    QString serialPort;
     xbeeNodeTestFormUi.serialComboBox->clear();
-    port = "/dev/ttyS0";
-    xbeeNodeTestFormUi.serialComboBox->insertItem(0,port);
+    serialPort = "/dev/ttyS0";
+    xbeeNodeTestFormUi.serialComboBox->insertItem(0,serialPort);
     for (int i=3; i>=0; i--)
     {
-        port = "/dev/ttyUSB"+QString::number(i);
-        QFileInfo checkUSBFile(port);
+        serialPort = "/dev/ttyUSB"+QString::number(i);
+        QFileInfo checkUSBFile(serialPort);
         if (checkUSBFile.exists())
-            xbeeNodeTestFormUi.serialComboBox->insertItem(0,port);
+            xbeeNodeTestFormUi.serialComboBox->insertItem(0,serialPort);
     }
     for (int i=3; i>=0; i--)
     {
-        port = "/dev/ttyACM"+QString::number(i);
-        QFileInfo checkACMFile(port);
+        serialPort = "/dev/ttyACM"+QString::number(i);
+        QFileInfo checkACMFile(serialPort);
         if (checkACMFile.exists())
-            xbeeNodeTestFormUi.serialComboBox->insertItem(0,port);
+            xbeeNodeTestFormUi.serialComboBox->insertItem(0,serialPort);
     }
     xbeeNodeTestFormUi.serialComboBox->setCurrentIndex(0);
 
@@ -235,15 +231,57 @@ void XbeeNodeTest::setComboBoxes(uint initialBaudrate)
 }
 
 //*****************************************************************************
+/** @brief Change debug mode when button is clicked
+
+*/
+void XbeeNodeTest::on_debugModeCheckBox_clicked()
+{
+    debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
+}
+
+//*****************************************************************************
+/** @brief Change Serial Port.
+
+*/
+
+void XbeeNodeTest::on_serialComboBox_activated(int index)
+{
+    openSerialPort(xbeeNodeTestFormUi.serialComboBox->currentText(),
+                   xbeeNodeTestFormUi.baudrateComboBox->currentIndex());
+}
+
+//*****************************************************************************
+/** @brief Change Baud Rate.
+
+*/
+
+void XbeeNodeTest::on_baudrateComboBox_activated(int newBaudrateIndex)
+{
+    port->setBaudRate(bauds[newBaudrateIndex]);
+    if (debugMode) qDebug() << "Changed baudrate to: " << port->baudRate();
+}
+
+//*****************************************************************************
 /** @brief Run the XBee code loop.
 
 */
 
 void XbeeNodeTest::on_runButton_clicked()
 {
-    if (debugMode) qDebug() << "Running";
-    running = true;
+    if (debugMode) qDebug() << "Running, baudrate: " << port->baudRate();
+    running = true;;
     codeRun();
+}
+
+//*****************************************************************************
+/** @brief Close when "Quit" is activated.
+
+No further action is taken.
+*/
+
+void XbeeNodeTest::on_quitButton_clicked()
+{
+    running = false;
 }
 
 /****************************************************************************/

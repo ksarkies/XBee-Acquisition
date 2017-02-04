@@ -55,8 +55,8 @@ CTS must be set in the XBee.
 
 #include <inttypes.h>
 #include <unistd.h>
-#include <QDebug>
-#include <QString>
+#include <stdio.h>
+#include <string.h>
 
 #define RTC_SCALE   30
 
@@ -182,12 +182,11 @@ means of notifying the base station that the AVR is awake. */
                     uint8_t retry = 0;      /* Retries to get base response OK */
                     while (! cycleComplete)
                     {
-QChar command = txCommand;
-qDebug() << "New Cycle: Complete?" << cycleComplete;
-if (transmit) qDebug() << "Transmit?" << QString::fromRawData(&command,1)
-                       << ", Last Count" << lastCount;
+if (cycleComplete) printf("Cycle Completed\n");
+else printf("New Cycle\n");
                         if (transmit)
                         {
+printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
                             sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
                             txDelivered = false;    /* Allow check for Tx Status frame */
                             txStatusReceived = false;
@@ -209,14 +208,14 @@ if (transmit) qDebug() << "Transmit?" << QString::fromRawData(&command,1)
 /* The transmitted data message was (supposedly) delivered. */
                         if (txDelivered)
                         {
-qDebug() << "Delivered, start processing";
-if (!packetReady) qDebug() << "Normal Zigbee Transmit Status Frame from local XBee";
+printf("Delivered, start processing\n");
+if (!packetReady) printf("Normal Zigbee Transmit Status Frame from local XBee\n");
 /* Respond to an XBee Data packet. This could be an ACK/NAK response part of
 the overall protocol, indicating the final status of the protocol, or a
 higher level command. */
                             if (packetReady)
                             {
-qDebug() << "Process Packet ready to check for ACK/NAK";
+printf("Process Packet ready to check for ACK/NAK\n");
 /* Check if the first character in the data field is an ACK or NAK. */
                                 uint8_t rxCommand = inMessage.message.rxPacket.data[0];
 /* Base station picked up an error in the previous response and sent a NAK.
@@ -228,7 +227,7 @@ command. */
                                     txCommand = 'N';
                                     transmit = true;
                                     packetReady = false;
-qDebug() << "NAK";
+printf("NAK\n");
                                 }
 /* Got an ACK: aaaah that feels good. */
                                 else if (rxCommand == 'A')
@@ -236,7 +235,7 @@ qDebug() << "NAK";
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to zero to cause it to drop out immediately if the counts had not changed. */
-qDebug() << "ACK";
+printf("ACK\n");
                                     counter -= lastCount;
                                     lastCount = 0;
                                     cycleComplete = true;
@@ -251,7 +250,7 @@ cycle. Send an E data packet to signal to the base station. */
                                 if (++retry >= 3) cycleComplete = true;
                                 txCommand = 'E';
                                 transmit = true;
-qDebug() << "Process Packet Error";
+printf("Process Packet Error %d\n", packetError);
                             }
                         }
 /* If the message was signalled as definitely not delivered (or was errored),
@@ -264,7 +263,7 @@ not received). */
                             if (++retry >= 3) cycleComplete = true;
                             txCommand = 'S';
                             transmit = true;
-qDebug() << "Process Not Delivered: Try number" << retry;
+printf("Process Not Delivered: Try number %d\n", retry);
                         }
 /* If timeout, repeat, or for the initial transmission, send back a timeout
 notification */
@@ -273,7 +272,7 @@ notification */
                             if (++retry >= 3) cycleComplete = true;
                             txCommand = 'T';
                             transmit = true;
-qDebug() << "Process Timeout: Try number" << retry;
+printf("Process Timeout: Try number %d\n", retry);
                         }
 
 /* ============ Command Packets */
@@ -283,15 +282,16 @@ this will catch it (i.e. independently of the Tx Status response).
 This is intended for application commands. */
                         if (packetReady) interpretCommand(&inMessage);
                     }
-qDebug() << "Finished Cycle";
-if (retry >= 3) qDebug() << "Abandoned"; else qDebug() << "Accepted";
-qDebug() << "-------------------------";
+printf("Finished Cycle\n");
+if (retry >= 3) printf("Abandoned\n"); else printf("Accepted\n");
+printf("-------------------------\n");
 /* Notify acceptance. No response is expected. */
                     if (retry < 3) sendMessage("A");
 /* Otherwise if the repeats were exceeded, notify the base station of the
 abandonment of this communication attempt. No response is expected. */
                     else sendMessage("X");
                 }
+else printf("Not associated\n");
             }
 //            _delay_ms(1);
         }
@@ -365,8 +365,7 @@ packet_error readIncomingMessage(bool* packetReady, bool* txStatusReceived,
 /* Got a frame complete without error. */
             if (messageStatus == XBEE_COMPLETE)
             {
-qDebug() << "Message Type" << QString("%1").arg(rxMessage.frameType,0,16)
-         << ", Length" << rxMessage.length;
+printf("Message Type %x, Length %d\n", rxMessage.frameType,rxMessage.length);
 /* 0x90 is a Zigbee Receive Packet frame that will contain command and data
 from the coordinator system. Copy to a buffer for later processing. */
                 if (rxMessage.frameType == 0x90)
@@ -378,11 +377,10 @@ from the coordinator system. Copy to a buffer for later processing. */
                         inMessage->message.rxPacket.data[i] =
                             rxMessage.message.rxPacket.data[i];
                     *packetReady = true;
-QChar reply = rxMessage.message.rxPacket.data[0];
-QString msg = QString::fromRawData(&reply,1)+" ";
-for (uint8_t i=1; i<rxMessage.length; i++)
-msg.append(QString("%1 ").arg(rxMessage.message.rxPacket.data[i],2,16,(QChar)'0'));
-qDebug() << "Got a data frame: reply, data contents" << msg;
+printf("Got a data frame: reply %c", rxMessage.message.rxPacket.data[0]);
+printf(", data contents");
+for (uint8_t i=1; i<rxMessage.length; i++) printf(" %x", rxMessage.message.rxPacket.data[i]);
+printf("\n");
                 }
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
 transmitted message was delivered. Action to repeat will happen ONLY if
@@ -391,12 +389,12 @@ txDelivered is false and txStatusReceived is true. */
                 {
                     *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                     *txStatusReceived = true;
-QString msg;
-for (uint8_t i=0; i<rxMessage.length-1; i++)
-msg.append(QString("%1 ").arg(rxMessage.message.array[i],2,16,(QChar)'0'));
-qDebug() << "Zigbee Transmit Status Frame: data contents"<< msg;
-qDebug() << "Status?" << rxMessage.message.txStatus.deliveryStatus
-         << ", Delivered?" << *txDelivered;
+printf("Zigbee Transmit Status Frame: data contents");
+for (uint8_t i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
+printf("\n");
+printf("Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
+if (! *txDelivered) printf("not ");
+printf("delivered\n");
                 }
 /* Unknown packet type. Discard as error and continue. */
                 else
@@ -404,12 +402,10 @@ qDebug() << "Status?" << rxMessage.message.txStatus.deliveryStatus
                     packetError = unknown_type;
                     *txDelivered = false;
                     *txStatusReceived = false;
-qDebug() << "Packet error detected: Type" << QString("%1").arg(rxMessage.frameType,0,16)
-         << ", Length" << rxMessage.length;
-QString msg;
-for (uint8_t i=0; i<rxMessage.length-1; i++)
-msg.append(QString("%1 ").arg(rxMessage.message.array[i],2,16,(QChar)'0'));
-qDebug() << "Unknown Frame: data contents"<< msg;
+printf("Packet error detected: Type %x, Length %d\n", rxMessage.frameType, rxMessage.length);
+printf("Unknown Frame: data contents");
+for (uint8_t i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
+printf("\n");
                 }
                 messageState = 0;   /* Reset packet counter */
                 break;
@@ -425,7 +421,7 @@ duplicated if the original message was actually received correctly. */
                 if (rxMessage.frameType == 0x8B)
                 {
                     *txStatusReceived = true;
-qDebug() << "Faulty status frame - treat as errored!";
+printf("Faulty status frame - treat as errored!\n");
                 }
                 else
                 {
@@ -433,7 +429,7 @@ qDebug() << "Faulty status frame - treat as errored!";
                     rxMessage.frameType = 0;
                     packetError = unknown_error;
                     *txStatusReceived = false;
-qDebug() << "Other error detected" << rxMessage.frameType;
+printf("Other error detected %x\n", rxMessage.frameType);
                 }
                 messageState = 0;   /* Reset packet counter */
                 break;
@@ -445,8 +441,11 @@ Otherwise continue waiting. */
         {
             if (timeResponse++ > RESPONSE_DELAY)
             {
-qDebug() << "Timeout waiting for base station" << ", Delivered?" << txDelivered
-         << ", Received?" << txStatusReceived;
+printf("Timeout waiting for base station: ");
+if (! *txDelivered) printf("not ");
+printf("delivered ");
+if (! *txStatusReceived) printf("not ");
+printf("received\n");
                 timeResponse = 0;
                 packetError = timeout;
                 *txDelivered = false;
