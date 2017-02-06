@@ -142,7 +142,7 @@ uartInit() in the emulated code should be set to a null function. */
                 return;
         }
         bool ok = set_serial_attribs(port, baudrate, 0);
-        if (ok)
+        if (! ok)
         {
                 printf("Unable to change serial attributes %s: %s\n",
                         serialPort, strerror(errno));

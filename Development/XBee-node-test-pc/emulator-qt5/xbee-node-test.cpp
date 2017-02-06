@@ -124,7 +124,7 @@ XbeeNodeTest::XbeeNodeTest(QString* p,uint initialBaudrate,bool commandLine,
             running = true;
             if (commandLineOnly)
             {
-                if (debugMode) qDebug() << "Running";
+                if (debugMode) qDebug() << "Running, baud rate"<< bauds[initialBaudrate];
                 codeRun();
             }
             else

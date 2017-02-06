@@ -78,7 +78,8 @@ unsigned int getch(void)
     if (bufferSize == 0)         /* If empty try to fill buffer */
     {
         int numRead = read(port, inBuf, BUFFER_SIZE);
-        if (numRead <= 0) return NO_DATA;
+        if (numRead == 0) return (NO_DATA << 8);
+        if (numRead < 0) return (FRAME_ERROR<<8);
         bufferSize += numRead;
         bufferPointer = 0;      /* Restart reading at the beginning of buffer */
     }

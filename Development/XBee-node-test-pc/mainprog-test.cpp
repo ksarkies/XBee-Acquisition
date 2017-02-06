@@ -106,6 +106,18 @@ static uint8_t coordinatorAddress16[2];
 static void inline hardwareInit(void);
 static void inline timer0Init(uint8_t mode,uint16_t timerClock);
 
+void displayMessage(rxFrameType rxMessage)
+{
+    qDebug() << "Length" << rxMessage.length;
+    qDebug() << "Checksum" << rxMessage.checksum;
+    qDebug() << "Type" << rxMessage.frameType;
+    qDebug() << "AT response received" << (char)rxMessage.message.atResponse.atCommand1 << \
+                                         (char)rxMessage.message.atResponse.atCommand2;
+    qDebug() << "Status" << rxMessage.message.atResponse.status;
+    if (rxMessage.length > 5)
+        qDebug() << "AT response data received" << rxMessage.message.atResponse.data;
+}
+
 /*****************************/
 /* The initialization part is that which is run before the main loop. */
 void mainprogInit()
@@ -152,18 +164,11 @@ Don't start until it is associated. */
             qDebug() << "Message Error" << messageError;
         }
         else
-        {
-            qDebug() << "Length" << rxMessage.length;
-            qDebug() << "Checksum" << rxMessage.checksum;
-            qDebug() << "Type" << rxMessage.frameType;
-            qDebug() << "AT response received" << (char)rxMessage.message.atResponse.atCommand1 << \
-                                                 (char)rxMessage.message.atResponse.atCommand2;
-            qDebug() << "Status" << rxMessage.message.atResponse.status;
-            if (rxMessage.length > 5)
-                qDebug() << "AT response data received" << rxMessage.message.atResponse.data;
+        {   
+            displayMessage(rxMessage);
         }
         associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.data == 0) && \
+                     (rxMessage.message.atResponse.data[0] == 0) && \
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
                      (rxMessage.message.atResponse.atCommand1 == 65) && \
                      (rxMessage.message.atResponse.atCommand2 == 73));
@@ -186,28 +191,32 @@ void mainprog()
 /* Check for incoming messages */
 /* The Rx message variable is re-used and must be processed before the next
 arrives */
+    messageState = 0;
     rxFrameType rxMessage;
     uint8_t messageError = receiveMessage(&rxMessage, &messageState);
 /* The frame types we are handling are 0x90 Rx packet and 0x8B Tx status */
     if (messageError == XBEE_COMPLETE)
     {
-        qDebug() << "Message Received" << rxMessage.message.rxRequest.data[0];
+        qDebug() << "Message Received" << rxMessage.message.rxPacket.data[0];
         if (rxMessage.frameType == RX_REQUEST)
         {
 /* Toggle test port */
 #ifdef TEST_PORT_DIR
-            if (rxMessage.message.rxRequest.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
-            if (rxMessage.message.rxRequest.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxPacket.data[0] == 'L') cbi(TEST_PORT,TEST_PIN);
+            if (rxMessage.message.rxPacket.data[0] == 'O') sbi(TEST_PORT,TEST_PIN);
 #endif
 /* Echo */
-            sendTxRequestFrame(rxMessage.message.rxRequest.sourceAddress64,
-                               rxMessage.message.rxRequest.sourceAddress16,
+            sendTxRequestFrame(rxMessage.message.rxPacket.sourceAddress64,
+                               rxMessage.message.rxPacket.sourceAddress16,
                                0, rxMessage.length-12,
-                               rxMessage.message.rxRequest.data);
+                               rxMessage.message.rxPacket.data);
         }
     }
     else if (messageError != XBEE_INCOMPLETE)
+    {
+        displayMessage(rxMessage);
         qDebug() << "Message Error" << messageError;
+    }
 }
 
 /****************************************************************************/

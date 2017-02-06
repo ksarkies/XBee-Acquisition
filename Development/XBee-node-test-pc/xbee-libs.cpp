@@ -19,6 +19,8 @@
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include "../../libs/xbee.h"
@@ -209,6 +211,7 @@ bool checkAssociated(void)
     rxFrameType rxMessage;
     uint8_t count = 0;
     bool associated = false;
+    uint8_t messageError;
     while (! associated)
     {
         sendATFrame(2,"AI");
@@ -216,7 +219,7 @@ bool checkAssociated(void)
 /* The frame type we are handling is 0x88 AT Command Response */
         uint16_t timeout = 0;
         messageState = 0;
-        uint8_t messageError = XBEE_INCOMPLETE;
+        messageError = XBEE_INCOMPLETE;
 /* Wait for response. If it doesn't come, try sending again. */
         while (messageError == XBEE_INCOMPLETE)
         {
@@ -231,6 +234,10 @@ bool checkAssociated(void)
                      (rxMessage.message.atResponse.atCommand2 == 73));
         if (count++ > 10) break;
     }
+if (! associated) printf("Association fail, error %x, response data %d, \
+frame type %x, command %c%c\n",messageError,rxMessage.message.atResponse.data[0],
+rxMessage.frameType,rxMessage.message.atResponse.atCommand1,
+rxMessage.message.atResponse.atCommand2);
     return associated;
 }
 

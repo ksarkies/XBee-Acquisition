@@ -22,11 +22,11 @@
 /** @name Error Definitions.
 @{*/
 /* From the XBee receiver process: */
-#define XBEE_STATE_MACHINE      0x10
+#define XBEE_STATE_MACHINE      0x10    /* Trying to read beyond the message length */
 #define XBEE_CHECKSUM           0x11
 #define XBEE_ACK                0x12
 #define XBEE_NAK                0x13
-#define XBEE_INCOMPLETE         0x14
+#define XBEE_INCOMPLETE         0x14    /* Probably due to communications failure */
 #define XBEE_COMPLETE           0x15
 /*@}*/
 

@@ -394,8 +394,8 @@ printf("Zigbee Transmit Status Frame: data contents");
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
 printf("Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
-if (! *txDelivered) printf("not ");
-printf("delivered\n");
+if (! *txDelivered) printf(" not");
+printf(" delivered\n");
                 }
 /* Unknown packet type. Discard as error and continue. */
                 else
