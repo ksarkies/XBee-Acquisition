@@ -57,6 +57,7 @@ CTS must be set in the XBee.
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define RTC_SCALE   30
 
@@ -66,8 +67,6 @@ CTS must be set in the XBee.
 /*---------------------------------------------------------------------------*/
 /**** Test code starts here */
 
-#include "../../libs/serial.h"
-#include "../../libs/xbee.h"
 #include "xbee-node-firmware.h"
 
 /****************************************************************************/
@@ -108,7 +107,8 @@ void mainprogInit()
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
 event. */
-    for  (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
+    uint8_t i;
+    for (i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
@@ -349,6 +349,7 @@ timeout occurs.
 packet_error readIncomingMessage(bool* packetReady, bool* txStatusReceived,
                              bool* txDelivered, rxFrameType* inMessage)
 {
+    uint8_t i;
     rxFrameType rxMessage;              /* Received frame */
     uint32_t timeResponse = 0;
     packet_error packetError = no_error;
@@ -373,13 +374,13 @@ from the coordinator system. Copy to a buffer for later processing. */
                     inMessage->length = rxMessage.length;
                     inMessage->checksum = rxMessage.checksum;
                     inMessage->frameType = rxMessage.frameType;
-                    for (uint8_t i=0; i<RF_PAYLOAD; i++)
+                    for (i=0; i<RF_PAYLOAD; i++)
                         inMessage->message.rxPacket.data[i] =
                             rxMessage.message.rxPacket.data[i];
                     *packetReady = true;
 printf("Got a data frame: reply %c", rxMessage.message.rxPacket.data[0]);
 printf(", data contents");
-for (uint8_t i=1; i<rxMessage.length; i++) printf(" %x", rxMessage.message.rxPacket.data[i]);
+for (i=1; i<rxMessage.length; i++) printf(" %x", rxMessage.message.rxPacket.data[i]);
 printf("\n");
                 }
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
@@ -390,7 +391,7 @@ txDelivered is false and txStatusReceived is true. */
                     *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                     *txStatusReceived = true;
 printf("Zigbee Transmit Status Frame: data contents");
-for (uint8_t i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
+for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
 printf("Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
 if (! *txDelivered) printf("not ");
@@ -404,7 +405,7 @@ printf("delivered\n");
                     *txStatusReceived = false;
 printf("Packet error detected: Type %x, Length %d\n", rxMessage.frameType, rxMessage.length);
 printf("Unknown Frame: data contents");
-for (uint8_t i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
+for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
                 }
                 messageState = 0;   /* Reset packet counter */

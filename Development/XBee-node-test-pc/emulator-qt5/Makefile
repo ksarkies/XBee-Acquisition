@@ -291,7 +291,7 @@ qmake_all: FORCE
 
 dist: 
 	@test -d obj/xbee-node-test1.0.0 || mkdir -p obj/xbee-node-test1.0.0
-	$(COPY_FILE) --parents $(SOURCES) $(DIST) obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test.h ../../../libs/xbee.h ../../libs/serial.h obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test-main.cpp xbee-node-test.cpp serial-libs.cpp ../xbee-libs.cpp ../mainprog-firmware.cpp obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test.ui obj/xbee-node-test1.0.0/ && (cd `dirname obj/xbee-node-test1.0.0` && $(TAR) xbee-node-test1.0.0.tar xbee-node-test1.0.0 && $(COMPRESS) xbee-node-test1.0.0.tar) && $(MOVE) `dirname obj/xbee-node-test1.0.0`/xbee-node-test1.0.0.tar.gz . && $(DEL_FILE) -r obj/xbee-node-test1.0.0
+	$(COPY_FILE) --parents $(SOURCES) $(DIST) obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test.h ../../../libs/xbee.h ../../../libs/serial.h obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test-main.cpp xbee-node-test.cpp serial-libs.cpp ../xbee-libs.cpp ../mainprog-firmware.cpp obj/xbee-node-test1.0.0/ && $(COPY_FILE) --parents xbee-node-test.ui obj/xbee-node-test1.0.0/ && (cd `dirname obj/xbee-node-test1.0.0` && $(TAR) xbee-node-test1.0.0.tar xbee-node-test1.0.0 && $(COMPRESS) xbee-node-test1.0.0.tar) && $(MOVE) `dirname obj/xbee-node-test1.0.0`/xbee-node-test1.0.0.tar.gz . && $(DEL_FILE) -r obj/xbee-node-test1.0.0
 
 
 clean:compiler_clean 
@@ -431,47 +431,6 @@ moc/moc_xbee-node-test.cpp: /usr/include/qt5/QtWidgets/QDialog \
 		/usr/include/qt5/QtSerialPort/qserialport.h \
 		/usr/include/qt5/QtSerialPort/qserialportglobal.h \
 		ui/ui_xbee-node-test.h \
-		/usr/include/qt5/QtCore/QVariant \
-		/usr/include/qt5/QtWidgets/QAction \
-		/usr/include/qt5/QtWidgets/qaction.h \
-		/usr/include/qt5/QtGui/qicon.h \
-		/usr/include/qt5/QtWidgets/qactiongroup.h \
-		/usr/include/qt5/QtWidgets/QApplication \
-		/usr/include/qt5/QtWidgets/qapplication.h \
-		/usr/include/qt5/QtCore/qcoreapplication.h \
-		/usr/include/qt5/QtCore/qeventloop.h \
-		/usr/include/qt5/QtWidgets/qdesktopwidget.h \
-		/usr/include/qt5/QtGui/qguiapplication.h \
-		/usr/include/qt5/QtGui/qinputmethod.h \
-		/usr/include/qt5/QtWidgets/QButtonGroup \
-		/usr/include/qt5/QtWidgets/qbuttongroup.h \
-		/usr/include/qt5/QtWidgets/QCheckBox \
-		/usr/include/qt5/QtWidgets/qcheckbox.h \
-		/usr/include/qt5/QtWidgets/qabstractbutton.h \
-		/usr/include/qt5/QtWidgets/QComboBox \
-		/usr/include/qt5/QtWidgets/qcombobox.h \
-		/usr/include/qt5/QtWidgets/qabstractitemdelegate.h \
-		/usr/include/qt5/QtWidgets/qstyleoption.h \
-		/usr/include/qt5/QtWidgets/qabstractspinbox.h \
-		/usr/include/qt5/QtGui/qvalidator.h \
-		/usr/include/qt5/QtCore/qregularexpression.h \
-		/usr/include/qt5/QtWidgets/qslider.h \
-		/usr/include/qt5/QtWidgets/qabstractslider.h \
-		/usr/include/qt5/QtWidgets/qstyle.h \
-		/usr/include/qt5/QtWidgets/qtabbar.h \
-		/usr/include/qt5/QtWidgets/qtabwidget.h \
-		/usr/include/qt5/QtWidgets/qrubberband.h \
-		/usr/include/qt5/QtWidgets/qframe.h \
-		/usr/include/qt5/QtCore/qabstractitemmodel.h \
-		/usr/include/qt5/QtWidgets/QHeaderView \
-		/usr/include/qt5/QtWidgets/qheaderview.h \
-		/usr/include/qt5/QtWidgets/qabstractitemview.h \
-		/usr/include/qt5/QtWidgets/qabstractscrollarea.h \
-		/usr/include/qt5/QtCore/qitemselectionmodel.h \
-		/usr/include/qt5/QtWidgets/QLabel \
-		/usr/include/qt5/QtWidgets/qlabel.h \
-		/usr/include/qt5/QtWidgets/QPushButton \
-		/usr/include/qt5/QtWidgets/qpushbutton.h \
 		xbee-node-test.h
 	/usr/lib/x86_64-linux-gnu/qt5/bin/moc $(DEFINES) $(INCPATH) -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 -I/usr/include/c++/4.8/backward -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include xbee-node-test.h -o moc/moc_xbee-node-test.cpp
 
@@ -617,41 +576,7 @@ obj/xbee-node-test-main.o: xbee-node-test-main.cpp /usr/include/qt5/QtWidgets/QA
 		/usr/include/qt5/QtSerialPort/QSerialPort \
 		/usr/include/qt5/QtSerialPort/qserialport.h \
 		/usr/include/qt5/QtSerialPort/qserialportglobal.h \
-		ui/ui_xbee-node-test.h \
-		/usr/include/qt5/QtCore/QVariant \
-		/usr/include/qt5/QtWidgets/QAction \
-		/usr/include/qt5/QtWidgets/qaction.h \
-		/usr/include/qt5/QtGui/qicon.h \
-		/usr/include/qt5/QtWidgets/qactiongroup.h \
-		/usr/include/qt5/QtWidgets/QButtonGroup \
-		/usr/include/qt5/QtWidgets/qbuttongroup.h \
-		/usr/include/qt5/QtWidgets/QCheckBox \
-		/usr/include/qt5/QtWidgets/qcheckbox.h \
-		/usr/include/qt5/QtWidgets/qabstractbutton.h \
-		/usr/include/qt5/QtWidgets/QComboBox \
-		/usr/include/qt5/QtWidgets/qcombobox.h \
-		/usr/include/qt5/QtWidgets/qabstractitemdelegate.h \
-		/usr/include/qt5/QtWidgets/qstyleoption.h \
-		/usr/include/qt5/QtWidgets/qabstractspinbox.h \
-		/usr/include/qt5/QtGui/qvalidator.h \
-		/usr/include/qt5/QtCore/qregularexpression.h \
-		/usr/include/qt5/QtWidgets/qslider.h \
-		/usr/include/qt5/QtWidgets/qabstractslider.h \
-		/usr/include/qt5/QtWidgets/qstyle.h \
-		/usr/include/qt5/QtWidgets/qtabbar.h \
-		/usr/include/qt5/QtWidgets/qtabwidget.h \
-		/usr/include/qt5/QtWidgets/qrubberband.h \
-		/usr/include/qt5/QtWidgets/qframe.h \
-		/usr/include/qt5/QtCore/qabstractitemmodel.h \
-		/usr/include/qt5/QtWidgets/QHeaderView \
-		/usr/include/qt5/QtWidgets/qheaderview.h \
-		/usr/include/qt5/QtWidgets/qabstractitemview.h \
-		/usr/include/qt5/QtWidgets/qabstractscrollarea.h \
-		/usr/include/qt5/QtCore/qitemselectionmodel.h \
-		/usr/include/qt5/QtWidgets/QLabel \
-		/usr/include/qt5/QtWidgets/qlabel.h \
-		/usr/include/qt5/QtWidgets/QPushButton \
-		/usr/include/qt5/QtWidgets/qpushbutton.h
+		ui/ui_xbee-node-test.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/xbee-node-test-main.o xbee-node-test-main.cpp
 
 obj/xbee-node-test.o: xbee-node-test.cpp /usr/include/qt5/QtWidgets/QApplication \
@@ -788,38 +713,7 @@ obj/xbee-node-test.o: xbee-node-test.cpp /usr/include/qt5/QtWidgets/QApplication
 		/usr/include/qt5/QtCore/qbasictimer.h \
 		xbee-node-test.h \
 		/usr/include/qt5/QtWidgets/QDialog \
-		ui/ui_xbee-node-test.h \
-		/usr/include/qt5/QtCore/QVariant \
-		/usr/include/qt5/QtWidgets/QAction \
-		/usr/include/qt5/QtWidgets/qaction.h \
-		/usr/include/qt5/QtGui/qicon.h \
-		/usr/include/qt5/QtWidgets/qactiongroup.h \
-		/usr/include/qt5/QtWidgets/QButtonGroup \
-		/usr/include/qt5/QtWidgets/qbuttongroup.h \
-		/usr/include/qt5/QtWidgets/QCheckBox \
-		/usr/include/qt5/QtWidgets/qcheckbox.h \
-		/usr/include/qt5/QtWidgets/qabstractbutton.h \
-		/usr/include/qt5/QtWidgets/QComboBox \
-		/usr/include/qt5/QtWidgets/qcombobox.h \
-		/usr/include/qt5/QtWidgets/qabstractitemdelegate.h \
-		/usr/include/qt5/QtWidgets/qstyleoption.h \
-		/usr/include/qt5/QtWidgets/qabstractspinbox.h \
-		/usr/include/qt5/QtGui/qvalidator.h \
-		/usr/include/qt5/QtCore/qregularexpression.h \
-		/usr/include/qt5/QtWidgets/qslider.h \
-		/usr/include/qt5/QtWidgets/qabstractslider.h \
-		/usr/include/qt5/QtWidgets/qstyle.h \
-		/usr/include/qt5/QtWidgets/qtabbar.h \
-		/usr/include/qt5/QtWidgets/qtabwidget.h \
-		/usr/include/qt5/QtWidgets/qrubberband.h \
-		/usr/include/qt5/QtCore/qabstractitemmodel.h \
-		/usr/include/qt5/QtWidgets/QHeaderView \
-		/usr/include/qt5/QtWidgets/qheaderview.h \
-		/usr/include/qt5/QtWidgets/qabstractitemview.h \
-		/usr/include/qt5/QtWidgets/qabstractscrollarea.h \
-		/usr/include/qt5/QtCore/qitemselectionmodel.h \
-		/usr/include/qt5/QtWidgets/QPushButton \
-		/usr/include/qt5/QtWidgets/qpushbutton.h
+		ui/ui_xbee-node-test.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/xbee-node-test.o xbee-node-test.cpp
 
 obj/serial-libs.o: serial-libs.cpp /usr/include/qt5/QtSerialPort/QSerialPort \
@@ -940,48 +834,7 @@ obj/serial-libs.o: serial-libs.cpp /usr/include/qt5/QtSerialPort/QSerialPort \
 		/usr/include/qt5/QtGui/qvector2d.h \
 		/usr/include/qt5/QtGui/qtouchdevice.h \
 		/usr/include/qt5/QtGui/QCloseEvent \
-		ui/ui_xbee-node-test.h \
-		/usr/include/qt5/QtCore/QVariant \
-		/usr/include/qt5/QtWidgets/QAction \
-		/usr/include/qt5/QtWidgets/qaction.h \
-		/usr/include/qt5/QtGui/qicon.h \
-		/usr/include/qt5/QtWidgets/qactiongroup.h \
-		/usr/include/qt5/QtWidgets/QApplication \
-		/usr/include/qt5/QtWidgets/qapplication.h \
-		/usr/include/qt5/QtCore/qcoreapplication.h \
-		/usr/include/qt5/QtCore/qeventloop.h \
-		/usr/include/qt5/QtWidgets/qdesktopwidget.h \
-		/usr/include/qt5/QtGui/qguiapplication.h \
-		/usr/include/qt5/QtGui/qinputmethod.h \
-		/usr/include/qt5/QtWidgets/QButtonGroup \
-		/usr/include/qt5/QtWidgets/qbuttongroup.h \
-		/usr/include/qt5/QtWidgets/QCheckBox \
-		/usr/include/qt5/QtWidgets/qcheckbox.h \
-		/usr/include/qt5/QtWidgets/qabstractbutton.h \
-		/usr/include/qt5/QtWidgets/QComboBox \
-		/usr/include/qt5/QtWidgets/qcombobox.h \
-		/usr/include/qt5/QtWidgets/qabstractitemdelegate.h \
-		/usr/include/qt5/QtWidgets/qstyleoption.h \
-		/usr/include/qt5/QtWidgets/qabstractspinbox.h \
-		/usr/include/qt5/QtGui/qvalidator.h \
-		/usr/include/qt5/QtCore/qregularexpression.h \
-		/usr/include/qt5/QtWidgets/qslider.h \
-		/usr/include/qt5/QtWidgets/qabstractslider.h \
-		/usr/include/qt5/QtWidgets/qstyle.h \
-		/usr/include/qt5/QtWidgets/qtabbar.h \
-		/usr/include/qt5/QtWidgets/qtabwidget.h \
-		/usr/include/qt5/QtWidgets/qrubberband.h \
-		/usr/include/qt5/QtWidgets/qframe.h \
-		/usr/include/qt5/QtCore/qabstractitemmodel.h \
-		/usr/include/qt5/QtWidgets/QHeaderView \
-		/usr/include/qt5/QtWidgets/qheaderview.h \
-		/usr/include/qt5/QtWidgets/qabstractitemview.h \
-		/usr/include/qt5/QtWidgets/qabstractscrollarea.h \
-		/usr/include/qt5/QtCore/qitemselectionmodel.h \
-		/usr/include/qt5/QtWidgets/QLabel \
-		/usr/include/qt5/QtWidgets/qlabel.h \
-		/usr/include/qt5/QtWidgets/QPushButton \
-		/usr/include/qt5/QtWidgets/qpushbutton.h
+		ui/ui_xbee-node-test.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/serial-libs.o serial-libs.cpp
 
 obj/xbee-libs.o: ../xbee-libs.cpp ../../../libs/xbee.h \
@@ -1103,9 +956,9 @@ obj/xbee-libs.o: ../xbee-libs.cpp ../../../libs/xbee.h \
 		/usr/include/qt5/QtGui/qinputmethod.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/xbee-libs.o ../xbee-libs.cpp
 
-obj/mainprog-firmware.o: ../mainprog-firmware.cpp ../../../libs/serial.h \
-		../../../libs/xbee.h \
-		xbee-node-firmware.h
+obj/mainprog-firmware.o: ../mainprog-firmware.cpp ../xbee-node-firmware.h \
+		../../../libs/serial.h \
+		../../../libs/xbee.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/mainprog-firmware.o ../mainprog-firmware.cpp
 
 obj/moc_xbee-node-test.o: moc/moc_xbee-node-test.cpp 

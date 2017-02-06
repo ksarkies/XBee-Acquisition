@@ -20,10 +20,9 @@
 
 #include <inttypes.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include "../../libs/xbee.h"
 #include "../../libs/serial.h"
-#include <QDebug>
-#include <QApplication>
 
 /* Convenience macros (we don't use them all) */
 #define  _BV(bit) (1 << (bit))
@@ -72,7 +71,6 @@ void sendTxRequestFrame(const uint8_t sourceAddress64[],
         txMessage.message.txRequest.data[i] = data[i];
     }
     sendBaseFrame(txMessage);
-    qApp->processEvents();      // Allow serial transmission to complete
 }
 
 /****************************************************************************/
@@ -156,7 +154,6 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
         switch(state)
         {
 /* Sync character */
-            qDebug() << inputValue << state;
             case 0:
                 if (inputChar == 0x7E) state++;
                 break;

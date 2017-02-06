@@ -29,6 +29,12 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 #ifndef _XBEE_NODE_FIRMWARE_H_
 #define _XBEE_NODE_FIRMWARE_H_
 
+#include "../../libs/serial.h"
+#include "../../libs/xbee.h"
+
+void mainprog();
+void mainprogInit();
+
 /* WDT count to give desired time between activations of the AVR */
 #define ACTION_MINUTES          10
 

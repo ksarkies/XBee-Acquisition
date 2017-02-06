@@ -50,10 +50,14 @@ with appropriate adaption of the .pro and mainprog-*.cpp files:
 * xbee-node-test.pro
 * xbee-node-test.ui
 * serial-libs.cpp
+* xbee-libs.cpp
 
 serial-libs.cpp is a substitute set of communication functions calling on
 POSIX/QT serial I/O. This should contain functions that match the calls in the
 test code.
+
+xbee-lib.c and mainprog-*.c are include wrappers used to force C compilation on
+cpp source files.
 
 **mainprog-*.cpp** must be provided with the code to be tested in the following
 way:
