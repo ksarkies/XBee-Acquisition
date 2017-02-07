@@ -42,25 +42,37 @@ This is taken from the [xbee-firmware](https://github.com/ksarkies/XBee-Acquisit
 -----------------------------------
 
 The following files may be used as the environment emulator for other code tests
-with appropriate adaption of the .pro and mainprog-*.cpp files:
+with appropriate adaption of the makefiles and mainprog-*.cpp files. For QT5:
 
 * xbee-node-test-main.cpp
 * xbee-node-test.cpp
 * xbee-node-test.h
-* xbee-node-test.pro
 * xbee-node-test.ui
 * serial-libs.cpp
 * xbee-libs.cpp
+* xbee-node-test.pro - qmake definitions for generating makefile
 
-serial-libs.cpp is a substitute set of communication functions calling on
-POSIX/QT serial I/O. This should contain functions that match the calls in the
-test code.
+For C:
 
-xbee-lib.c and mainprog-*.c are include wrappers used to force C compilation on
-cpp source files.
+* xbee-node-test.c
+* xbee-node-test.h
+* xbee-node-test.pro
+* serial-libs.c
+* CMakeLists.txt  - cmake definitions for generating makefile
 
-**mainprog-*.cpp** must be provided with the code to be tested in the following
-way:
+**serial-libs.cpp** and **serial-libs.c** are substitute sets of communication
+functions calling on POSIX/QT serial I/O. These should contain functions that
+match the calls in the test code.
+
+**xbee-libs.cpp** is a file associated with the code under test, which has been
+copied from the library directory with its extension changed from c to cpp to
+satisfy the g++ compiler (otherwise it is not correctly linked).
+
+**xbee-lib.c** and **mainprog-*.c** are include wrappers used to force C
+compilation on cpp source files.
+
+**mainprog-*.cpp** are common to both emulators. They must be provided with the
+code to be tested in the following way:
 
 Split the code to be tested into an initialization part and an operational
 part that normally falls within an infinite loop. Place the initialization part
@@ -83,10 +95,6 @@ sets the number of one millisecond tick counts at which the timer fires and
 calls the ISR. If a timer ISR is not defined, a null ISR is substituted. The
 timer ISR can be defined in the test code by replacing the actual ISR call with
 the function: timerISR().
-
-**xbee-libs.cpp** is a file associated with the code under test, which has been
-copied from the library directory with its extension changed from c to cpp to
-satisfy the g++ compiler (otherwise it is not correctly linked).
 
 K. Sarkies
 3 February 2017

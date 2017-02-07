@@ -1,1 +1,0 @@
-/data/home/ksarkies/Projects/XBee-Acquisition/Development/XBee-node-test-pc/emulator-c/CMakeFiles/xbee-node-test.dir

@@ -96,7 +96,7 @@ int main(int argc,char ** argv)
         switch (c)
         {
         case 'P':
-            strcpy(optarg,serialPort);
+            strcpy(serialPort,optarg);
             break;
         case 'd':
             debug = true;

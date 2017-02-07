@@ -199,9 +199,13 @@ printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
                         packet_error packetError =
                             readIncomingMessage(&packetReady, &txStatusReceived,
                                                  &txDelivered, &inMessage);
-/* Drop out if there are too many errors */
+/* Break out of cycle if there are too many errors */
                         if (packetError != no_error) errorCount++;
-                        if (errorCount > 10) break;
+                        if (errorCount > 10)
+                        {
+printf("Too many receive errors, latest error %d\n", packetError);
+                            break;
+                        }
 
 /* ============ Interpret messages and decide on actions to take */
 
@@ -223,11 +227,11 @@ Retry three times with an N command then give up the entire cycle with an X
 command. */
                                 if (rxCommand == 'N')
                                 {
+printf("NAK received.\n");
                                     if (++retry >= 3) cycleComplete = true;
                                     txCommand = 'N';
                                     transmit = true;
                                     packetReady = false;
-printf("NAK\n");
                                 }
 /* Got an ACK: aaaah that feels good. */
                                 else if (rxCommand == 'A')
@@ -235,7 +239,7 @@ printf("NAK\n");
 /* We can now subtract the transmitted count from the current counter value
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to zero to cause it to drop out immediately if the counts had not changed. */
-printf("ACK\n");
+printf("ACK received.\n");
                                     counter -= lastCount;
                                     lastCount = 0;
                                     cycleComplete = true;
@@ -248,9 +252,9 @@ cycle. Send an E data packet to signal to the base station. */
                             else if (packetError != no_error)
                             {
                                 if (++retry >= 3) cycleComplete = true;
+printf("Process Packet Error %d, Try number %d\n", packetError, retry);
                                 txCommand = 'E';
                                 transmit = true;
-printf("Process Packet Error %d\n", packetError);
                             }
                         }
 /* If the message was signalled as definitely not delivered (or was errored),
@@ -261,18 +265,18 @@ not received). */
                         else if (txStatusReceived)
                         {
                             if (++retry >= 3) cycleComplete = true;
+printf("Process Not Delivered: Try number %d\n", retry);
                             txCommand = 'S';
                             transmit = true;
-printf("Process Not Delivered: Try number %d\n", retry);
                         }
 /* If timeout, repeat, or for the initial transmission, send back a timeout
 notification */
                         else if (packetError == timeout)
                         {
                             if (++retry >= 3) cycleComplete = true;
+printf("Process Timeout: Try number %d\n", retry);
                             txCommand = 'T';
                             transmit = true;
-printf("Process Timeout: Try number %d\n", retry);
                         }
 
 /* ============ Command Packets */
@@ -283,7 +287,7 @@ This is intended for application commands. */
                         if (packetReady) interpretCommand(&inMessage);
                     }
 printf("Finished Cycle\n");
-if (retry >= 3) printf("Abandoned\n"); else printf("Accepted\n");
+if (retry >= 3) printf("Abandoned, X sent.\n"); else printf("Accepted, A sent.\n");
 printf("-------------------------\n");
 /* Notify acceptance. No response is expected. */
                     if (retry < 3) sendMessage("A");
@@ -291,7 +295,7 @@ printf("-------------------------\n");
 abandonment of this communication attempt. No response is expected. */
                     else sendMessage("X");
                 }
-else printf("Not associated\n");
+else printf("Not associated.\n");
             }
 //            _delay_ms(1);
         }
@@ -427,10 +431,10 @@ printf("Faulty status frame - treat as errored!\n");
                 else
                 {
 /* With all other errors in the frame, discard everything and repeat. */
+printf("Other error detected %x\n", rxMessage.frameType);
                     rxMessage.frameType = 0;
                     packetError = unknown_error;
                     *txStatusReceived = false;
-printf("Other error detected %x\n", rxMessage.frameType);
                 }
                 messageState = 0;   /* Reset packet counter */
                 break;
