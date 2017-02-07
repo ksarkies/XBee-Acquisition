@@ -134,7 +134,8 @@ uartInit() in the emulated code should be set to a null function. */
     struct stat fileStatus;
     if(stat(serialPort,&fileStatus) == 0)   /* Check if serial port exists */
     {
-        port = open(serialPort, O_RDWR | O_NOCTTY | O_SYNC);
+/* Open as R/W and no controlling terminal */
+        port = open(serialPort, O_RDWR | O_NOCTTY);
         if (port < 0)
         {
                 printf("Unable to open serial port %s: %s\n",
@@ -150,11 +151,12 @@ uartInit() in the emulated code should be set to a null function. */
         }
         set_blocking(port, false);          /* set no blocking */
 
+printf("Running, baudrate %d port %s\n", baudParm, serialPort);
 /* Run emulated code. The test code is split to an initialisation part and an
 operational part which falls within an (almost) infinite loop emulated here.
 After initialisation of the timer the tick function is called to update the
 counter. The ISR is called in that function when the limit is reached. */
-        mainprogInit();                 // Initialization section
+        mainprogInit();                     /* Initialization section */
         while (true)
         {
 /* Ensure time ticks over for calls to an emulated ISR, and call the ISR */
@@ -248,10 +250,10 @@ as \000 chars */
 
     tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
                                     // enable reading
-    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-    tty.c_cflag |= parity;
-    tty.c_cflag &= ~CSTOPB;
-    tty.c_cflag &= ~CRTSCTS;
+    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity checks
+    tty.c_cflag |= parity;          // and add them back in
+    tty.c_cflag &= ~CSTOPB;         // No stop bits
+    tty.c_cflag &= ~CRTSCTS;        // No hardware flow control
 
     if (tcsetattr(port, TCSANOW, &tty) != 0)
     {

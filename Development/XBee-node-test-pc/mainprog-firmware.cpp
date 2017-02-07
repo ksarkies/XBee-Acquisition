@@ -200,10 +200,14 @@ printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
                             readIncomingMessage(&packetReady, &txStatusReceived,
                                                  &txDelivered, &inMessage);
 /* Break out of cycle if there are too many errors */
-                        if (packetError != no_error) errorCount++;
+                        if (packetError != no_error)
+                        {
+printf("Receive error %d\n", packetError);
+                            errorCount++;
+                        }
                         if (errorCount > 10)
                         {
-printf("Too many receive errors, latest error %d\n", packetError);
+printf("Too many receive errors\n");
                             break;
                         }
 
