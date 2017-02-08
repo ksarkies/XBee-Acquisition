@@ -135,23 +135,27 @@ uartInit() in the emulated code should be set to a null function. */
     if(stat(serialPort,&fileStatus) == 0)   /* Check if serial port exists */
     {
 /* Open as R/W and no controlling terminal */
-        port = open(serialPort, O_RDWR | O_NOCTTY);
+        port = open(serialPort, O_RDWR | O_NOCTTY | O_SYNC);
         if (port < 0)
         {
-                printf("Unable to open serial port %s: %s\n",
-                        serialPort, strerror(errno));
-                return;
+            printf("Unable to open serial port %s: %s\n",
+                    serialPort, strerror(errno));
+            return;
+        }
+        if (flock(port, LOCK_EX | LOCK_NB) < 0)
+        {
+            printf("XBee is in use on port %s\n", serialPort);
+            return;
         }
         bool ok = set_serial_attribs(port, baudrate, 0);
         if (! ok)
         {
-                printf("Unable to change serial attributes %s: %s\n",
-                        serialPort, strerror(errno));
-                return;
+            printf("Unable to change serial attributes %s: %s\n",
+                    serialPort, strerror(errno));
+            return;
         }
-        set_blocking(port, false);          /* set no blocking */
 
-printf("Running, baudrate %d port %s\n", baudParm, serialPort);
+printf("Running, baudrate %d port %s\n", baudrate, serialPort);
 /* Run emulated code. The test code is split to an initialisation part and an
 operational part which falls within an (almost) infinite loop emulated here.
 After initialisation of the timer the tick function is called to update the
@@ -226,66 +230,59 @@ Refer to POSIX struct termios and tcgetattr for definitions.
 bool set_serial_attribs(int port, int baudrate, int parity)
 {
     struct termios tty;
-    memset (&tty, 0, sizeof tty);
-    if (tcgetattr (port, &tty) != 0)
+    memset(&tty, 0, sizeof tty);    // Fill with zeros
+    if (tcgetattr(port, &tty) != 0)
     {
         printf("Unable to get serial parameters: %d\n", errno);
         return false;
     }
 
-    cfsetospeed(&tty, baudrate);
-    cfsetispeed(&tty, baudrate);
-
     tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
 /* disable IGNBRK for mismatched speed tests; otherwise receive break
 as \000 chars */
-    tty.c_iflag &= ~IGNBRK;         // disable break processing
-    tty.c_lflag = 0;                // no signaling chars, no echo,
-                                    // no canonical processing
-    tty.c_oflag = 0;                // no remapping, no delays
-    tty.c_cc[VMIN]  = 0;            // read doesn't block
-    tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+    tty.c_iflag &= ~IGNBRK;             /* disable break processing */
+    tty.c_iflag &= ~(IGNPAR | PARMRK);  /* disable parity checks */
+    tty.c_iflag &= ~INPCK;              /* disable parity checking */
+    tty.c_iflag &= ~ISTRIP;             /* disable stripping 8th bit */
+    tty.c_iflag &= ~(INLCR | ICRNL);    /* disable translating NL <-> CR */
+    tty.c_iflag &= ~IGNCR;              /* disable ignoring CR */
+    tty.c_iflag &= ~(IXON | IXOFF);     /* disable XON/XOFF flow control */
+    tty.c_oflag &= ~ OPOST;             /* disable output processing */
+    tty.c_oflag &= ~(ONLCR | OCRNL);    /* disable translating NL <-> CR */
+    tty.c_oflag &= ~OFILL;              /* disable fill characters */
+    tty.c_cflag |=  CLOCAL;             /* prevent changing ownership */
+    tty.c_cflag |=  CREAD;              /* enable receiver */
+    tty.c_cflag &= ~PARENB;             /* disable parity */
+    if (baudrate >= B115200)
+        tty.c_cflag |=  CSTOPB;         /* enable 2 stop bits for the high baudrate */
+    else
+	    tty.c_cflag &= ~CSTOPB;         /* disable stop bits */
+    tty.c_cflag &= ~CSIZE;              /* remove size flag */
+    tty.c_cflag |=  CS8;                /* enable 8 bit characters */
+    tty.c_cflag |=  HUPCL;              /* enable lower control lines on close - hang up */
+#ifdef USE_HARDWARE_FLOW
+	tty.c_cflag &= ~CRTSCTS;            /* disable hardware CTS/RTS flow control */
+#else
+	tty.c_cflag |=  CRTSCTS;            /* enable hardware CTS/RTS flow control */
+#endif
+    tty.c_lflag &= ~ISIG;               /* disable generating signals */
+    tty.c_lflag &= ~ICANON;             /* disable canonical mode - line by line */
+    tty.c_lflag &= ~ECHO;               /* disable echoing characters */
+    tty.c_lflag &= ~ECHONL;
+    tty.c_lflag &= ~NOFLSH;             /* disable flushing on SIGINT */
+    tty.c_lflag &= ~IEXTEN;             /* disable input processing */
 
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+    memset(tty.c_cc,0,sizeof(tty.c_cc));    /* Null out control characters */
+    tty.c_cc[VMIN]  = 0;                /* read doesn't block */
+    tty.c_cc[VTIME] = 5;                /* 0.5 seconds read timeout */
+    cfsetspeed(&tty, baudrate);
 
-    tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-                                    // enable reading
-    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity checks
-    tty.c_cflag |= parity;          // and add them back in
-    tty.c_cflag &= ~CSTOPB;         // No stop bits
-    tty.c_cflag &= ~CRTSCTS;        // No hardware flow control
-
+    tcflush(port, TCIFLUSH);
     if (tcsetattr(port, TCSANOW, &tty) != 0)
     {
         printf("Unable to set serial parameters: %d\n", errno);
         return false;
     }
     return true;
-}
-
-/*****************************************************************************/
-/* brief Setup Serial Interface
-
-Refer to POSIX struct termios and tcgetattr for definitions.
-
-@param[in] int port: file descriptor.
-@param[in] bool block.
-*/
-
-void set_blocking(int port, bool block)
-{
-    struct termios tty;
-    memset(&tty, 0, sizeof tty);
-    if (tcgetattr(port, &tty) != 0)
-    {
-        printf("Unable to get serial parameters: %d\n", errno);
-        return;
-    }
-    tty.c_cc[VMIN]  = 0;
-    if (block) tty.c_cc[VMIN]  = 1;
-    tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
-
-    if (tcsetattr(port, TCSANOW, &tty) != 0)
-        printf("Unable to set serial parameters: %d\n", errno);
 }
 

@@ -69,6 +69,12 @@ CTS must be set in the XBee.
 
 #include "xbee-node-firmware.h"
 
+/* Reduce timeout delay for this POSIX code */
+#ifdef RESPONSE_DELAY
+#undef RESPONSE_DELAY
+#define RESPONSE_DELAY 10
+#endif
+
 /****************************************************************************/
 /* Global Variables */
 
@@ -426,16 +432,17 @@ printf("\n");
 /* For any received errored Tx Status frame, we are unsure about its validity,
 so treat it as if the delivery did not occur. This may result in data being
 duplicated if the original message was actually received correctly. */
+printf("Error in packet: message error %x ",messageStatus);
                 *txDelivered = false;
                 if (rxMessage.frameType == 0x8B)
                 {
                     *txStatusReceived = true;
-printf("Faulty status frame - treat as errored!\n");
+printf("Faulty transmit status frame - treat as errored!\n");
                 }
                 else
                 {
 /* With all other errors in the frame, discard everything and repeat. */
-printf("Other error detected %x\n", rxMessage.frameType);
+printf("Other error detected, frame type %x\n", rxMessage.frameType);
                     rxMessage.frameType = 0;
                     packetError = unknown_error;
                     *txStatusReceived = false;

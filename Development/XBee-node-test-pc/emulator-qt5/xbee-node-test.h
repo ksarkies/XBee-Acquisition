@@ -32,6 +32,9 @@ Title:    XBee Node Test
 #define INITIAL_BAUDRATE    5
 #define SERIAL_PORT         "/dev/ttyUSB0"
 
+/* Choose whether to use hardware flow control for serial comms. */
+//#define USE_HARDWARE_FLOW
+
 //-----------------------------------------------------------------------------
 /* External variable needed for access by serial emulation code */
 extern QSerialPort* port;          //!< Serial port object pointer

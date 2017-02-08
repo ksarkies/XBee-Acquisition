@@ -39,6 +39,9 @@ Tested:     ATTiny4313 at 1MHz internal clock.
 #define SERIAL_PORT         "/dev/ttyUSB0"
 #define BAUDRATE            B38400
 
+/* Choose whether to use hardware flow control for serial comms. */
+//#define USE_HARDWARE_FLOW
+
 /* Serial Port Parameters */
 
 enum DataBitsType
