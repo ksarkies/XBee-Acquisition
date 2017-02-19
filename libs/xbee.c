@@ -327,10 +327,11 @@ int8_t readXBeeIO(uint8_t* data)
 /****************************************************************************/
 /** @brief Access ADC data from the XBee.
 
-The XBee returns a variable length data field
-depending on what ports have been enabled.
+Extract the ADC data that was previously obtained. The XBee returns a variable
+length data field depending on what ports have been enabled.
 
-@param[in] uint8_t* data: data field from the XBee after a readXBeeIO.
+@param[in] uint8_t* data: data array from the XBee after a readXBeeIO call.
+@param[in] uint8_t adcPort: 0-4. The XBee ADC port to be accessed.
 @returns uint16_t AD2 value; XBee A/D converter is 10 bits.
 */
 
@@ -339,7 +340,7 @@ uint16_t getXBeeADC(uint8_t* data, uint8_t adcPort)
     uint16_t value = 0;
     uint8_t i = 4;
     if ((data[1] > 0) || (data[2] > 0)) i = 6;  /* Skip digital data present */
-    uint8_t port = 0;                       /* Check through ADC data mask */
+    uint8_t port = 0;                           /* Check through ADC data mask */
     for (port = 0; port < 5; port++)
     {
         if (port == adcPort)

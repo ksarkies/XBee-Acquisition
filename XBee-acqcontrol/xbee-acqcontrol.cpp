@@ -71,6 +71,7 @@ Compiler: gcc 4.8.2
 struct xbee *xbee;
 struct xbee_con *localATCon;    /* Connection for local AT commands */
 struct xbee_con *identifyCon;   /* Connection for identify packets */
+struct xbee_con *modemStatusCon; /* Connection for modem status packets */
 int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
 char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
@@ -101,12 +102,18 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data);
 void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data);
-void localATCallback(struct xbee *xbee, struct xbee_con *con,
-                    struct xbee_pkt **pkt, void **data);
 void ioCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data);
+void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void localATCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
+void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data);
 
+/* Local Prototypes */
 int min(int x, int y) {if (x>y) return y; else return x;}
+int findRow(unsigned char *addr);
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /** @brief XBee Acquisition Control Main Program
@@ -862,17 +869,18 @@ void openRemoteConnection(int node)
 {
 /* Setup an address to build connections for incoming data, remote AT and I/O
 frames */
+//    struct xbee_conSettings settings;
     struct xbee_conAddress address;
     memset(&address, 0, sizeof(address));
     address.addr64_enabled = 1;
     address.addr64[0] = (nodeInfo[node].SH >> 24) & 0xFF;
     address.addr64[1] = (nodeInfo[node].SH >> 16) & 0xFF;
     address.addr64[2] = (nodeInfo[node].SH >> 8) & 0xFF;
-    address.addr64[3] = nodeInfo[node].SH & 0xFF;
+    address.addr64[3] = (nodeInfo[node].SH & 0xFF);
     address.addr64[4] = (nodeInfo[node].SL >> 24) & 0xFF;
     address.addr64[5] = (nodeInfo[node].SL >> 16) & 0xFF;
     address.addr64[6] = (nodeInfo[node].SL >> 8) & 0xFF;
-    address.addr64[7] = nodeInfo[node].SL & 0xFF;
+    address.addr64[7] = (nodeInfo[node].SL & 0xFF);
     if (nodeInfo[node].dataCon == NULL)
     {
         if ((xbee_conNew(xbee, &nodeInfo[node].dataCon, "Data", &address)
@@ -882,6 +890,9 @@ frames */
         {
             nodeInfo[node].dataCon = NULL;
         }
+//        xbee_conSettings(nodeInfo[node].dataCon, NULL, &settings);
+//        printf("Data Connection Made %d\n", settings.disableAck);
+//        xbee_conSettings(nodeInfo[node].dataCon, &settings, NULL);
     }
     if (nodeInfo[node].atCon == NULL)
     {
@@ -901,6 +912,16 @@ frames */
                     != XBEE_ENONE))
         {
             nodeInfo[node].ioCon = NULL;
+        }
+    }
+    if (nodeInfo[node].txStatusCon == NULL)
+    {
+        if ((xbee_conNew(xbee, &nodeInfo[node].txStatusCon, "Transmit Status", &address)
+                    != XBEE_ENONE) ||
+            (xbee_conCallbackSet(nodeInfo[node].txStatusCon, txStatusCallback, NULL)
+                    != XBEE_ENONE))
+        {
+            nodeInfo[node].txStatusCon = NULL;
         }
     }
 }
@@ -937,10 +958,12 @@ void closeRemoteConnection(int node)
 {
     if (nodeInfo[node].dataCon != NULL) xbee_conEnd(nodeInfo[node].dataCon);
     nodeInfo[node].dataCon = NULL;
-    if (nodeInfo[node].ioCon != NULL) xbee_conEnd(nodeInfo[node].ioCon);
-    nodeInfo[node].ioCon = NULL;
     if (nodeInfo[node].atCon != NULL) xbee_conEnd(nodeInfo[node].atCon);
     nodeInfo[node].atCon = NULL;
+    if (nodeInfo[node].ioCon != NULL) xbee_conEnd(nodeInfo[node].ioCon);
+    nodeInfo[node].ioCon = NULL;
+    if (nodeInfo[node].txStatusCon != NULL) xbee_conEnd(nodeInfo[node].txStatusCon);
+    nodeInfo[node].txStatusCon = NULL;
     nodeInfo[node].valid = false;
 }
 
@@ -975,6 +998,7 @@ int openGlobalConnections()
 {
     xbee_err ret;
 
+/* Set the local AT response connection */
     if ((ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
@@ -988,6 +1012,23 @@ int openGlobalConnections()
         syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret,
                xbee_errorToStr(ret));
         xbee_conEnd(localATCon);
+        return ret;
+    }
+/* Set the Modem Status Connection */
+    if ((ret = xbee_conNew(xbee, &modemStatusCon, "Modem Status", NULL))
+                != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Modem Status connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        return ret;
+    }
+/* Set the callback for the Modem Status response. */
+    if ((ret = xbee_conCallbackSet(modemStatusCon, modemStatusCallback, NULL))
+                != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Modem Status Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+        xbee_conEnd(modemStatusCon);
         return ret;
     }
 /* Setup a long-running connection for Identify packets for nodes starting up
@@ -1029,6 +1070,10 @@ int closeGlobalConnections()
     if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
+    }
+    if ((ret = xbee_conEnd(modemStatusCon)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Could not close modem status connection %d\n", ret);
     }
     return ret;
 }
@@ -1230,34 +1275,6 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Determine the node table row from a received packet address.
-
-If the returned value equals the number of rows, then the node is not in the
-table.
-
-@param unsigned char *addr. Address of the XBee as an 8 element array of bytes.
-@returns int row. The row at which the address occurs.
-*/
-
-int findRow(unsigned char *addr)
-{
-/* Find the node in the table from its serial number */
-    int row=0;
-    for (; row<numberNodes; row++)
-    {
-        if ((addr[0] == ((nodeInfo[row].SH >> 24) & 0xFF)) &&
-            (addr[1] == ((nodeInfo[row].SH >> 16) & 0xFF)) &&
-            (addr[2] == ((nodeInfo[row].SH >> 8) & 0xFF)) &&
-            (addr[3] == (nodeInfo[row].SH & 0xFF)) &&
-            (addr[4] == ((nodeInfo[row].SL >> 24) & 0xFF)) &&
-            (addr[5] == ((nodeInfo[row].SL >> 16) & 0xFF)) &&
-            (addr[6] == ((nodeInfo[row].SL >> 8) & 0xFF)) &&
-            (addr[7] == (nodeInfo[row].SL & 0xFF))) break;
-    }
-    return row;
-}
-
-/*--------------------------------------------------------------------------*/
 /** @brief Callback for the data packets sent from the nodes.
 
 This is a callback required by libxbee. It interprets incoming packets on the
@@ -1366,18 +1383,21 @@ the string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-            printf(" Count %lu Voltage %f V\n",
-                (count & 0xFF), (float)(count >> 16)*0.004799415);
+            printf(" Count %lu Voltage %f V Retry %d\n",
+                (count & 0xFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 30));
 #endif
         }
         xbee_err txError;
+        char ackResponse[3];
+        ackResponse[1] = command;
         if (error)
         {
 #ifdef DEBUG
             if (debug) printf("Error detected - sent NAK\n\r");
 #endif
 /* Negative Acknowledge */
-            txError = xbee_conTx(con, NULL, "N");
+            ackResponse[0] = 'N';
+            txError = xbee_conTx(con, NULL, ackResponse);
         }
         else
         {
@@ -1389,7 +1409,8 @@ the string */
 /* Acknowledge */
 // txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
 // usleep(500000);                 /* Insert delay for test */
-            txError = xbee_conTx(con, NULL, "A");
+            ackResponse[0] = 'A';
+            txError = xbee_conTx(con, NULL, ackResponse);
 /* Advance the protocol state to indicate acceptance of any response as ACK. */
             protocolState = 2;
         }
@@ -1617,9 +1638,81 @@ write the next word field directly as the set of digital ports. */
 }
 
 /*--------------------------------------------------------------------------*/
+/** @brief Callback for the Transmit Status Packet.
+
+This is a callback required by libxbee. It operates on the global
+datastructure that holds all information for each node returned by the ND
+command. It is invoked when an tx status packet is received.
+
+Simply print out the message.
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
+*/
+
+void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data)
+{
+#ifdef DEBUG
+    if (debug)
+    {
+        int row = findRow((*pkt)->address.addr64);
+        char timeString[20];
+        time_t now;
+        now = time(NULL);
+        struct tm *tmp;
+        tmp = localtime(&now);
+        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+        if (row == numberNodes) printf("Node Unknown ");
+        else printf("Node %s ", nodeInfo[row].nodeIdent);
+        printf("Transmit Status: Time %s ",timeString);
+        printf("Length: %d ",(*pkt)->dataLen);
+        printf("Retry count %d, ", (*pkt)->data[0]);
+        printf("Delivery status %d, ", (*pkt)->data[1]);
+        printf("Discovery status %d", (*pkt)->data[2]);
+        printf("\n");
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Callback for the Modem Status Packet.
+
+This is a callback required by libxbee. It is invoked in response to a certain
+number of conditions when a modem status packet is received. It consists of a
+single byte.
+
+Simply print out the message.
+
+@param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
+@param struct xbee_con *con. Connection (not used).
+@param struct xbee_pkt **pkt. Packet from the XBee that invoked this callback.
+@param void **data. Data (not used).
+*/
+
+void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
+                    struct xbee_pkt **pkt, void **data)
+{
+#ifdef DEBUG
+    if (debug)
+    {
+        char timeString[20];
+        time_t now;
+        now = time(NULL);
+        struct tm *tmp;
+        tmp = localtime(&now);
+        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+        printf("Modem Status: Time %s Status %02X\n",timeString,(*pkt)->data[0]);
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
 /** @brief Check the data file usage.
 
-If enough data has been written to the file, flush the buffers. When the file
+If enough data has been written, flush the buffers to the file. When the file
 limit has been reached, close and reopen another file.
 
 If the file hasn't been opened, create it.
@@ -1790,5 +1883,33 @@ int configFillNodeTable()
         }
     }
     return true;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Determine the node table row from a received packet address.
+
+If the returned value equals the number of rows, then the node is not in the
+table.
+
+@param unsigned char *addr. Address of the XBee as an 8 element array of bytes.
+@returns int row. The row at which the address occurs.
+*/
+
+int findRow(unsigned char *addr)
+{
+/* Find the node in the table from its serial number */
+    int row=0;
+    for (; row<numberNodes; row++)
+    {
+        if ((addr[0] == ((nodeInfo[row].SH >> 24) & 0xFF)) &&
+            (addr[1] == ((nodeInfo[row].SH >> 16) & 0xFF)) &&
+            (addr[2] == ((nodeInfo[row].SH >> 8) & 0xFF)) &&
+            (addr[3] == (nodeInfo[row].SH & 0xFF)) &&
+            (addr[4] == ((nodeInfo[row].SL >> 24) & 0xFF)) &&
+            (addr[5] == ((nodeInfo[row].SL >> 16) & 0xFF)) &&
+            (addr[6] == ((nodeInfo[row].SL >> 8) & 0xFF)) &&
+            (addr[7] == (nodeInfo[row].SL & 0xFF))) break;
+    }
+    return row;
 }
 

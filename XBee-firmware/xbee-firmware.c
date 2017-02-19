@@ -85,6 +85,7 @@ static void hardwareInit(void);
 static void wdtInit(const uint8_t waketime, bool wdeSet);
 static void sendDataCommand(const uint8_t command, const uint32_t datum);
 static void sendMessage(const char* data);
+static void resetXBee(void);
 static void sleepXBee(void);
 static void wakeXBee(void);
 static void powerDown(void);
@@ -155,7 +156,7 @@ event. */
 
 /* Check for association indication from the XBee.
 Don't start until it is associated. */
-    while (checkAssociated());
+    while (! checkAssociated());
 
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
@@ -175,7 +176,7 @@ Don't start until it is associated. */
     {
 /* The WDIE bit must be set each time an interrupt occurs in case the WDT
 reset-after-interrupt was enabled. This will prevent a reset from occurring
-unless the MCU has lost it's way. */
+unless the MCU has lost its way. */
         sbi(WDTCSR,WDIE);
         sei();
 /* On waking, note the count, wait a bit, and check if it has advanced. If
@@ -202,8 +203,9 @@ until enough such events have occurred. */
                 powerUp();
                 wakeXBee();
 
-/* First check for association indication from the XBee.
-Don't proceed until it is associated. */
+/* First check for association indication from the XBee in case this was lost.
+Don't proceed until it is associated. If this times out, everything sleeps
+until the next cycle. */
                 if (checkAssociated())
                 {
 
@@ -213,7 +215,7 @@ Don't proceed until it is associated. */
 #endif
                     uint8_t data[12];
                     int8_t dataLength = readXBeeIO(data);
-                    uint32_t batteryVoltage = 0;
+                    uint16_t batteryVoltage = 0;
                     if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
 
 /* Initiate a data transmission to the base station. This also serves as a
@@ -229,7 +231,8 @@ means of notifying the base station that the AVR is awake. */
                     {
                         if (transmit)
                         {
-                            sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
+                            sendDataCommand(txCommand,
+                                lastCount+((uint32_t)batteryVoltage<<16)+((uint32_t)retry<<30));
                             txDelivered = false;    /* Allow check for Tx Status frame */
                             txStatusReceived = false;
                         }
@@ -319,8 +322,14 @@ This is intended for application commands. */
 /* Notify acceptance. No response is expected. */
                     if (retry < 3) sendMessage("A");
 /* Otherwise if the repeats were exceeded, notify the base station of the
-abandonment of this communication attempt. No response is expected. */
-                    else sendMessage("X");
+abandonment of this communication attempt. No response is expected.
+Reset the XBee in case this caused the problem. */
+                    else
+                    {
+                        sendMessage("X");
+                        resetXBee();            /* Reset the XBee */
+                    }
+
 #ifdef TEST_PORT_DIR
                     cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
 #endif
@@ -486,7 +495,8 @@ Otherwise continue waiting. */
 /** @brief Convert a 32 bit value to ASCII hex form and send with a command.
 
 Also compute an 8-bit modular sum checksum from the data and convert to hex
-for transmission. This is sent at the beginning of the string.
+for transmission. This is sent at the beginning of the string. Allowance is made
+for 9 characters: one for the command and 8 for the 32 bit integer.
 
 @param[in] int8_t command: ASCII command character to prepend to message.
 @param[in] int32_t datum: integer value to be sent.
@@ -683,6 +693,23 @@ always on). */
 #endif
     outb(WDTCSR,wdtcsrSetting); /* Set scaling factor and enable WDT interrupt */
     sei();
+}
+
+/****************************************************************************/
+/** @brief Reset the XBee
+
+This sets the xbee-reset pin on the MCU low then high again to force a hardware
+reset.
+*/
+
+inline void resetXBee(void)
+{
+#ifdef XBEE_RESET_PIN
+    cbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Activate XBee Reset */
+    _delay_us(200);
+    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Release XBee Reset */
+    _delay_us(100);
+#endif
 }
 
 /****************************************************************************/
