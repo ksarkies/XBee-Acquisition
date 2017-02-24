@@ -69,7 +69,7 @@ CTS must be set in the XBee.
 
 #include "xbee-node-firmware.h"
 
-/* Reduce timeout delay for this POSIX code */
+/* Smaller timeout delay for this POSIX code */
 #ifdef RESPONSE_DELAY
 #undef RESPONSE_DELAY
 #define RESPONSE_DELAY 10
@@ -117,6 +117,10 @@ event. */
     for (i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
+
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    while (! checkAssociated());
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
@@ -297,13 +301,21 @@ This is intended for application commands. */
                         if (packetReady) interpretCommand(&inMessage);
                     }
 printf("Finished Cycle\n");
-if (retry >= 3) printf("Abandoned, X sent.\n"); else printf("Accepted, A sent.\n");
-printf("-------------------------\n");
 /* Notify acceptance. No response is expected. */
-                    if (retry < 3) sendMessage("A");
+                    if (retry < 3)
+                    {
+printf("Accepted, A sent.\n");
+                        sendMessage("A");
+                    }
 /* Otherwise if the repeats were exceeded, notify the base station of the
 abandonment of this communication attempt. No response is expected. */
-                    else sendMessage("X");
+                    else
+                    {
+printf("Abandoned, X sent.\n");
+                        sendMessage("X");
+                        resetXBeeSoft();
+                    }
+printf("-------------------------\n");
                 }
 else printf("Not associated.\n");
             }
@@ -411,16 +423,29 @@ printf("Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
 if (! *txDelivered) printf(" not");
 printf(" delivered\n");
                 }
-/* Unknown packet type. Discard as error and continue. */
+/* Unknown or unwanted packet type. Discard as error and continue. */
                 else
                 {
                     packetError = unknown_type;
                     *txDelivered = false;
                     *txStatusReceived = false;
+/* Command response */
+                    if (rxMessage.frameType == 0x88)
+                    {
+printf("Command Response Frame: Command %c%c, status %d, data ",
+    rxMessage.message.atResponse.atCommand1,
+    rxMessage.message.atResponse.atCommand2,
+    rxMessage.message.atResponse.status);
+for (i=0; i<rxMessage.length-5; i++) printf(" %x", rxMessage.message.atResponse.data[i]);
+printf("\n");
+                    }
+                    else
+                    {
 printf("Packet error detected: Type %x, Length %d\n", rxMessage.frameType, rxMessage.length);
 printf("Unknown Frame: data contents");
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
+                    }
                 }
                 messageState = 0;   /* Reset packet counter */
                 break;

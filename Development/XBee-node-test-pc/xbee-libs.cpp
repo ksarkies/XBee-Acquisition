@@ -230,15 +230,61 @@ bool checkAssociated(void)
         associated = ((messageError == XBEE_COMPLETE) && \
                      (rxMessage.message.atResponse.data[0] == 0) && \
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
-                     (rxMessage.message.atResponse.atCommand1 == 65) && \
-                     (rxMessage.message.atResponse.atCommand2 == 73));
+                     (rxMessage.message.atResponse.atCommand1 == 'A') && \
+                     (rxMessage.message.atResponse.atCommand2 == 'I'));
         if (count++ > 10) break;
     }
-if (! associated) printf("Association fail, error %x, response data %d, \
-frame type %x, command %c%c\n",messageError,rxMessage.message.atResponse.data[0],
+if (! associated) printf("Association fail, error %x, response status %d, \
+frame type %x, command %c%c\n",messageError,rxMessage.message.atResponse.status,
 rxMessage.frameType,rxMessage.message.atResponse.atCommand1,
 rxMessage.message.atResponse.atCommand2);
     return associated;
+}
+
+/****************************************************************************/
+/** @brief Software reset XBee.
+
+This attempts a software reset of the XBee and expects a successful response.
+
+@returns bool: reset completed OK
+*/
+
+bool resetXBeeSoft(void)
+{
+    uint8_t messageState = 0;   /* Progress in message reception */
+    rxFrameType rxMessage;
+    uint8_t count = 0;
+    bool reset = false;
+    uint8_t messageError;
+    while (! reset)
+    {
+        sendATFrame(2,"FR");
+
+/* The frame type we are handling is 0x88 AT Command Response */
+        uint16_t timeout = 0;
+        messageState = 0;
+        uint8_t messageError = XBEE_INCOMPLETE;
+/* Wait for response. If it doesn't come, try sending again. */
+        while (messageError == XBEE_INCOMPLETE)
+        {
+            messageError = receiveMessage(&rxMessage, &messageState);
+            if (timeout++ > 30000) break;
+        }
+/* If errors occur, or frame is the wrong type, just try again */
+        reset = ((messageError == XBEE_COMPLETE) && \
+                 (rxMessage.message.atResponse.status == 0) && \
+                 (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
+                 (rxMessage.message.atResponse.atCommand1 == 'F') && \
+                 (rxMessage.message.atResponse.atCommand2 == 'R'));
+        if (count++ > 10) break;
+    }
+if (reset) printf("Reset successful ");
+else printf("Reset fail: error %x, ",messageError);
+printf("response status %d, frame type %x, command %c%c\n", \
+rxMessage.message.atResponse.status,
+rxMessage.frameType,rxMessage.message.atResponse.atCommand1,
+rxMessage.message.atResponse.atCommand2);
+    return reset;
 }
 
 /****************************************************************************/

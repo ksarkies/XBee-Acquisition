@@ -117,6 +117,7 @@ void sendATFrame(const uint8_t dataLength, const char data[]);
 void sendBaseFrame(const txFrameType txMessage);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 bool checkAssociated(void);
+bool resetXBeeSoft(void);
 int8_t readXBeeIO(uint8_t* data);
 uint16_t getXBeeADC(uint8_t* data, uint8_t adcPort);
 uint16_t getTransmitBuffer(void);
