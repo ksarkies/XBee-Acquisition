@@ -84,7 +84,7 @@ bool localATResponseRcvd;       /* Signal response to a local AT command receive
 uint8_t localATLength;
 char localATResponseData[SIZE]; /* The data record received with a local AT response */
 FILE *fp;                       /* File for results */
-FILE *fpd;                      /* File for configuration XBee list */
+FILE *fpd;                      /* File for XBee remode node table */
 FILE *log;                      /* File for libxbee logging */
 int flushCount;                 /* Number of records to flush buffers to disk. */
 int fileCount;                  /* Number of records close file and open new. */
@@ -113,7 +113,8 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
 
 /* Local Prototypes */
 int min(int x, int y) {if (x>y) return y; else return x;}
-int findRow(unsigned char *addr);
+int findRowBy64BitAddress(unsigned char *addr);
+int findRowBy16BitAddress(uint16_t addr);
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /** @brief XBee Acquisition Control Main Program
@@ -185,36 +186,16 @@ d - Debug mode.
 log file */
 
     openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
-    syslog(LOG_INFO, "Starting XBee Instance\n");
-#ifdef DEBUG
-    if (debug)
-        printf("Starting XBee Instance\n");
-#endif
-
-/*--------------------------------------------------------------------------*/
-/* Initialise the configuration file and fill the node table.*/
-
-    fpd = NULL;
-    if (! configFillNodeTable())
-    {
-        closelog();
-        return 1;
-    }
-
-/*--------------------------------------------------------------------------*/
-/* Initialise the results storage. Abort the program if this fails. */
-
-    fp = NULL;
-    if (! dataFileCheck())
-    {
-        closelog();
-        return 1;
-    }
 
 /*--------------------------------------------------------------------------*/
 /* Initialise the xbee instance and probe for any new nodes on the network.
 If failed to contact XBee, abort. */
 
+    syslog(LOG_INFO, "Starting XBee Instance\n");
+#ifdef DEBUG
+    if (debug)
+        printf("Starting XBee Instance\n");
+#endif
     if (setupXbeeInstance())
     {
         closelog();
@@ -239,6 +220,29 @@ If failed to contact XBee, abort. */
         printf("XBee Instance Started\n");
     }
 #endif
+/*--------------------------------------------------------------------------*/
+/* Initialise the node file and fill the node table.*/
+
+    fpd = NULL;
+    if (! fillNodeTable())
+    {
+        closelog();
+        return 1;
+    }
+
+/*--------------------------------------------------------------------------*/
+/* Initialise the results storage. Abort the program if this fails. */
+
+    fp = NULL;
+    if (! dataFileCheck())
+    {
+        closelog();
+        return 1;
+    }
+
+/*--------------------------------------------------------------------------*/
+/* Create the necessary connections locall and globally and poll for existing
+remote XBee nodes */
     openRemoteConnections();
     nodeProbe();
     openGlobalConnections();
@@ -272,7 +276,7 @@ If failed to contact XBee, abort. */
 
 /*--------------------------------------------------------------------------*/
 /* Main loop. This handles only the Internet interface. The remote node
-interface is handled in callback functions. */
+interface is handled in callback functions via libxbee. */
 
     for(;;)
     {
@@ -313,7 +317,8 @@ we do not wait for anything lagging behind.
 
 L send a local AT command to the attached coordinator XBee.
 l check for a response to a previously sent local AT command.
-R send a remote AT command to the selected node. The command follows in the data field.
+R send a remote AT command to the selected node. The command follows in the
+   data field.
 r check for a response to a previously sent remote AT command.
 S send an ASCII string to a remote node on the established data connection.
 s check for a response to a previously sent node AVR command.
@@ -584,29 +589,7 @@ If no response was received, a short message is sent back without data.*/
         case 'D':
             replyLength = 3;
             reply[2] = 'D';
-            closeRemoteConnection(row);             /* Close off its connections if any */
-            numberNodes--;
-            for (int i=row; i<numberNodes; i++)
-                nodeInfo[i] = nodeInfo[i+1];
-            nodeInfo[numberNodes].atCon = NULL;     /* Nullify defunct row pointers */
-            nodeInfo[numberNodes].ioCon = NULL;
-            nodeInfo[numberNodes].dataCon = NULL;
-            if (ftruncate(fileno(fpd),0) != 0) break;       /* Wipe contents of file */
-            for (int node = 0; node < numberNodes; node++)
-            {
-/* Write all node data back to the configuration file */
-                fprintf(fpd,"%04X ",nodeInfo[node].adr);
-                fprintf(fpd,"%08X ",nodeInfo[node].SH);
-                fprintf(fpd,"%08X ",nodeInfo[node].SL);
-                fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
-                fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
-                fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
-                fprintf(fpd,"%02X ",nodeInfo[node].status);
-                fprintf(fpd,"%04X ",nodeInfo[node].profileID);
-                fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
-                fprintf(fpd,"\n");
-            }
-            fflush(fpd);
+            deleteNodeTableRow(row);
             break;
     }
     reply[0] = replyLength;
@@ -788,8 +771,9 @@ int setupXbeeInstance()
 
 /* Setup the XBee instance for the XBee ZB with given device and baudrate
 (from command line).
-Use Unix stat to check if the file is available. This is not guaranteed to be
-the one actually allocated to the XBee. Abort if the attempted setup fails. */
+Use Unix stat to check if the serial port is available. This is not guaranteed
+to be the one actually allocated to the XBee. Abort if the attempted setup
+fails. */
     struct stat st;
     if(stat(inPort,&st) == 0)           /* Check if serial port exists */
     {
@@ -941,8 +925,8 @@ frames */
 
 Globals:
 xbee instance
-nodeInfo node information array
-numberNodes
+nodeInfo: node information table
+numberNodes:
 */
 
 void openRemoteConnections()
@@ -959,7 +943,7 @@ void openRemoteConnections()
 
 Globals:
 xbee instance
-nodeInfo node information array
+nodeInfo: node information array
 
 @parameter  int node. The table node entry to be invalidated.
 */
@@ -982,7 +966,7 @@ void closeRemoteConnection(int node)
 
 Globals:
 xbee instance
-nodeInfo node information array
+nodeInfo: node information array
 numberNodes
 */
 
@@ -999,7 +983,7 @@ void closeRemoteConnections()
 /*--------------------------------------------------------------------------*/
 /** @brief Open all long-running connections
 
-Connections for local AT and identify are left open.
+Connections for local AT response, modem status and identify are left open.
 
 @returns    libxbee error value
 */
@@ -1092,16 +1076,19 @@ int closeGlobalConnections()
 
     if ((ret = xbee_conEnd(localATCon)) != XBEE_ENONE)
     {
-        syslog(LOG_INFO, "Could not close local AT connection %d\n", ret);
+        syslog(LOG_INFO, "Could not close local AT connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
         return ret;
     }
     if ((ret = xbee_conEnd(modemStatusCon)) != XBEE_ENONE)
     {
-        syslog(LOG_INFO, "Could not close modem status connection %d\n", ret);
+        syslog(LOG_INFO, "Could not close modem status connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
     }
     if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
     {
-        syslog(LOG_INFO, "Could not close identify connection %d\n", ret);
+        syslog(LOG_INFO, "Could not close identify connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
     }
     return ret;
 }
@@ -1140,51 +1127,67 @@ int nodeProbe()
 /* Open a local AT connection without callback. */
     if ((ret = xbee_conNew(xbee, &probeATCon, "Local AT", NULL)) != XBEE_ENONE)
     {
-        syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
+        syslog(LOG_INFO, "Local AT connection for node probe failed: %d (%s)", ret,
                xbee_errorToStr(ret));
     }
     else
     {
         ret = xbee_conTx(probeATCon, &txRet, "ND");
-        syslog(LOG_INFO, "ND probe sent: %d (%s)", txRet, xbee_errorToStr(ret));
-        if ((ret != XBEE_ENONE) && (ret != XBEE_ETX))
-            syslog(LOG_INFO, "ND probe Tx failed: %d (%s)", ret,
+        syslog(LOG_INFO, "ND node probe sent: Tx return code: %d error: (%s)",
+               txRet, xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("ND node probe sent: Tx return code: %d error: (%s)\n",
+               txRet, xbee_errorToStr(ret));
+#endif
+        if ((ret != XBEE_ENONE) && (ret != XBEE_ETIMEOUT))
+        {
+            syslog(LOG_INFO, "ND node probe Tx failed: %s",
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+            if (debug)
+                printf("ND node probe Tx failed: %s\n",
+                   xbee_errorToStr(ret));
+        }
+#endif
         else
         {
 /* Timeout always seems to occur so we won't act on this */
-            if (txRet == (unsigned char)XBEE_ETIMEOUT)
-                syslog(LOG_INFO, "ND probe Tx timeout: %d (%s)", txRet,
-                       xbee_errorToStr(XBEE_ETIMEOUT));
+            if (ret == XBEE_ETIMEOUT)
+                syslog(LOG_INFO, "ND probe Tx timeout: Tx return code: %d (%s)", txRet,
+                       xbee_errorToStr(ret));
 /* For this particular command callbacks have not been used and the Rx is
-polled for all responding nodes */
+polled for all responding nodes. This is because we need to process it as a
+Node Identification message but it is an AT Command Response. */
             int rxWait = 20;            /* Wait up to 10sec for response. */
             struct xbee_pkt *pkt;
             int pktRemaining;
+            for (int i = 0; i < rxWait; i++)
             {
-                for (int i = 0; i < rxWait; i++)
+                if ((ret = xbee_conRx(probeATCon, &pkt, &pktRemaining))
+                    != XBEE_ENOTEXISTS)
                 {
-                    if ((ret = xbee_conRx(probeATCon, &pkt, &pktRemaining))
-                        != XBEE_ENOTEXISTS)
-                    {
-                        nodeIDCallback(xbee, probeATCon, &pkt, NULL);
+                    nodeIDCallback(xbee, probeATCon, &pkt, NULL);
 #ifdef DEBUG
-                        if (debug)
-                            printf("Node found %d return %d\n",i,ret);
+                    if (debug)
+                        printf("Node found %d return %d (%s)\n",i,ret,
+                                xbee_errorToStr(ret));
 #endif
-                    }
-                    usleep(500000);
                 }
+                usleep(500000);
             }
             xbee_pktFree(pkt);
 #ifdef DEBUG
             if (debug)
             {
-                printf("ND Ready\n");
                 int i;
                 for (i=0; i<numberNodes; i++)
-                    printf("\nNode ID %s Address %d Valid %d\n",
-                           nodeInfo[i].nodeIdent,nodeInfo[i].adr,nodeInfo[i].valid);
+                {
+                    printf("Node ID %s Address %4X",
+                           nodeInfo[i].nodeIdent,nodeInfo[i].adr);
+                    if (!nodeInfo[i].valid) printf(" not");
+                    printf(" valid\n");
+                }
             }
 #endif
         }
@@ -1192,11 +1195,20 @@ polled for all responding nodes */
         ret = xbee_conEnd(probeATCon);
         if (ret != XBEE_ENONE)
         {
-            syslog(LOG_INFO, "Local AT connection exit failed: %d (%s)", ret,
-                   xbee_errorToStr(ret));
+            syslog(LOG_INFO, "Local AT connection exit for node probe failed: %d (%s)",
+                    ret,xbee_errorToStr(ret));
+#ifdef DEBUG
+            if (debug)
+                printf("Local AT connection exit for node probe failed: %d (%s)\n",
+                    ret,xbee_errorToStr(ret));
+#endif
         }
     }
     if (! sleeping) xbee_conSleepSet(localATCon, CON_AWAKE);
+#ifdef DEBUG
+    if (debug)
+        printf("ND node probe complete\n");
+#endif
     return ret;
 }
 
@@ -1258,7 +1270,13 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
     for (;node < numberNodes; node++)
         if ((nodeInfo[node].SH == SH) && (nodeInfo[node].SL == SL)) break;
 /* Fill in or refresh the info fields if there is room in the table. */
-    if (node > MAXNODES) return;
+    if (node > MAXNODES)
+    {
+#ifdef DEBUG
+        if (debug) printf("Node table Full.\n");
+#endif
+        return;
+    }
     nodeInfo[node].adr = adr;
     nodeInfo[node].SH = SH;
     nodeInfo[node].SL = SL;
@@ -1281,7 +1299,7 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
     {
         numberNodes++;
 
-/* Write new node data to the configuration file */
+/* Write new node data to the node file */
         fprintf(fpd,"%04X ",nodeInfo[node].adr);
         fprintf(fpd,"%08X ",nodeInfo[node].SH);
         fprintf(fpd,"%08X ",nodeInfo[node].SL);
@@ -1345,7 +1363,7 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
                   struct xbee_pkt **pkt, void **data)
 {
     char buffer[DATA_BUFFER_SIZE];
-    int row = findRow((*pkt)->address.addr64);
+    int row = findRowBy64BitAddress((*pkt)->address.addr64);
     char timeString[20];
     time_t now;
     now = time(NULL);
@@ -1359,7 +1377,7 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
     {
         if (row == numberNodes) printf("Node Unknown ");
         else printf("Node %s ", nodeInfo[row].nodeIdent);
-        printf("Data Packet: Time %s length %d, data ",timeString,writeLength);
+        printf("Data Packet: %s length %d, data ",timeString,writeLength);
         for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
         printf("\n");
     }
@@ -1608,7 +1626,7 @@ void ioCallback(struct xbee *xbee, struct xbee_con *con,
     time_t now = time(NULL);
     struct tm *tmp = localtime(&now);
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
-    int row = findRow((*pkt)->address.addr64);
+    int row = findRowBy64BitAddress((*pkt)->address.addr64);
     if (row == numberNodes) fprintf(fp,"Node Unknown ");
     else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
     fprintf(fp," %s ", timeString);
@@ -1690,19 +1708,19 @@ void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
 #ifdef DEBUG
     if (debug)
     {
-//        int row = findRow((*pkt)->address.addr64);
+        int row = findRowBy16BitAddress(((*pkt)->data[1] << 8) + (*pkt)->data[2]);
         char timeString[20];
         time_t now;
         now = time(NULL);
         struct tm *tmp;
         tmp = localtime(&now);
         strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
-//        if (row == numberNodes) printf("Node Unknown ");
-//        else printf("Node %s ", nodeInfo[row].nodeIdent);
-        printf("Transmit Status: Time %s ",timeString);
+        printf("Transmit Status: %s ",timeString);
         printf("Length: %d ",(*pkt)->dataLen);
-        printf("Frame ID %2X, ", (*pkt)->data[0]);
+        printf("FrameID %2X, ", (*pkt)->data[0]);
         printf("16 Bit Address %2X%2X, ", (*pkt)->data[1], (*pkt)->data[2]);
+        if (row == numberNodes) printf("Unknown ");
+        else printf("%s ", nodeInfo[row].nodeIdent);
         printf("Retry count %d, ", (*pkt)->data[3]);
         printf("Delivery status %2X, ", (*pkt)->data[4]);
         printf("Discovery status %2X", (*pkt)->data[5]);
@@ -1739,7 +1757,7 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
         struct tm *tmp;
         tmp = localtime(&now);
         strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
-        printf("Modem Status: Time %s Status %02X\n",timeString,(*pkt)->data[0]);
+        printf("Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
     }
 #endif
 }
@@ -1760,7 +1778,6 @@ The file descriptor fp and the record counters.
 
 int dataFileCheck()
 {
-    int error = 0;
     if ((fp != NULL) && (flushCount++ > FLUSH_LIMIT))
     {
         flushCount = 0;
@@ -1775,8 +1792,16 @@ int dataFileCheck()
 /* Create the file if the file descriptor hasn't been set or file was closed. */
     if (fp == NULL)
     {
-        error = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
-        if (error) printf("Storage directory creation: %s\n",strerror(errno));
+/* Check if the directory exists, and create it if not */
+        struct stat dirStat;
+        if (stat(dirname, &dirStat) != 0)
+        {
+            mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
+#ifdef DEBUG
+            if (debug)
+                printf("Storage directory creation: %s\n",strerror(errno));
+#endif
+        }
         time_t now;
         now = time(NULL);
         char time_string[20];
@@ -1805,11 +1830,13 @@ name. */
     return true;
 }
 /*--------------------------------------------------------------------------*/
-/** @brief Read a hex field from the config file.
+/** @brief Read a hex field from the Node File.
 
-This assumes the exact file format. No checks are made for bad file contents.
-Blanks are skipped, and the next field is read in entirely and converted to int.
-The process stops when blank or EOL is found.
+This reads a single hexadecimal character from the node file,
+from the global file descriptor and record counters. It assumes the exact file
+format. No checks are made for bad file contents. Blanks are skipped, and the
+next field is read in entirely and converted to int. The process stops when
+blank or EOL is found.
 
 Globals:
 The file descriptor fpd.
@@ -1818,7 +1845,7 @@ The file record counters.
 @returns int: interpreted hex integer.
 */
 
-int readConfigFileHex()
+int readNodeFileHex()
 {
     int ch;
 /* Skip blanks */
@@ -1843,21 +1870,35 @@ int readConfigFileHex()
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Read or Setup a Configuration File and fill node table if present.
+/** @brief Read or Setup a Node File
+
+The node file is created if not present and fill the node table if
+present.
 
 Globals:
-The file descriptor fpd.
+fpd: The file descriptor.
+dirname: The directory for the node file.
+nodeInfo: node information table
+numberNodes: the number of nodes in the table
 
-@returns bool: Configuration file was successfully established.
+@returns bool: Node file was successfully established.
 */
 
-int configFillNodeTable()
+int fillNodeTable()
 {
 /* Initialise if the file descriptor hasn't been set or file was closed. */
     if (fpd == NULL)
     {
 /* Check if directory present and make it */
-        mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
+        struct stat dirStat;
+        if (stat(dirname, &dirStat) != 0)
+        {
+            mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH);
+#ifdef DEBUG
+            if (debug)
+                printf("Storage directory creation: %s\n",strerror(errno));
+#endif
+        }
 /* Open the file for read and append, or create it if not present. */
         char filename[32];
         strcpy(filename,dirname);
@@ -1865,7 +1906,7 @@ int configFillNodeTable()
         fpd = fopen(filename, "a+");
         if (fpd == NULL)
         {
-            syslog(LOG_INFO, "Cannot open or create configuration file\n");
+            syslog(LOG_INFO, "Cannot open or create node file");
             return false;
         }
     }
@@ -1886,9 +1927,9 @@ int configFillNodeTable()
             }
         }
         if (numberNodes > MAXNODES) break;
-        nodeInfo[numberNodes].adr = readConfigFileHex();
-        nodeInfo[numberNodes].SH = readConfigFileHex();
-        nodeInfo[numberNodes].SL = readConfigFileHex();
+        nodeInfo[numberNodes].adr = readNodeFileHex();
+        nodeInfo[numberNodes].SH = readNodeFileHex();
+        nodeInfo[numberNodes].SL = readNodeFileHex();
 /* Read Node identifier from first non blank up to next blank. */
         int ch;
         while((ch = fgetc(fpd)) == ' '); /* Skip leading blanks */
@@ -1899,11 +1940,11 @@ int configFillNodeTable()
             ch = fgetc(fpd);
         }
         nodeInfo[numberNodes].nodeIdent[i] = '\0'; /* terminate in null character */
-        nodeInfo[numberNodes].parentAdr = readConfigFileHex();
-        nodeInfo[numberNodes].deviceType = readConfigFileHex();
-        nodeInfo[numberNodes].status = readConfigFileHex();
-        nodeInfo[numberNodes].profileID = readConfigFileHex();
-        nodeInfo[numberNodes].manufacturerID = readConfigFileHex();
+        nodeInfo[numberNodes].parentAdr = readNodeFileHex();
+        nodeInfo[numberNodes].deviceType = readNodeFileHex();
+        nodeInfo[numberNodes].status = readNodeFileHex();
+        nodeInfo[numberNodes].profileID = readNodeFileHex();
+        nodeInfo[numberNodes].manufacturerID = readNodeFileHex();
         nodeInfo[numberNodes].valid = false;
         nodeInfo[numberNodes].dataCon = NULL;
         nodeInfo[numberNodes].ioCon = NULL;
@@ -1921,16 +1962,80 @@ int configFillNodeTable()
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Determine the node table row from a received packet address.
+/** @brief Delete a node from the Node Table
+
+The node file is refreshed.
+
+Globals:
+nodeInfo: node information table
+numberNodes: the number of nodes in the table
+
+@param[in] int row: the row to be deleted. If greater then the number of nodes,
+                    nothing happens.
+*/
+
+void deleteNodeTableRow(int row)
+{
+    if (row > numberNodes) return;
+    closeRemoteConnection(row);             /* Close off its connections if any */
+    numberNodes--;
+    for (int i=row; i<numberNodes; i++)
+        nodeInfo[i] = nodeInfo[i+1];
+    nodeInfo[numberNodes].atCon = NULL;     /* Nullify defunct row pointers */
+    nodeInfo[numberNodes].ioCon = NULL;
+    nodeInfo[numberNodes].dataCon = NULL;
+    nodeInfo[numberNodes].txStatusCon = NULL;
+    writeNodeFile();
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Write the Node Table to the Node File
+
+Globals:
+nodeInfo: node information table
+numberNodes: the number of nodes in the table
+
+@param[in] int row: the row to be deleted. If greater then the number of nodes,
+                    nothing happens.
+*/
+
+void writeNodeFile(void)
+{
+/* Wipe contents of file and write back node table as is. */
+    if (ftruncate(fileno(fpd),0) != 0) return;
+    for (int node = 0; node < numberNodes; node++)
+    {
+/* Write all node data back to the node file */
+        fprintf(fpd,"%04X ",nodeInfo[node].adr);
+        fprintf(fpd,"%08X ",nodeInfo[node].SH);
+        fprintf(fpd,"%08X ",nodeInfo[node].SL);
+        fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
+        fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
+        fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
+        fprintf(fpd,"%02X ",nodeInfo[node].status);
+        fprintf(fpd,"%04X ",nodeInfo[node].profileID);
+        fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
+        fprintf(fpd,"\n");
+    }
+    fflush(fpd);
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Determine the node table row from a received packet 64 bit address.
 
 If the returned value equals the number of rows, then the node is not in the
 table.
 
+Globals:
+nodeInfo: node information table
+numberNodes: the number of nodes in the table
+
 @param unsigned char *addr. Address of the XBee as an 8 element array of bytes.
-@returns int row. The row at which the address occurs.
+@returns int row. The row at which the address occurs. If equal to numberNodes,
+                    then node is not found.
 */
 
-int findRow(unsigned char *addr)
+int findRowBy64BitAddress(unsigned char *addr)
 {
 /* Find the node in the table from its serial number */
     int row=0;
@@ -1943,7 +2048,36 @@ int findRow(unsigned char *addr)
             (addr[4] == ((nodeInfo[row].SL >> 24) & 0xFF)) &&
             (addr[5] == ((nodeInfo[row].SL >> 16) & 0xFF)) &&
             (addr[6] == ((nodeInfo[row].SL >> 8) & 0xFF)) &&
-            (addr[7] == (nodeInfo[row].SL & 0xFF))) break;
+            (addr[7] ==  (nodeInfo[row].SL & 0xFF))) break;
+    }
+    return row;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Determine the node table row from a received packet 16 bit address.
+
+If the returned value equals the number of rows, then the node is not in the
+table.
+
+Note this address varies from session to session and may not match that in the
+node file.
+
+Globals:
+nodeInfo: node information table
+numberNodes: the number of nodes in the table
+
+@param uint16_t addr. 16 bit network address of the XBee.
+@returns int row. The row at which the address occurs. If equal to numberNodes,
+                    then node is not found.
+*/
+
+int findRowBy16BitAddress(uint16_t addr)
+{
+/* Find the node in the table from its serial number */
+    int row=0;
+    for (; row<numberNodes; row++)
+    {
+        if (addr ==  nodeInfo[row].adr) break;
     }
     return row;
 }

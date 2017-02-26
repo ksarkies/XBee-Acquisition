@@ -164,7 +164,9 @@ int openGlobalConnections();
 int closeGlobalConnections();
 int nodeProbe();
 int dataFileCheck();
-int configFillNodeTable();
-int readConfigFileHex();
+int fillNodeTable();
+void deleteNodeTableRow(int row);
+void writeNodeFile(void);
+int readNodeFileHex();
 
 #endif
