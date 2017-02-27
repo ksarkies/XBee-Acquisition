@@ -114,11 +114,13 @@ These are defined from avr-libc io.h based on processor choice. */
 /* Count Signal pin */
 #define COUNT_PORT_DIR          DDRD
 #define COUNT_PORT              PIND
+#define COUNT_PORT_PUP          PORTD
 #define COUNT_PIN               5
 
 /* Pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
 #define PROG_PORT               PINB
+#define PROG_PORT_PUP           PORTB
 #define PROG_PIN                2
 
 /* Battery Measurement Control */
@@ -129,17 +131,20 @@ These are defined from avr-libc io.h based on processor choice. */
 /* Battery Measurement Input ADC1 */
 #define VBAT_PORT_DIR           DDRC
 #define VBAT_PORT               PINC
+#define VBAT_PORT_PUP           PORTC
 #define VBAT_PIN                1
 
 /* Analogue Measurement Input ADC0 */
 #define V_PORT_DIR              DDRC
 #define V_PORT                  PINC
+#define V_PORT_PUP              PORTC
 #define V_PIN                   0
 
 /* Input to indicate XBee is awake (on) */
 /* On/Sleep */
 #define ON_SLEEP_PORT_DIR       DDRB
 #define ON_SLEEP_PORT           PINB
+#define ON_SLEEP_PORT_PUP       PORTC
 #define ON_SLEEP_PIN            4
 
 /* Pin for forcing the XBee to stay awake */
@@ -158,4 +163,9 @@ These are defined from avr-libc io.h based on processor choice. */
 #define TEST_PORT_DIR           DDRC
 #define TEST_PORT               PORTC
 #define TEST_PIN                4
+
+/* Debug pin PC3 */
+#define DEBUG_PORT_DIR          DDRC
+#define DEBUG_PORT              PORTC
+#define DEBUG_PIN               3
 

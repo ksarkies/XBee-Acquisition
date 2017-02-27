@@ -566,7 +566,7 @@ Refer to the defines files for the defined symbols. */
 /* XBee Sleep Request ouput pin */
 #ifdef SLEEP_RQ_PIN
     sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);        /* XBee Sleep Request */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);            /* Set to keep XBee on */
+    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);            /* Clear to keep XBee on */
 #endif
 /* XBee On/Sleep Status input pin */
 #ifdef ON_SLEEP_PIN
@@ -584,18 +584,23 @@ Refer to the defines files for the defined symbols. */
 #endif
 /* Battery Measurement Input */
 #ifdef VBAT_PIN
-    cbi(VBAT_PORT_DIR,VBAT_PIN);
-    cbi(VBAT_PORT,VBAT_PIN);
+    cbi(VBAT_PORT_DIR,VBAT_PIN);                /* Battery Measurement Enable */
+    cbi(VBAT_PORT_PUP,VBAT_PIN);                /* Clear to disable pullup */
 #endif
 /* Counter input */
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);
-    sbi(COUNT_PORT,COUNT_PIN);                  /* Set to pullup */
+    sbi(COUNT_PORT_PUP,COUNT_PIN);              /* Set to pullup */
 #endif
 /* Test port to flash LED for microcontroller status */
 #ifdef TEST_PIN
     sbi(TEST_PORT_DIR,TEST_PIN);
-    cbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
+    cbi(TEST_PORT,TEST_PIN);                    /* Set pin off to start */
+#endif
+/* Debug port to flash LED for microcontroller signalling */
+#ifdef DEBUG_PIN
+    sbi(DEBUG_PORT_DIR,DEBUG_PIN);
+    cbi(DEBUG_PORT,DEBUG_PIN);                  /* Set pin off to start */
 #endif
 
 /* Counter: Use PCINT for the asynchronous pin change interrupt on the
@@ -635,7 +640,8 @@ void powerDown(void)
 /****************************************************************************/
 /** @brief Power up the hardware
 
-Only essential peripherals are turned on, namely the UART and the A/D converter.
+Only essential peripherals are turned on, namely the UART and the A/D converter,
+during the wake phase.
 */
 
 void powerUp(void)
