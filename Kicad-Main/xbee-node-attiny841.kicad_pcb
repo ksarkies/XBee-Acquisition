@@ -70,7 +70,7 @@
     (visible_elements FFFEFF3F)
     (pcbplotparams
       (layerselection 0x010ff_80000001)
-      (usegerberextensions true)
+      (usegerberextensions false)
       (gerberprecision 5)
       (excludeedgelayer true)
       (linewidth 0.150000)
