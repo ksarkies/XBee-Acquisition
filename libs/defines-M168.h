@@ -115,7 +115,7 @@ These are defined from avr-libc io.h based on processor choice. */
 #define COUNT_PORT_DIR          DDRD
 #define COUNT_PORT              PIND
 #define COUNT_PORT_PUP          PORTD
-#define COUNT_PIN               5
+#define COUNT_PIN               4
 
 /* Pin for remaining in bootloader */
 #define PROG_PORT_DIR           DDRB
@@ -142,22 +142,22 @@ These are defined from avr-libc io.h based on processor choice. */
 
 /* Input to indicate XBee is awake (on) */
 /* On/Sleep */
-#define ON_SLEEP_PORT_DIR       DDRB
-#define ON_SLEEP_PORT           PINB
-#define ON_SLEEP_PORT_PUP       PORTC
-#define ON_SLEEP_PIN            4
+#define ON_SLEEP_PORT_DIR       DDRD
+#define ON_SLEEP_PORT           PIND
+#define ON_SLEEP_PORT_PUP       PORTD
+#define ON_SLEEP_PIN            5
 
 /* Pin for forcing the XBee to stay awake */
 /* Sleep request Control */
-#define SLEEP_RQ_PORT_DIR       DDRB
-#define SLEEP_RQ_PORT           PORTB
-#define SLEEP_RQ_PIN            3
+#define SLEEP_RQ_PORT_DIR       DDRD
+#define SLEEP_RQ_PORT           PORTD
+#define SLEEP_RQ_PIN            6
 
 /* Output to force XBee reset */
 /* XBee Reset */
-#define XBEE_RESET_PORT_DIR     DDRB
-#define XBEE_RESET_PORT         PORTB
-#define XBEE_RESET_PIN          5
+#define XBEE_RESET_PORT_DIR     DDRD
+#define XBEE_RESET_PORT         PORTD
+#define XBEE_RESET_PIN          7
 
 /* Test pin PC4 */
 #define TEST_PORT_DIR           DDRC
@@ -168,4 +168,11 @@ These are defined from avr-libc io.h based on processor choice. */
 #define DEBUG_PORT_DIR          DDRC
 #define DEBUG_PORT              PORTC
 #define DEBUG_PIN               3
+
+/* Unused I/O ports, for setting  pullups */
+#define PORTB_PUP               (0xFF & ~_BV(0) & ~_BV(1) & ~_BV(6) & ~_BV(7))
+#define PORTC_PUP               (0xFF & ~_BV(2))
+
+/* Disable Digital Input Buffers on comparators and A/D converters. */
+#define DIDR1_SET               0x07
 

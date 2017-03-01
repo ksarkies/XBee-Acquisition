@@ -139,3 +139,9 @@ These are defined from avr-libc io.h based on processor choice. */
 #define XBEE_RESET_PORT         PORTB
 #define XBEE_RESET_PIN          2
 
+/* Unused I/O ports, for setting  pullups */
+/* All used in this device */
+
+/* Disable Digital Input Buffers on comparators and A/D converters. */
+/* None used in this device */
+

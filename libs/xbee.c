@@ -288,7 +288,6 @@ bool resetXBeeSoft(void)
     rxFrameType rxMessage;
     uint8_t count = 0;
     bool reset = false;
-    uint8_t messageError;
     while (! reset)
     {
         sendATFrame(2,"FR");

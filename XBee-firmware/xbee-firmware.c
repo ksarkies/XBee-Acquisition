@@ -142,6 +142,11 @@ int main(void)
 
 /*  Initialise hardware */
     hardwareInit();
+    resetXBee();
+    wakeXBee();
+#ifdef TEST_PORT_DIR
+    sbi(TEST_PORT,TEST_PIN);            /* Set test pin on */
+#endif
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
@@ -195,7 +200,7 @@ until enough such events have occurred. */
             {
                 transmitMessage = false;
 #ifdef TEST_PORT_DIR
-                sbi(TEST_PORT,TEST_PIN);            /* Set pin on */
+                sbi(TEST_PORT,TEST_PIN);            /* Set test pin on */
 #endif
                 wdtCounter = 0;     /* Reset the WDT counter for next time */
 /* Now ready to initiate a data transmission. */
@@ -331,7 +336,7 @@ Reset the XBee in case this caused the problem. */
                     }
 
 #ifdef TEST_PORT_DIR
-                    cbi(TEST_PORT,TEST_PIN);    /* Set pin off */
+                    cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */
 #endif
                 }
             }
@@ -541,24 +546,40 @@ Set the process counter interrupt to INT0.
 */
 void hardwareInit(void)
 {
-/* Set input ports to pullups and disable digital input buffers on AIN inputs.
+/* Set input ports to pullups.
 Refer to the defines files for the defined symbols. */
 
 #ifdef PORTA
-    outb(DDRA,0);       /* set as inputs */
-    outb(PORTA,0x07);   /* set pullups   */
+    outb(DDRA,0);           /* set as inputs */
+#endif
+#ifdef PORTA_PUP
+    outb(PORTA,PORTA_PUP);  /* set pullups   */
 #endif
 #ifdef PORTB
-    outb(DDRB,0);       /* set as inputs */
-    outb(PORTB,0xFF);   /* set pullups   */
+    outb(DDRB,0);           /* set as inputs */
+#endif
+#ifdef PORTB_PUP
+    outb(PORTB,PORTB_PUP);  /* set pullups   */
 #endif
 #ifdef PORTC
-    outb(DDRC,0);       /* set as inputs */
-    outb(PORTC,0xFF);   /* set pullups   */
+    outb(DDRC,0);           /* set as inputs */
+#endif
+#ifdef PORTC_PUP
+    outb(PORTC,PORTC_PUP);  /* set pullups   */
 #endif
 #ifdef PORTD
-    outb(DDRD,0);       /* set as inputs */
-    outb(PORTD,0x1F);   /* set pullups   */
+    outb(DDRD,0);           /* set as inputs */
+#endif
+#ifdef PORTD_PUP
+    outb(PORTD,PORTB_PUP);  /* set pullups   */
+#endif
+
+/* Disable digital input buffers on AIN inputs. */
+#ifdef DIDR0_SET
+    outb(DIDR0,DIDR0_SET);  /* set disable of digital input buffers   */
+#endif
+#ifdef DIDR1_SET
+    outb(DIDR1,DIDR1_SET);  /* set disable of digital input buffers   */
 #endif
 
 /* Set I/O ports to desired directions and initial settings */
@@ -595,7 +616,7 @@ Refer to the defines files for the defined symbols. */
 /* Test port to flash LED for microcontroller status */
 #ifdef TEST_PIN
     sbi(TEST_PORT_DIR,TEST_PIN);
-    cbi(TEST_PORT,TEST_PIN);                    /* Set pin off to start */
+    sbi(TEST_PORT,TEST_PIN);                    /* Set pin on to start */
 #endif
 /* Debug port to flash LED for microcontroller signalling */
 #ifdef DEBUG_PIN
