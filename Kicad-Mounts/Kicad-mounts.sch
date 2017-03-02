@@ -1,37 +1,9 @@
 EESchema Schematic File Version 2
-LIBS:power
-LIBS:device
-LIBS:transistors
-LIBS:conn
-LIBS:linear
-LIBS:regul
-LIBS:74xx
-LIBS:cmos4000
-LIBS:adc-dac
-LIBS:memory
-LIBS:xilinx
-LIBS:microcontrollers
-LIBS:dsp
-LIBS:microchip
-LIBS:analog_switches
-LIBS:motorola
-LIBS:texas
-LIBS:intel
-LIBS:audio
-LIBS:interface
-LIBS:digital-audio
-LIBS:philips
-LIBS:display
-LIBS:cypress
-LIBS:siliconi
-LIBS:opto
-LIBS:atmel
-LIBS:contrib
-LIBS:valves
+LIBS:DataStorage
 LIBS:KB1LQC
 LIBS:MiscellaneousDevices
-LIBS:Sensors
 LIBS:RF_OEM_Parts
+LIBS:Sensors
 LIBS:Kicad-mounts-cache
 EELAYER 25 0
 EELAYER END
@@ -47,17 +19,6 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
-$Comp
-L XBEE XB1
-U 1 1 53F67332
-P 4050 3850
-F 0 "XB1" H 4050 4650 60  0000 C CNN
-F 1 "XBEE" H 4050 4750 60  0000 C CNN
-F 2 "Photodiode:XBee" H 4050 3850 60  0001 C CNN
-F 3 "" H 4050 3850 60  0000 C CNN
-	1    4050 3850
-	1    0    0    -1  
-$EndComp
 $Comp
 L CONN_01X03 P6
 U 1 1 53F679DA
@@ -368,5 +329,16 @@ F 2 "" H 5900 5650 50  0000 C CNN
 F 3 "" H 5900 5650 50  0000 C CNN
 	1    5900 5650
 	0    -1   -1   0   
+$EndComp
+$Comp
+L XBEE-ZB XB?
+U 1 1 58B79FBE
+P 4050 3850
+F 0 "XB?" H 4050 4650 60  0000 C CNN
+F 1 "XBEE-ZB" H 4050 4750 60  0000 C CNN
+F 2 "" H 4050 3850 60  0000 C CNN
+F 3 "" H 4050 3850 60  0000 C CNN
+	1    4050 3850
+	1    0    0    -1  
 $EndComp
 $EndSCHEMATC
