@@ -79,11 +79,20 @@ a BPW34 which can be either SMD or through hole mounted below the board, or a
 reverse form mounted on top of the board over the square hole. The latter choice
 avoids possible interference with mechanical parts in the space under the board.
 
+The [node test firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/XBee-node-test) is provided for test transmissions.
+
+The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/XBee-firmware) is provided for full protocol transmissions.
+
+Firmware must be compiled for MCU=attiny841 or whichever processor is used.
+
+The firmware README provides instructions for setting up the XBee configuration.
+
 * 27 November 2014: Add missing ground points. Correct error in battery voltage
   circuit.
 * 24 February 2016: Changed position of connectors to avoid housing structures.
-* 11 April: Production version with additional XBee signals brought out to the
-   debug connector which is now 12 pin.
+* 11 April 2016: Production version with additional XBee signals brought out to
+  the debug connector which is now 12 pin.
+* 12 February 2017: Corrections to the battery monitor circuit.
 
 K. Sarkies
 11 April 2016

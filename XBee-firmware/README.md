@@ -32,8 +32,6 @@ The code is written to allow several AVR microcontroller types and currently
 supports ATMega168, ATTiny4313 and ATTiny841, the latter being the one selected
 for the watermeter.
 
-**NOTE:** CTS must be set in the XBee and USE_HARDWARE_FLOW also enabled.
-
 Open source versions of avr-libc earlier than release 2.0.0 did not support the
 ATTiny841 series. To get around this, either the latest version of avr-libc must
 be compiled and installed. or the latest Atmel toolchain needs to be placed into
@@ -43,6 +41,29 @@ DIRAVR environment variable in Makefile to suit the location chosen.
 The XBee does not use hardware flow control, although RTS may be
 possible. This is due to a lack of ports on the AVR package intended for use
 (ATTiny841).
+
+**NOTE (1):** CTS should be set in the XBee and USE_HARDWARE_FLOW also enabled when
+using the ATMega48 series based test boards.
+
+**NOTE (2):** The following ports on the XBee must be set as follows:
+* For the watermeter board, set pullups as 457 and pins as:
+pin 4 (DIO12) output high,
+pin 7 (DIO11) output low,
+pins 6 (DIO10), 11 (DIO4), 16 (DIO6), 17 (DIO3), 18 (DIO2) disabled with pullup,
+pin 9 Sleep_RQ input without pullup,
+pin 15 Associate output,
+pin 19 (AD1) analogue input without pullup,
+pin 20 Commissioning output.
+* For the Node Test Board, set pullups as 453 and pins as:
+pin 4 (DIO12) output high,
+pin 7 (DIO11) output low,
+pins 6 (DIO10), 11 (DIO4), 17 (DIO3) disabled with pullup,
+pin 9 Sleep_RQ input without pullup,
+pin 12 CTS output,
+pin 15 Associate output,
+pin 16 RTS input with pullup, 
+pins 18, 19 analogue input without pullup,
+pin 20 Commissioning output.
 
 The AVR is set to 1MHz for low power, and a baud rate of 9600, aimed at
 giving sufficient time for processing messages.

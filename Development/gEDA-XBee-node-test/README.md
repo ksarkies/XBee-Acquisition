@@ -1,9 +1,31 @@
 XBee Test Board PCB
 -------------------
 
-These are small test board PCBs.
+These are small test board PCBs. They were built as prototypes. The serial
+board is still in use but the others have been obsoleted, replaced by the
+PCB defined under Kicad-XBee-node-test. 
 
-### xbee-node-atmega48
+### xbee-node-serial
+
+This board is intended for use with End devices and connects serially to a PC
+for purposes of extensive debug. It provides an external serial output at RS-232
+levels and a 6V or more power input via on-board regulators.
+
+Four LEDs are provided:
+* Green     On/Sleep.
+* Orange    Sleep_RQ status.
+* Red       Power.
+* Yellow    Association.
+
+Three switches are also provided:
+
+* Sleep_RQ toggle (located on the prototype board against the LEDs). When the
+XBee is asleep, toggle high then low to wake it to a new round of wake time.
+* Commissioning momentary-on button (located on the prototype board in front of
+the XBee).
+* Reset momentary-on button (located on the prototype board near the XBee pin 1).
+
+### xbee-node-atmega48 (obsolete)
 
 This includes an XBee with ATMega48 and with an analogue battery monitor and
 digital counter. It takes an input voltage 5V or more and produces 3.3V power
@@ -30,7 +52,7 @@ Three LEDs are provided:
 
 The [firmware](https://github.com/ksarkies/XBee-Acquisition/tree/master/Development/XBee-node-test) for ATMega48 series is provided for test transmissions.
 
-### xbee-node-attiny4313
+### xbee-node-attiny4313 (obsolete)
 
 This board is similar to the above but analogue input is taken directly to the
 XBee AD1 input pin as the ATTiny4313 does not have analogue capability. The
@@ -47,25 +69,6 @@ Green LED is PB0 Microcontroller Activity (test port).
 * Microcontroller Reset taken from XBee DIO12 pin.
 
 The board requires 3.3V power input.
-
-### xbee-node-serial
-
-This board is intended for use with End devices. It provides an external serial
-output at RS-232 levels and a 6V or more power input via on-board regulators.
-
-Four LEDs are provided:
-* Green     On/Sleep.
-* Orange    Sleep_RQ status.
-* Red       Power.
-* Yellow    Association.
-
-Three switches are also provided:
-
-* Sleep_RQ toggle (located on the prototype board against the LEDs). When the
-XBee is asleep, toggle high then low to wake it to a new round of wake time.
-* Commissioning momentary-on button (located on the prototype board in front of
-the XBee).
-* Reset momentary-on button (located on the prototype board near the XBee pin 1).
 
 K. Sarkies
 20 March 2016
