@@ -67,7 +67,7 @@ CTS must be set in the XBee.
 /*---------------------------------------------------------------------------*/
 /**** Test code starts here */
 
-#include "xbee-node-firmware.h"
+#include "xbee-firmware.h"
 
 /* Smaller timeout delay for this POSIX code */
 #ifdef RESPONSE_DELAY
@@ -106,21 +106,34 @@ static packet_error readIncomingMessage(bool* packetReady, bool* txStatusReceive
 
 void mainprogInit()
 {
-    hardwareInit();                 /* Initialize the processor specific hardware */
+    hardwareInit();             /* Initialize the processor specific hardware */
+    resetXBee();
+    wakeXBee();
+/** Initialize the UART library, pass the baudrate and avr cpu clock
+(uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    wdtInit(WDT_TIME, true);            /* Set up watchdog timer */
+    wdtInit(WDT_TIME, true);    /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
 event. */
-    uint8_t i;
-    for (i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
+    for (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
-/* Check for association indication from the XBee.
+/* Startup delay to give time to associate, and check association. */
+    
+    for (uint8_t i=0; i < 10; i++)
+    {
+        printf("Delay: ");
+        if (checkAssociated()) printf("Associated\n");
+        sleep(1);
+    }
+
+/* Further check for association indication from the XBee.
 Don't start until it is associated. */
     while (! checkAssociated());
+    printf("Now Associated\n");
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
@@ -599,6 +612,17 @@ extern void timerInit(unsigned int timerTrigger);
 void wdtInit(const uint8_t waketime, bool wdeSet)
 {
     timerInit(1000/RTC_SCALE);
+}
+
+/****************************************************************************/
+/** @brief Reset the XBee
+
+This sets the xbee-reset pin on the MCU low then high again to force a hardware
+reset.
+*/
+
+inline void resetXBee(void)
+{
 }
 
 /****************************************************************************/

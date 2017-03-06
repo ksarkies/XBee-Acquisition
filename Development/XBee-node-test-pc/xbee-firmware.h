@@ -66,6 +66,7 @@ void wdtInit(const uint8_t waketime, bool wdeSet);
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState);
 void sendDataCommand(const uint8_t command, const uint32_t datum);
 void sendMessage(const char* data);
+void resetXBee(void);
 void sleepXBee(void);
 void wakeXBee(void);
 void powerDown(void);

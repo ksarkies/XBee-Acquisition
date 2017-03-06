@@ -234,10 +234,12 @@ bool checkAssociated(void)
                      (rxMessage.message.atResponse.atCommand2 == 'I'));
         if (count++ > 10) break;
     }
-if (! associated) printf("Association fail, error %x, response status %d, \
-frame type %x, command %c%c\n",messageError,rxMessage.message.atResponse.status,
+if (! associated) printf("Association fail, error %x, response %x, \
+frame type %x, command %c%c",messageError,rxMessage.message.atResponse.data[0],
 rxMessage.frameType,rxMessage.message.atResponse.atCommand1,
 rxMessage.message.atResponse.atCommand2);
+if (messageError != XBEE_COMPLETE) printf(" Message State %d",messageState);
+printf("\n");
     return associated;
 }
 
