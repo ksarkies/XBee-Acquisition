@@ -256,7 +256,7 @@ bool checkAssociated(void)
         }
 /* If errors occur, or frame is the wrong type, just try again */
         associated = ((messageError == XBEE_COMPLETE) && \
-                     (rxMessage.message.atResponse.status == 0) && \
+                     (rxMessage.message.atResponse.data[0] == 0) && \
                      (rxMessage.frameType == AT_COMMAND_RESPONSE) && \
                      (rxMessage.message.atResponse.atCommand1 == 'A') && \
                      (rxMessage.message.atResponse.atCommand2 == 'I'));
