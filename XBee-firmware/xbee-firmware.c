@@ -1,8 +1,8 @@
 /**
 @mainpage AVR XBee Node Firmware
-@version 0.0
+@version 1.0
 @author Ken Sarkies (www.jiggerjuice.info)
-@date 18 July 2014
+@date 2 March 2016
 
 @brief Code for an AVR with an XBee in a Remote Low Power Node
 
@@ -31,8 +31,8 @@ Software: AVR-GCC 4.8.2
 @note
 Target:   AVR with sufficient output ports and a USART (USI not supported)
 @note
-Tested:   ATTiny4313 with 1MHz internal clock. ATMega48 with 8MHz clock,
-          ATTiny841 with 8MHz clock.
+Tested:   ATTiny4313 with 1MHz internal clock. ATTiny841 with 8MHz clock.
+          ATMega48 series with 8MHz clock,
 
 */
 /****************************************************************************
@@ -142,11 +142,6 @@ int main(void)
 
 /*  Initialise hardware */
     hardwareInit();
-    resetXBee();
-    wakeXBee();
-#ifdef TEST_PORT_DIR
-    sbi(TEST_PORT,TEST_PIN);            /* Set test pin on */
-#endif
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
@@ -159,9 +154,34 @@ event. */
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
+    resetXBee();
+    wakeXBee();
+/* Idle and blink the test pin for 7 seconds to give XBee time to associate. */
+    uint8_t i = 0;
+    for (i=0; i<35; i++)
+    {
+#ifdef TEST_PORT_DIR
+        sbi(TEST_PORT,TEST_PIN);
+#endif
+        _delay_ms(100);
+#ifdef TEST_PORT_DIR
+        cbi(TEST_PORT,TEST_PIN);
+#endif
+        _delay_ms(100);
+    }
 /* Check for association indication from the XBee.
 Don't start until it is associated. */
     while (! checkAssociated());
+/* Blink debug port to indicated successful association */
+#ifdef DEBUG_PORT_DIR
+    sbi(DEBUG_PORT,DEBUG_PIN);          /* Blink debug LED */
+    _delay_ms(100);
+    cbi(DEBUG_PORT,DEBUG_PIN);
+    _delay_ms(100);
+    sbi(DEBUG_PORT,DEBUG_PIN); 
+    _delay_ms(100);
+    cbi(DEBUG_PORT,DEBUG_PIN);
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* Main loop forever. */
@@ -337,6 +357,15 @@ Reset the XBee in case this caused the problem. */
 
 #ifdef TEST_PORT_DIR
                     cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */
+#endif
+                }
+                else
+                {
+/* Blink debug LED to indicate not associated */
+#ifdef DEBUG_PORT_DIR
+                    sbi(DEBUG_PORT,DEBUG_PIN); 
+                    _delay_ms(100);
+                    cbi(DEBUG_PORT,DEBUG_PIN);
 #endif
                 }
             }

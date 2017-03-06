@@ -2,14 +2,10 @@
        Ken Sarkies (www.jiggerjuice.info)
             21 July 2014
 
-version     0.0
-Software    AVR-GCC 4.8.2
-Target:     Any AVR with sufficient output ports and a timer
-Tested:     ATTiny4313 at 1MHz internal clock.
-
+version     1.0
 */
 /****************************************************************************
- *   Copyright (C) 2013 by Ken Sarkies (www.jiggerjuice.info)               *
+ *   Copyright (C) 2014 by Ken Sarkies (www.jiggerjuice.info)               *
  *                                                                          *
  *   This file is part of XBee-Acquisition                                  *
  *                                                                          *
