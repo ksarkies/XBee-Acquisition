@@ -300,4 +300,13 @@ refdes=CONN1
 }
 C 41300 46900 1 180 1 gnd-1.sym
 C 41600 45400 1 180 0 3.3V-plus-1.sym
-C 52000 44900 1 90 0 gnd-1.sym
+C 51700 44900 1 0 0 resistor-1.sym
+{
+T 52000 45300 5 10 0 0 0 0 1
+device=RESISTOR
+T 51800 45200 5 10 1 1 0 0 1
+refdes=R9
+T 52100 45200 5 10 1 1 0 0 1
+value=15K
+}
+C 52900 44900 1 90 0 gnd-1.sym

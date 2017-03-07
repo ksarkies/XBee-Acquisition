@@ -30,4 +30,7 @@ Kicad-XBee/footprints/
 auxiliary/
 moc_*
 ui_*
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
 
