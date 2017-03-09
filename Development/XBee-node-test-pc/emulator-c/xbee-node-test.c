@@ -53,7 +53,7 @@ In command line mode, the program can only be stopped by ctl-C or process kill.
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "xbee-node-test.h"
-#include "../xbee-node-firmware.h"
+#include "../xbee-firmware.h"
 
 /*---------------------------------------------------------------------------*/
 /* Globals */
@@ -91,7 +91,7 @@ int main(int argc,char ** argv)
     int baudParm;
     debug = false;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:db:")) != -1)
+    while ((c = getopt (argc, argv, "P:dnb:")) != -1)
     {
         switch (c)
         {
@@ -100,6 +100,8 @@ int main(int argc,char ** argv)
             break;
         case 'd':
             debug = true;
+            break;
+        case 'n':
             break;
         case 'b':
             baudParm = atoi(optarg);

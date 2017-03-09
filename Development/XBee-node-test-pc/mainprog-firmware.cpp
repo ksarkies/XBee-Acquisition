@@ -72,7 +72,7 @@ CTS must be set in the XBee.
 /* Smaller timeout delay for this POSIX code */
 #ifdef RESPONSE_DELAY
 #undef RESPONSE_DELAY
-#define RESPONSE_DELAY 10
+#define RESPONSE_DELAY 100000
 #endif
 
 /****************************************************************************/
@@ -117,13 +117,14 @@ void mainprogInit()
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
 event. */
-    for (uint8_t i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
+    uint8_t i=0;
+    for (i=0; i < 8; i++) coordinatorAddress64[i] = 0x00;
     coordinatorAddress16[0] = 0xFE;
     coordinatorAddress16[1] = 0xFF;
 
 /* Startup delay to give time to associate, and check association. */
     
-    for (uint8_t i=0; i < 10; i++)
+    for (i=0; i < 10; i++)
     {
         printf("Delay: ");
         if (checkAssociated()) printf("Associated\n");
