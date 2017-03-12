@@ -58,6 +58,7 @@ CTS must be set in the XBee.
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #define RTC_SCALE   30
 
@@ -204,6 +205,11 @@ means of notifying the base station that the AVR is awake. */
                     bool transmit = true;
                     uint8_t errorCount = 0;
                     uint8_t retry = 0;      /* Retries to get base response OK */
+time_t rawtime;
+struct tm * timeinfo;
+time(&rawtime);
+timeinfo = localtime(&rawtime);
+printf("Time: %s\n", asctime(timeinfo));
                     while (! cycleComplete)
                     {
 if (cycleComplete) printf("Cycle Completed\n");

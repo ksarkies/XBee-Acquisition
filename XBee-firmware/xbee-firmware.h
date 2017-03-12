@@ -32,21 +32,22 @@ version     1.0
 #define WDT_TIME                0x09
 
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-#define ACTION_COUNT            1
+#define ACTION_COUNT            1       /* Temporary test value */
 
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1
 
-/* Time to wait for a response from the base station. Time units depend on
-the code execution time needed to check for a received character, and F_CPU.
-Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
-#define RESPONSE_DELAY          F_CPU/10000*100
+/* Number of program loop cycles to wait for a response from the base station
+following a data transmission. This depends on the code execution time needed
+to check for a received character, and F_CPU. Aim at 200ms with an assumption
+that 10 clock periods are needed for each cycle. F_CPU is in Hz. */
+#define RESPONSE_DELAY          (F_CPU/1000)/10*200
 
 /* Response for a Tx Status frame should be smaller. Aim at 100ms */
-#define TX_STATUS_DELAY         F_CPU/10000*100
+#define TX_STATUS_DELAY         (F_CPU/1000)/10*100
 
-/* Time to mute counter update following a transmission */
-#define MUTE_TIME               F_CPU/10000*10
+/* Time to mute counter update following a transmission 10ms. */
+#define MUTE_TIME               (F_CPU/1000)/10*10
 
 typedef enum {no_error, timeout, unknown_type, unknown_error} packet_error;
 
