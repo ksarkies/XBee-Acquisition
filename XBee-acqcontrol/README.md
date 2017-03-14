@@ -17,13 +17,15 @@ communication from the network. The default filename will be time-stamped, but
 this can be overriden by a command line option. Debug information is written to
 /var/log/syslog. Optional command line options are:
 
--d _directory_ to store results file (default is /data/XBee/)
+-D _directory_ to store results file (default is /data/XBee/).
 
--P _port_ (default is /dev/ttyUSB0)
+-P _port_ (default is /dev/ttyUSB0).
 
--b _baudrate_ (default 38400 baud)
+-b _baudrate_ (default 38400 baud).
 
--D debug mode, causing printout of various actions.
+-d debug mode causing printout of various actions. Same as -e 1
+
+-e enhanced debug mode: level 0=none, 1=basic, 2=enhanced.
 
 More information is available on [Jiggerjuice](http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html)
 

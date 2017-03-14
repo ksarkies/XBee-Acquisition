@@ -93,6 +93,7 @@ typedef struct {
     uint16_t profileID;
     uint16_t manufacturerID;
     uint8_t valid;          // Indicates if the record has received a valid node ident.
+    uint8_t protocolState;  // Directs how the protocol is progressing.
     char dataResponse;      // First character of a response to a data message
     char remoteResponse;    // First character of a response to a remote AT message
     struct xbee_con *dataCon;// libxbee connection for data reception;

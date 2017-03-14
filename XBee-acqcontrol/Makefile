@@ -1,6 +1,7 @@
 PROJECT = xbee-acqcontrol
 
 CFLAGS  = -pipe -O2 -Wall -W -pedantic
+CFLAGS  += -g
 INCLUDE = -I.
 LDFLAGS = 
 

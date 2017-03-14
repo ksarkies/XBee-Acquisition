@@ -15,6 +15,10 @@ The program starts by querying all nodes on the network and building a table
 of information for each one, including libxbee connections to allow reception
 of data streams from the device.
 
+End devices may be sleeping when this occurs. To ensure they are recognised
+start these up after acqcontrol has been started. The NodeID packet sent
+will contain the correct information for the session.
+
 The program also sets up an Internet TCP port 58532 for connection externally
 by a control program. Refer to the command handler function for the commands
 passed on that interface.
@@ -115,6 +119,8 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
 int min(int x, int y) {if (x>y) return y; else return x;}
 int findRowBy64BitAddress(unsigned char *addr);
 int findRowBy16BitAddress(uint16_t addr);
+void debugDumpNodeTable(void);
+void debugDumpPacket(struct xbee_pkt **pkt);
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /** @brief XBee Acquisition Control Main Program
@@ -123,14 +129,15 @@ int findRowBy16BitAddress(uint16_t addr);
 
 int main(int argc,char ** argv)
 {
-    debug = false;
+    debug = 0;                  /* no debug printout by default */
     xbeeLogging = false;
 /*--------------------------------------------------------------------------*/
 /* Parse the command line arguments.
 P - serial port to use, (default /dev/ttyUSB0)
 b - baud rate, (default 38400 baud)
 D - directory for results file (default /data/XBee/)
-d - Debug mode.
+e - enhanced debug mode 0=none, 1=basic, 2=enhanced.
+d - basic debug mode 1.
  */
     strcpy(inPort,SERIAL_PORT);
     baudrate = BAUDRATE;
@@ -138,15 +145,18 @@ d - Debug mode.
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:b:D:L:d")) != -1)
+    while ((c = getopt (argc, argv, "P:b:D:L:de:")) != -1)
     {
         switch (c)
         {
         case 'D':
             strcpy(dirname,optarg);
             break;
+        case 'e':
+            debug = atoi(optarg);
+            break;
         case 'd':
-            debug = true;
+            debug = 1;
             break;
         case 'P':
             strcpy(inPort,optarg);
@@ -1357,8 +1367,6 @@ other data types.
 @param void **data. Data (not used).
 */
 
-static int protocolState;
-
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
                   struct xbee_pkt **pkt, void **data)
 {
@@ -1375,13 +1383,23 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
 #ifdef DEBUG
     if (debug)
     {
-        if (row == numberNodes) printf("Node Unknown ");
-        else printf("Node %s ", nodeInfo[row].nodeIdent);
-        printf("Data Packet: %s length %d, data ",timeString,writeLength);
-        for (int i=0; i<writeLength; i++) printf("%c", (*pkt)->data[i]);
-        printf("\n");
+        if (row == numberNodes)
+        {
+            printf("Node Unknown, unable to process packet.\n");
+            debugDumpNodeTable();
+            printf("Packet Dump:");
+        }
+        else
+        {
+            printf("Node %s Data Packet:", nodeInfo[row].nodeIdent);
+        }
+        debugDumpPacket(pkt);
     }
 #endif
+/* If the node is not recognised, abort processing */
+    if (row == numberNodes) return;
+/* Add 16 bit address to node table in case it was not already saved. */
+    nodeInfo[row].adr = ((uint16_t)(*pkt)->address.addr16[0]+(*pkt)->address.addr16[1]);
 /* Determine if the packet received is a data packet and check for errors.
 The command is that sent by the application layer protocol in the remote. */
     char command = (*pkt)->data[0];
@@ -1401,7 +1419,7 @@ Error is signalled if length or checksum are wrong. */
             printf("Command Received %c",command);
         }
 #endif
-        protocolState = 1;                      /* Start of protocol cycle. */
+        nodeInfo[row].protocolState = 1;        /* Start of protocol cycle. */
         if (writeLength != 11) error = true;
         if (!error)
         {
@@ -1456,13 +1474,14 @@ the string */
 #endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
-/* Acknowledge */
+/* Check if there are any pending data transmissions to the remote and send now */
 // txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
 // usleep(500000);                 /* Insert delay for test */
+/* Acknowledge */
             ackResponse[0] = 'A';
             txError = xbee_conTx(con, NULL, ackResponse);
 /* Advance the protocol state to indicate acceptance of any response as ACK. */
-            protocolState = 2;
+            nodeInfo[row].protocolState = 2;
         }
 #ifdef DEBUG
         if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %s\n\r",xbee_errorToStr(txError));
@@ -1473,9 +1492,9 @@ the Parameter Change or data commands is accepted as ACK since this is the
 only response possible. The only way now that a cycle can give a wrong
 result is if the response was not detected as a data packet. In that case
 the remote will clear its data but the base will not record it. */
-    else if (protocolState == 2)
+    else if (nodeInfo[row].protocolState == 2)
     {
-        protocolState = 1;                  /* Reset protocol state */
+        nodeInfo[row].protocolState = 1;         /* Reset protocol state */
 #ifdef DEBUG
 //        printf("Remote Accepted\n\r");
 #endif
@@ -1485,7 +1504,7 @@ the remote will clear its data but the base will not record it. */
 has detected ongoing errors and will now not reset its count. */
     else if (command == 'X')
     {
-        protocolState = 1;                  /* Reset protocol state */
+        nodeInfo[row].protocolState = 1;        /* Reset protocol state */
 #ifdef DEBUG
         if (debug) printf("Remote Abandoned\n\r");
 #endif
@@ -1706,9 +1725,9 @@ void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug)
+    if (debug > 1)
     {
-        int row = findRowBy16BitAddress(((*pkt)->data[1] << 8) + (*pkt)->data[2]);
+        int row = findRowBy16BitAddress(((uint16_t)(*pkt)->data[1] << 8) + (*pkt)->data[2]);
         char timeString[20];
         time_t now;
         now = time(NULL);
@@ -1717,14 +1736,13 @@ void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
         strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
         printf("Transmit Status: %s ",timeString);
         printf("Length: %d ",(*pkt)->dataLen);
-        printf("FrameID %2X, ", (*pkt)->data[0]);
-        printf("16 Bit Address %2X%2X, ", (*pkt)->data[1], (*pkt)->data[2]);
+        printf("FrameID %02X, ", (*pkt)->data[0]);
+        printf("16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
         if (row == numberNodes) printf("Unknown ");
         else printf("%s ", nodeInfo[row].nodeIdent);
         printf("Retry count %d, ", (*pkt)->data[3]);
-        printf("Delivery status %2X, ", (*pkt)->data[4]);
-        printf("Discovery status %2X", (*pkt)->data[5]);
-//        for (int i=0; i<(*pkt)->dataLen; i++) printf("%2X ",(*pkt)->data[i]);
+        printf("Delivery status %02X, ", (*pkt)->data[4]);
+        printf("Discovery status %02X", (*pkt)->data[5]);
         printf("\n");
     }
 #endif
@@ -1749,7 +1767,7 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug)
+    if (debug > 1)
     {
         char timeString[20];
         time_t now;
@@ -2060,7 +2078,8 @@ If the returned value equals the number of rows, then the node is not in the
 table.
 
 Note this address varies from session to session and may not match that in the
-node file.
+node file. To ensure a match, start up each node after acqcontrol has been
+started.
 
 Globals:
 nodeInfo: node information table
@@ -2077,8 +2096,62 @@ int findRowBy16BitAddress(uint16_t addr)
     int row=0;
     for (; row<numberNodes; row++)
     {
-        if (addr ==  nodeInfo[row].adr) break;
+        if (addr == nodeInfo[row].adr) break;
     }
     return row;
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of node table.
+
+This is a debug only function. Only the first four components are printed.
+*/
+
+void debugDumpNodeTable(void)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        printf("Node table\n");
+        printf("Row 16-adr 32-adr     Node Ident\n");
+        int row=0;
+        for (; row<numberNodes; row++)
+        {
+            printf(" %2d  %04X %04X%04X %s\n", row, nodeInfo[row].adr, nodeInfo[row].SH,
+                   nodeInfo[row].SL, nodeInfo[row].nodeIdent);
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a packet.
+
+This is a debug only function. It displays only the time, addresses and data
+portion.
+*/
+
+void debugDumpPacket(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        char timeString[20];
+        time_t now;
+        now = time(NULL);
+        struct tm *tmp;
+        tmp = localtime(&now);
+        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+        printf(" %s ", timeString);
+        printf("A16: %02X%02X ", (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
+        printf("A64: %02X%02X", (*pkt)->address.addr64[0], (*pkt)->address.addr64[1]);
+        printf("%02X%02X", (*pkt)->address.addr64[2], (*pkt)->address.addr64[3]);
+        printf("%02X%02X", (*pkt)->address.addr64[4], (*pkt)->address.addr64[5]);
+        printf("%02X%02X ", (*pkt)->address.addr64[6], (*pkt)->address.addr64[7]);
+        printf("len %d ", (*pkt)->dataLen);
+        for (int i=0; i<(*pkt)->dataLen; i++) printf("%c", (*pkt)->data[i]);
+        printf("\n");
+    }
+#endif
 }
 
