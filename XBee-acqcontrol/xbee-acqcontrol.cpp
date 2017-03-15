@@ -1260,19 +1260,39 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
         printf(", 16 bit address %04X", adr);
         printf(", 64 bit address %08X %08X", SH, SL);
         printf(", ID ");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Identify Packet: length %d", (*pkt)->dataLen);
+            fprintf(fp,", 16 bit address %04X", adr);
+            fprintf(fp,", 64 bit address %08X %08X", SH, SL);
+            fprintf(fp,", ID ");
+        }
         int i = 10;
         while ((*pkt)->data[i] > 0) printf("%c", (*pkt)->data[i++]);
         i++;
         unsigned int parent =  (*pkt)->data[i++];
         parent = (parent << 8) +  (*pkt)->data[i++];
-        printf(", parent address %04X",parent);
         int type = (*pkt)->data[i++];
+        printf(", parent address %04X",parent);
         if (type == 0) printf(" Coordinator");
         else if (type == 1) printf(" Router");
         else if (type == 2) printf(" End Device");
         else printf(" Unknown type");
         for (; i<(*pkt)->dataLen; i++) printf(" %02X", (*pkt)->data[i]);
         printf("\n");
+
+        if (fp != NULL)
+        {
+            int i = 10;
+            while ((*pkt)->data[i] > 0) fprintf(fp,"%c", (*pkt)->data[i++]);
+            fprintf(fp,", parent address %04X",parent);
+            if (type == 0) fprintf(fp," Coordinator");
+            else if (type == 1) fprintf(fp," Router");
+            else if (type == 2) fprintf(fp," End Device");
+            else fprintf(fp," Unknown type");
+            for (; i<(*pkt)->dataLen; i++) fprintf(fp," %02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
     }
 #endif
 /* Check if the serial number already exists. If not, then it is a new node. */
@@ -1310,17 +1330,20 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
         numberNodes++;
 
 /* Write new node data to the node file */
-        fprintf(fpd,"%04X ",nodeInfo[node].adr);
-        fprintf(fpd,"%08X ",nodeInfo[node].SH);
-        fprintf(fpd,"%08X ",nodeInfo[node].SL);
-        fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
-        fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
-        fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
-        fprintf(fpd,"%02X ",nodeInfo[node].status);
-        fprintf(fpd,"%04X ",nodeInfo[node].profileID);
-        fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
-        fprintf(fpd,"\n");
-        fflush(fpd);
+        if (fpd != NULL)
+        {
+            fprintf(fpd,"%04X ",nodeInfo[node].adr);
+            fprintf(fpd,"%08X ",nodeInfo[node].SH);
+            fprintf(fpd,"%08X ",nodeInfo[node].SL);
+            fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
+            fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
+            fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
+            fprintf(fpd,"%02X ",nodeInfo[node].status);
+            fprintf(fpd,"%04X ",nodeInfo[node].profileID);
+            fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
+            fprintf(fpd,"\n");
+            fflush(fpd);
+        }
 
 /* Disable all connections on new entry to allow them to be created below. */
         nodeInfo[node].valid = false;
@@ -1386,12 +1409,19 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
         if (row == numberNodes)
         {
             printf("Node Unknown, unable to process packet.\n");
-            debugDumpNodeTable();
             printf("Packet Dump:");
+            if (fp != NULL)
+            {
+                fprintf(fp,"Node Unknown, unable to process packet.\n");
+                fprintf(fp,"Packet Dump:");
+            }
+            debugDumpNodeTable();
         }
         else
         {
             printf("Node %s Data Packet:", nodeInfo[row].nodeIdent);
+            if (fp != NULL) fprintf(fp,"Node %s Data Packet:",
+                                           nodeInfo[row].nodeIdent);
         }
         debugDumpPacket(pkt);
     }
@@ -1399,7 +1429,7 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
 /* If the node is not recognised, abort processing */
     if (row == numberNodes) return;
 /* Add 16 bit address to node table in case it was not already saved. */
-    nodeInfo[row].adr = ((uint16_t)(*pkt)->address.addr16[0]+(*pkt)->address.addr16[1]);
+    nodeInfo[row].adr = (((uint16_t)(*pkt)->address.addr16[0] << 8)+(*pkt)->address.addr16[1]);
 /* Determine if the packet received is a data packet and check for errors.
 The command is that sent by the application layer protocol in the remote. */
     char command = (*pkt)->data[0];
@@ -1416,7 +1446,9 @@ Error is signalled if length or checksum are wrong. */
 #ifdef DEBUG
         if (debug)
         {
-            printf("Command Received %c",command);
+            printf("Command Received %c %s",command,nodeInfo[row].nodeIdent);
+            if (fp != NULL) fprintf(fp,"Command Received %c %s",
+                                            command,nodeInfo[row].nodeIdent);
         }
 #endif
         nodeInfo[row].protocolState = 1;        /* Start of protocol cycle. */
@@ -1453,6 +1485,8 @@ the string */
 #ifdef DEBUG
             printf(" Count %lu Voltage %f V Retry %lu\n",
                 (count & 0xFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 30));
+            if (fp != NULL) fprintf(fp," Count %lu Voltage %f V Retry %lu\n",
+                (count & 0xFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 30));
 #endif
         }
         xbee_err txError;
@@ -1461,7 +1495,12 @@ the string */
         if (error)
         {
 #ifdef DEBUG
-            if (debug) printf("Error detected - sent NAK\n\r");
+            if (debug)
+            {
+                printf("Error detected - sent NAK %s\n",nodeInfo[row].nodeIdent);
+                if (fp != NULL) fprintf(fp,"Error detected - sent NAK %s\n",
+                                        nodeInfo[row].nodeIdent);
+            }
 #endif
 /* Negative Acknowledge */
             ackResponse[0] = 'N';
@@ -1470,7 +1509,11 @@ the string */
         else
         {
 #ifdef DEBUG
-            if (debug) printf("Sent ACK\n\r");
+            if (debug)
+            {
+                printf("Sent ACK %s\n",nodeInfo[row].nodeIdent);
+                if (fp != NULL) fprintf(fp,"Sent ACK %s\n",nodeInfo[row].nodeIdent);
+            }
 #endif
 /* If no error, store data field aside for later recording. */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
@@ -1484,7 +1527,13 @@ the string */
             nodeInfo[row].protocolState = 2;
         }
 #ifdef DEBUG
-        if (debug && (txError != XBEE_ENONE)) printf("Tx Fail %s\n\r",xbee_errorToStr(txError));
+        if (debug && (txError != XBEE_ENONE))
+        {
+            printf("Tx Fail %s: %s\n",
+                    nodeInfo[row].nodeIdent, xbee_errorToStr(txError));
+            if (fp != NULL) fprintf(fp,"Tx Fail %s: %s\n",
+                        nodeInfo[row].nodeIdent, xbee_errorToStr(txError));
+        }
 #endif
     }
 /* If the protocol state has reached the final stage, any response apart from
@@ -1496,7 +1545,7 @@ the remote will clear its data but the base will not record it. */
     {
         nodeInfo[row].protocolState = 1;         /* Reset protocol state */
 #ifdef DEBUG
-//        printf("Remote Accepted\n\r");
+//        printf("Remote Accepted\n");
 #endif
         storeData = true;
     }
@@ -1506,7 +1555,8 @@ has detected ongoing errors and will now not reset its count. */
     {
         nodeInfo[row].protocolState = 1;        /* Reset protocol state */
 #ifdef DEBUG
-        if (debug) printf("Remote Abandoned\n\r");
+        if (debug) printf("Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
+        if (fp != NULL) fprintf(fp,"Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
 #endif
         storeData = false;
     }
@@ -1532,13 +1582,16 @@ protocol but only sends a single transmission. */
 /* Print out received data to the file once it is verified. */
     if (storeData)
     {
-        if (row == numberNodes) fprintf(fp,"Node Unknown ");
-        else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-        fprintf(fp," %s ", timeString);
-        fprintf(fp, "Count ");
-        for (int i=0; i<DATA_LENGTH; i++) buffer[i] = remoteData[i][row];
-        fwrite(buffer,1,DATA_LENGTH,fp);
-        fprintf(fp, "\n\r");
+        if (fp != NULL)
+        {
+            if (row == numberNodes) fprintf(fp,"Node Unknown ");
+            else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
+            fprintf(fp," %s ", timeString);
+            fprintf(fp, "Count ");
+            for (int i=0; i<DATA_LENGTH; i++) buffer[i] = remoteData[i][row];
+            fwrite(buffer,1,DATA_LENGTH,fp);
+            fprintf(fp, "\n");
+        }
         dataFileCheck();
 /* If we are hearing from this then it is a valid node */
         if (row < numberNodes) nodeInfo[row].valid = true;
@@ -1575,6 +1628,12 @@ void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
         printf("Remote AT Response: length %d, data ",(*pkt)->dataLen);
         for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
         printf("\n");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Remote AT Response: length %d, data ",(*pkt)->dataLen);
+            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
     }
 #endif
     remoteATResponseRcvd = true;
@@ -1612,6 +1671,12 @@ void localATCallback(struct xbee *xbee, struct xbee_con *con,
         printf("Local AT Response: length %d, data ",(*pkt)->dataLen);
         for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
         printf("\n");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Local AT Response: length %d, data ",(*pkt)->dataLen);
+            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
     }
 #endif
     localATResponseRcvd = true;
@@ -1646,10 +1711,13 @@ void ioCallback(struct xbee *xbee, struct xbee_con *con,
     struct tm *tmp = localtime(&now);
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int row = findRowBy64BitAddress((*pkt)->address.addr64);
-    if (row == numberNodes) fprintf(fp,"Node Unknown ");
-    else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-    fprintf(fp," %s ", timeString);
-    fprintf(fp, "I/O ");
+    if (fp != NULL)
+    {
+        if (row == numberNodes) fprintf(fp,"Node Unknown ");
+        else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
+        fprintf(fp," %s ", timeString);
+        fprintf(fp, "I/O ");
+    }
 #ifdef DEBUG
     if (debug)
     {
@@ -1663,9 +1731,12 @@ void ioCallback(struct xbee *xbee, struct xbee_con *con,
 write the next word field directly as the set of digital ports. */
     if ((((*pkt)->data[1] << 8) + (*pkt)->data[2]) > 0)
     {
-        fprintf(fp, "Digital Mask %04X Ports %04X ",
-                (((*pkt)->data[1] << 8) + (*pkt)->data[2]),
-                (((*pkt)->data[4] << 8) + (*pkt)->data[5]));
+        if (fp != NULL)
+        {
+            fprintf(fp, "Digital Mask %04X Ports %04X ",
+                    (((*pkt)->data[1] << 8) + (*pkt)->data[2]),
+                    (((*pkt)->data[4] << 8) + (*pkt)->data[5]));
+        }
 #ifdef DEBUG
         if (debug)
         {
@@ -1682,9 +1753,12 @@ write the next word field directly as the set of digital ports. */
     {
         if (((*pkt)->data[3] & (1<<(aBitMask++))) > 0)
         {
-            fprintf(fp, "A%01d ",i);
-            fprintf(fp, "%04d ",
-                ((*pkt)->data[index] << 8) + (*pkt)->data[index+1]);
+            if (fp != NULL)
+            {
+                fprintf(fp, "A%01d ",i);
+                fprintf(fp, "%04d ",
+                    ((*pkt)->data[index] << 8) + (*pkt)->data[index+1]);
+            }
 #ifdef DEBUG
             if (debug)
             {
@@ -1696,7 +1770,7 @@ write the next word field directly as the set of digital ports. */
             index += 2;
         }
     }
-    fprintf(fp, "\n");
+    if (fp != NULL) fprintf(fp, "\n");
 /* Write to the disk now to ensure it is available */
     dataFileCheck();
 #ifdef DEBUG
@@ -1713,7 +1787,7 @@ This is a callback required by libxbee. It operates on the global
 datastructure that holds all information for each node returned by the ND
 command. It is invoked when an tx status packet is received.
 
-Simply print out the message.
+Simply print out the message if the advanced debug is selected.
 
 @param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
 @param struct xbee_con *con. Connection (not used).
@@ -1744,6 +1818,20 @@ void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
         printf("Delivery status %02X, ", (*pkt)->data[4]);
         printf("Discovery status %02X", (*pkt)->data[5]);
         printf("\n");
+/* Also print to file */
+        if (fp != NULL)
+        {
+            fprintf(fp,"Transmit Status: %s ",timeString);
+            fprintf(fp,"Length: %d ",(*pkt)->dataLen);
+            fprintf(fp,"FrameID %02X, ", (*pkt)->data[0]);
+            fprintf(fp,"16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
+            if (row == numberNodes) fprintf(fp,"Unknown ");
+            else fprintf(fp,"%s ", nodeInfo[row].nodeIdent);
+            fprintf(fp,"Retry count %d, ", (*pkt)->data[3]);
+            fprintf(fp,"Delivery status %02X, ", (*pkt)->data[4]);
+            fprintf(fp,"Discovery status %02X", (*pkt)->data[5]);
+            fprintf(fp,"\n");
+        }
     }
 #endif
 }
@@ -1776,6 +1864,11 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
         tmp = localtime(&now);
         strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
         printf("Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
+/* Also print to file */
+        if (fp != NULL)
+        {
+            fprintf(fp,"Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
+        }
     }
 #endif
 }
@@ -2020,22 +2113,25 @@ numberNodes: the number of nodes in the table
 void writeNodeFile(void)
 {
 /* Wipe contents of file and write back node table as is. */
-    if (ftruncate(fileno(fpd),0) != 0) return;
-    for (int node = 0; node < numberNodes; node++)
+    if (fpd != NULL)
     {
-/* Write all node data back to the node file */
-        fprintf(fpd,"%04X ",nodeInfo[node].adr);
-        fprintf(fpd,"%08X ",nodeInfo[node].SH);
-        fprintf(fpd,"%08X ",nodeInfo[node].SL);
-        fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
-        fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
-        fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
-        fprintf(fpd,"%02X ",nodeInfo[node].status);
-        fprintf(fpd,"%04X ",nodeInfo[node].profileID);
-        fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
-        fprintf(fpd,"\n");
+        if (ftruncate(fileno(fpd),0) != 0) return;
+        for (int node = 0; node < numberNodes; node++)
+        {
+    /* Write all node data back to the node file */
+            fprintf(fpd,"%04X ",nodeInfo[node].adr);
+            fprintf(fpd,"%08X ",nodeInfo[node].SH);
+            fprintf(fpd,"%08X ",nodeInfo[node].SL);
+            fprintf(fpd,"%s ",nodeInfo[node].nodeIdent);
+            fprintf(fpd,"%04X ",nodeInfo[node].parentAdr);
+            fprintf(fpd,"%02X ",nodeInfo[node].deviceType);
+            fprintf(fpd,"%02X ",nodeInfo[node].status);
+            fprintf(fpd,"%04X ",nodeInfo[node].profileID);
+            fprintf(fpd,"%04X ",nodeInfo[node].manufacturerID);
+            fprintf(fpd,"\n");
+        }
+        fflush(fpd);
     }
-    fflush(fpd);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -2151,6 +2247,20 @@ void debugDumpPacket(struct xbee_pkt **pkt)
         printf("len %d ", (*pkt)->dataLen);
         for (int i=0; i<(*pkt)->dataLen; i++) printf("%c", (*pkt)->data[i]);
         printf("\n");
+
+/* Also print to file */
+        if (fp != NULL)
+        {
+            fprintf(fp," %s ", timeString);
+            fprintf(fp,"A16: %02X%02X ", (*pkt)->address.addr16[0], (*pkt)->address.addr16[1]);
+            fprintf(fp,"A64: %02X%02X", (*pkt)->address.addr64[0], (*pkt)->address.addr64[1]);
+            fprintf(fp,"%02X%02X", (*pkt)->address.addr64[2], (*pkt)->address.addr64[3]);
+            fprintf(fp,"%02X%02X", (*pkt)->address.addr64[4], (*pkt)->address.addr64[5]);
+            fprintf(fp,"%02X%02X ", (*pkt)->address.addr64[6], (*pkt)->address.addr64[7]);
+            fprintf(fp,"len %d ", (*pkt)->dataLen);
+            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%c", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
     }
 #endif
 }
