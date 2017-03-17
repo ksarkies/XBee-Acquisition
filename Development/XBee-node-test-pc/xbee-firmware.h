@@ -72,7 +72,4 @@ void wakeXBee(void);
 void powerDown(void);
 void powerUp(void);
 
-typedef enum {no_error, timeout, unknown_frame_type, modem_status, node_ident,
-              command_response, unknown_error} packet_error;
-
 #endif /*_XBEE_FIRMWARE_NODE_H_ */

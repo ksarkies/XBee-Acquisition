@@ -1,8 +1,8 @@
 /**
 @mainpage AVR XBee Node Firmware
-@version 1.0
+@version 1.1
 @author Ken Sarkies (www.jiggerjuice.info)
-@date 2 March 2016
+@date 18 March 2016
 
 @brief Code for an AVR with an XBee in a Remote Low Power Node
 
@@ -449,6 +449,7 @@ packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
     uint32_t timeResponse = 0;
     packet_error packetError = no_error;
     uint8_t messageState = 0;
+    uint8_t i;
 /* Loop until the message is received or an error occurs. */
     while (true)
     {

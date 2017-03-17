@@ -109,6 +109,9 @@ typedef struct
     uint8_t checksum;
 } txFrameType;
 
+typedef enum {no_error, timeout, unknown_frame_type, modem_status, node_ident,
+              command_response, unknown_error} packet_error;
+
 /*----------------------------------------------------------------------*/
 /* Prototypes */
 

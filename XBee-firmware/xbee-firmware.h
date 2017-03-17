@@ -49,6 +49,4 @@ that 10 clock periods are needed for each cycle. F_CPU is in Hz. */
 /* Time to mute counter update following a transmission 10ms. */
 #define MUTE_TIME               (F_CPU/1000)/10*10
 
-typedef enum {no_error, timeout, unknown_type, unknown_error} packet_error;
-
 #endif /*_XBEE_NODE_H_ */
