@@ -73,6 +73,10 @@ typedef struct
             uint8_t deliveryStatus;
             uint8_t discoveryStatus;
         } txStatus;
+        struct
+        {
+            uint8_t status;
+        } modemStatus;
     } message;
     uint8_t checksum;
 } rxFrameType;

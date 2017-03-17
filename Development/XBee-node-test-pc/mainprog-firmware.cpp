@@ -62,6 +62,9 @@ CTS must be set in the XBee.
 
 #define RTC_SCALE   30
 
+char const *packetErrorString[] = {"No Error", "Timeout", "Unknown Type",
+"Modem Status", "Node Ident", "Command Response", "Unknown Error"};
+
 /*---------------------------------------------------------------------------*/
 /* clib library functions to be bypassed */
 
@@ -134,7 +137,7 @@ event. */
 
 /* Further check for association indication from the XBee.
 Don't start until it is associated. */
-    while (! checkAssociated());
+    while (! checkAssociated()) sleep(1);
     printf("Now Associated\n");
 
 /* Initialise watchdog timer count */
@@ -149,7 +152,7 @@ Don't start until it is associated. */
 /** The Main Program is that part which runs inside an infinite loop.
 The loop is emulated in the emulator program. */
 
-void mainprog()
+int mainprog()
 {
 
 /* Main loop. Remove outer loop as it is simulated. */
@@ -205,23 +208,27 @@ means of notifying the base station that the AVR is awake. */
                     bool transmit = true;
                     uint8_t errorCount = 0;
                     uint8_t retry = 0;      /* Retries to get base response OK */
-time_t rawtime;
-struct tm * timeinfo;
-time(&rawtime);
-timeinfo = localtime(&rawtime);
-printf("Time: %s\n", asctime(timeinfo));
                     while (! cycleComplete)
                     {
-if (cycleComplete) printf("Cycle Completed\n");
-else printf("New Cycle\n");
+if (cycleComplete) printf("Cycle Completed ");
+else printf("NEW CYCLE ");
+char timeString[20];
+time_t rawtime;
+struct tm * timeinfo;
+rawtime = time(NULL);
+timeinfo = localtime(&rawtime);
+strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",timeinfo);
+printf("%s\n", timeString);
                         if (transmit)
                         {
 printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
-                            sendDataCommand(txCommand,lastCount+(batteryVoltage << 16));
+                            sendDataCommand(txCommand,
+                                lastCount+((uint32_t)batteryVoltage<<16)+
+                                ((uint32_t)retry<<30));
                             txDelivered = false;    /* Allow check for Tx Status frame */
                             txStatusReceived = false;
                         }
-                        transmit = false;   /* Prevent any more transmissions until told */
+                        transmit = false;   /* Prevent any more transmissions */
 
 /* Wait for incoming messages. */
                         rxFrameType inMessage;      /* Buffered data frame */
@@ -232,13 +239,13 @@ printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
 /* Break out of cycle if there are too many errors */
                         if (packetError != no_error)
                         {
-printf("Receive error %d\n", packetError);
+printf("Receive error: %s\n", packetErrorString[packetError]);
                             errorCount++;
                         }
                         if (errorCount > 10)
                         {
-printf("Too many receive errors\n");
-                            break;
+printf("Too many receive errors. Restarting.\n");
+                            return false;
                         }
 
 /* ============ Interpret messages and decide on actions to take */
@@ -343,6 +350,7 @@ else printf("Not associated.\n");
         }
         while (counter != lastCount);
 //    }
+    return true;
 }
 
 /****************************************************************************/
@@ -412,63 +420,71 @@ packet_error readIncomingMessage(bool* packetReady, bool* txStatusReceived,
 /* Got a frame complete without error. */
             if (messageStatus == XBEE_COMPLETE)
             {
-printf("Message Type %x, Length %d\n", rxMessage.frameType,rxMessage.length);
+                *txDelivered = false;
+                *txStatusReceived = false;
+//printf("Message Received: Type %x, Length %d ", rxMessage.frameType,rxMessage.length);
 /* 0x90 is a Zigbee Receive Packet frame that will contain command and data
 from the coordinator system. Copy to a buffer for later processing. */
-                if (rxMessage.frameType == 0x90)
+                switch (rxMessage.frameType)
                 {
+                case 0x90:
                     inMessage->length = rxMessage.length;
                     inMessage->checksum = rxMessage.checksum;
                     inMessage->frameType = rxMessage.frameType;
                     for (i=0; i<RF_PAYLOAD; i++)
                         inMessage->message.rxPacket.data[i] =
                             rxMessage.message.rxPacket.data[i];
+                    *txDelivered = true;
                     *packetReady = true;
-printf("Got a data frame: reply %c", rxMessage.message.rxPacket.data[0]);
+printf("Data Packet: reply %c", rxMessage.message.rxPacket.data[0]);
 printf(", data contents");
 for (i=1; i<rxMessage.length; i++) printf(" %x", rxMessage.message.rxPacket.data[i]);
 printf("\n");
-                }
+                    break;
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
 transmitted message was delivered. Action to repeat will happen ONLY if
 txDelivered is false and txStatusReceived is true. */
-                else if (rxMessage.frameType == 0x8B)
-                {
+                case 0x8B:
                     *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                     *txStatusReceived = true;
-printf("Zigbee Transmit Status Frame: data contents");
+printf("Transmit Status: data contents");
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
-printf("\n");
-printf("Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
+printf(" Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
 if (! *txDelivered) printf(" not");
 printf(" delivered\n");
-                }
-/* Unknown or unwanted packet type. Discard as error and continue. */
-                else
-                {
-                    packetError = unknown_type;
-                    *txDelivered = false;
-                    *txStatusReceived = false;
-/* Command response */
-                    if (rxMessage.frameType == 0x88)
-                    {
-printf("Command Response Frame: Command %c%c, status %d, data ",
+                    break;
+/* 0x8A is a Modem Status frame. */
+                case 0x8A:
+                    packetError = modem_status;
+printf("Modem Status: status %d\n",
+    rxMessage.message.modemStatus.status);
+                    break;
+/* 0x95 is a Node Identification frame. */
+                case 0x95:
+                    packetError = node_ident;
+printf("Identify Packet: Length %d  data contents", rxMessage.length);
+for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
+printf("\n");
+                    break;
+/* 0x88 is an AT Command response frame. */
+                case 0x88:
+                    packetError = command_response;
+printf("Command Response : Command %c%c, status %d, data ",
     rxMessage.message.atResponse.atCommand1,
     rxMessage.message.atResponse.atCommand2,
     rxMessage.message.atResponse.status);
-for (i=0; i<rxMessage.length-5; i++) printf(" %x", rxMessage.message.atResponse.data[i]);
+for (i=0; i<rxMessage.length-5; i++)
+    printf(" %x", rxMessage.message.atResponse.data[i]);
 printf("\n");
-                    }
-                    else
-                    {
-printf("Packet error detected: Type %x, Length %d\n", rxMessage.frameType, rxMessage.length);
-printf("Unknown Frame: data contents");
+                    break;
+/* Unknown or unwanted packet type. Discard as error and continue. */
+                default:
+                    packetError = unknown_frame_type;
+printf("Unknown Frame: Type %x, Length %d ", rxMessage.frameType, rxMessage.length);
+printf(" data contents");
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
-                    }
                 }
-                messageState = 0;   /* Reset packet counter */
-                break;
             }
 /* If message status is anything else, then this means other errors occurred
 (namely checksum or packet length is wrong). */
@@ -492,9 +508,9 @@ printf("Other error detected, frame type %x\n", rxMessage.frameType);
                     packetError = unknown_error;
                     *txStatusReceived = false;
                 }
-                messageState = 0;   /* Reset packet counter */
-                break;
             }
+            messageState = 0;   /* Reset packet counter */
+            break;              /* Drop out of the loop */
         }
 /* Nothing received, check for timeout waiting for a base station response.
 Otherwise continue waiting. */

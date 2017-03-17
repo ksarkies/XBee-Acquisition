@@ -140,6 +140,9 @@ retries have passed without a positive response, an X response is returned.
 int main(void)
 {
 
+/* Initialise process counter */
+    counter = 0;
+
 /*  Initialise hardware */
     hardwareInit();
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
@@ -240,7 +243,7 @@ until the next cycle. */
 #endif
                     uint8_t data[12];
                     int8_t dataLength = readXBeeIO(data);
-                    uint16_t batteryVoltage = 0;
+                    uint32_t batteryVoltage = 0;
                     if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
 
 /* Initiate a data transmission to the base station. This also serves as a
@@ -257,7 +260,8 @@ means of notifying the base station that the AVR is awake. */
                         if (transmit)
                         {
                             sendDataCommand(txCommand,
-                                lastCount+((uint32_t)batteryVoltage<<16)+((uint32_t)retry<<30));
+                                lastCount+((uint32_t)batteryVoltage<<16)+
+                                ((uint32_t)retry<<30));
                             txDelivered = false;    /* Allow check for Tx Status frame */
                             txStatusReceived = false;
                         }
@@ -348,7 +352,7 @@ This is intended for application commands. */
                     if (retry < 3) sendMessage("A");
 /* Otherwise if the repeats were exceeded, notify the base station of the
 abandonment of this communication attempt. No response is expected.
-Reset the XBee in case this caused the problem. */
+As this represents a complete failure, reset the entire program. */
                     else
                     {
                         sendMessage("X");
@@ -457,35 +461,45 @@ packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
 /* Got a frame complete without error. */
             if (messageStatus == XBEE_COMPLETE)
             {
+                *txDelivered = false;
+                *txStatusReceived = false;
 /* 0x90 is a Zigbee Receive Packet frame that will contain command and data
 from the base station system. Copy to a buffer for later processing. */
-                if (rxMessage.frameType == 0x90)
+                switch (rxMessage.frameType)
                 {
+                case 0x90:
                     inMessage->length = rxMessage.length;
                     inMessage->checksum = rxMessage.checksum;
                     inMessage->frameType = rxMessage.frameType;
-                    for (uint8_t i=0; i<RF_PAYLOAD; i++)
+                    for (i=0; i<RF_PAYLOAD; i++)
                         inMessage->message.rxPacket.data[i] =
                             rxMessage.message.rxPacket.data[i];
+                    *txDelivered = true;
                     *packetReady = true;
-                }
+                    break;
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
 transmitted message was delivered. Action to repeat will happen ONLY if
 txDelivered is false and txStatusReceived is true. */
-                else if (rxMessage.frameType == 0x8B)
-                {
+                case 0x8B:
                     *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
                     *txStatusReceived = true;
+                    break;
+/* 0x8A is a Modem Status frame. */
+                case 0x8A:
+                    packetError = modem_status;
+                    break;
+/* 0x95 is a Node Identification frame. */
+                case 0x95:
+                    packetError = node_ident;
+                    break;
+/* 0x88 is an AT Command response frame. */
+                case 0x88:
+                    packetError = command_response;
+                    break;
+/* Unknown or unwanted packet type. Discard as error and continue. */
+                default:
+                    packetError = unknown_frame_type;
                 }
-/* Unknown packet type. Discard as error and continue. */
-                else
-                {
-                    packetError = unknown_type;
-                    *txDelivered = false;
-                    *txStatusReceived = false;
-                }
-                messageState = 0;   /* Reset packet counter */
-                break;
             }
 /* If message status is anything else, then this means other errors occurred
 (namely checksum or packet length is wrong). */
@@ -504,11 +518,11 @@ duplicated if the original message was actually received correctly. */
                     packetError = unknown_error;
                     *txStatusReceived = false;
                 }
-                messageState = 0;   /* Reset packet counter */
-                break;
             }
+            messageState = 0;   /* Reset packet counter */
+            break;              /* Drop out of the loop */
         }
-/* Nothing received, check for timeout waiting for a base station response.
+/* If nothing received check for timeout waiting for a base station response.
 Otherwise continue waiting. */
         else
         {

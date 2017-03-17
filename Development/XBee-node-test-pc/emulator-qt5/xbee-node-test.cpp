@@ -50,7 +50,7 @@ NOTE: gcc required to provide function override for timerISR.
 #include <iostream>
 #include "xbee-node-test.h"
 
-extern void mainprog();
+extern int mainprog();
 extern void mainprogInit();
 /* The serial port defined here is created and opened, shared with serial.cpp */
 QSerialPort* port;
@@ -77,19 +77,23 @@ counter. The ISR is called in that function when the limit is reached.
 */
 void XbeeNodeTest::codeRun()
 {
-    mainprogInit();                 // Initialization section
-
     while (running)
     {
-        qApp->processEvents();      // Allow other processes a look in
+        mainprogInit();                 // Initialization section
+
+        while (running)
+        {
+            qApp->processEvents();      // Allow other processes a look in
 
 /* Ensure time ticks over for calls to an emulated ISR, and call the ISR */
-        _timerTick();
+            _timerTick();
 
 /* Place test code to be run here. Any of the QT serial access functions should
-include a call to processEvents to ensure that the desired action is taken. */
+include a call to processEvents to ensure that the desired action is taken.
+If the main program returns a false condition, restart from the beginning. */
         
-        mainprog();
+            if (! mainprog()) break;
+        }
 
     }
     reject();

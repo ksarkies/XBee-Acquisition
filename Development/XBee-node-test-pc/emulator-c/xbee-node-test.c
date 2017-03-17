@@ -161,14 +161,18 @@ printf("Running, baudrate %d port %s\n", baudrate, serialPort);
 /* Run emulated code. The test code is split to an initialisation part and an
 operational part which falls within an (almost) infinite loop emulated here.
 After initialisation of the timer the tick function is called to update the
-counter. The ISR is called in that function when the limit is reached. */
-        mainprogInit();                     /* Initialization section */
+counter. The ISR is called in that function when the limit is reached.
+If the main program returns a false condition, restart everything. */
         while (true)
         {
+            mainprogInit();                     /* Initialization section */
+            while (true)
+            {
 /* Ensure time ticks over for calls to an emulated ISR, and call the ISR */
-            _timerTick();
+                _timerTick();
 /* Place test code to be run here. */
-            mainprog();
+                if (! mainprog()) break;
+            }
         }
     }
     else
@@ -263,9 +267,9 @@ as \000 chars */
     tty.c_cflag |=  CS8;                /* enable 8 bit characters */
     tty.c_cflag |=  HUPCL;              /* enable lower control lines on close - hang up */
 #ifdef USE_HARDWARE_FLOW
-	tty.c_cflag &= ~CRTSCTS;            /* disable hardware CTS/RTS flow control */
-#else
 	tty.c_cflag |=  CRTSCTS;            /* enable hardware CTS/RTS flow control */
+#else
+	tty.c_cflag &= ~CRTSCTS;            /* disable hardware CTS/RTS flow control */
 #endif
     tty.c_lflag &= ~ISIG;               /* disable generating signals */
     tty.c_lflag &= ~ICANON;             /* disable canonical mode - line by line */

@@ -32,7 +32,7 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 #include "../../libs/serial.h"
 #include "../../libs/xbee.h"
 
-void mainprog();
+int mainprog();
 void mainprogInit();
 
 /* WDT count to give desired time between activations of the AVR */
@@ -72,6 +72,7 @@ void wakeXBee(void);
 void powerDown(void);
 void powerUp(void);
 
-typedef enum {no_error, timeout, unknown_type, unknown_error} packet_error;
+typedef enum {no_error, timeout, unknown_frame_type, modem_status, node_ident,
+              command_response, unknown_error} packet_error;
 
 #endif /*_XBEE_FIRMWARE_NODE_H_ */
