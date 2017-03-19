@@ -32,6 +32,8 @@ Title:    XBee Node Test
 #define INITIAL_BAUDRATE    5
 #define SERIAL_PORT         "/dev/ttyUSB0"
 
+#define LOG_FILE            "../xbee-node-test.dat"
+
 /* Choose whether to use hardware flow control for serial comms. */
 //#define USE_HARDWARE_FLOW
 
@@ -47,8 +49,8 @@ class XbeeNodeTest : public QDialog
 {
     Q_OBJECT
 public:
-    XbeeNodeTest(QString*, uint initialBaudrate,bool commandLine,
-                        bool debug,QWidget* parent = 0);
+    XbeeNodeTest(QString* p, uint initialBaudrate, bool commandLine,
+                        bool debug, char* logFileName, QWidget* parent = 0);
     ~XbeeNodeTest();
     bool success();
     QString error();

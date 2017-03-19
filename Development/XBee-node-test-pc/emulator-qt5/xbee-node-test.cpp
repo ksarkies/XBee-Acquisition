@@ -45,6 +45,7 @@ NOTE: gcc required to provide function override for timerISR.
 #include <QFileInfo>
 #include <QDebug>
 #include <QBasicTimer>
+#include <stdio.h>
 #include <cstdlib>
 #include <unistd.h>
 #include <iostream>
@@ -52,6 +53,7 @@ NOTE: gcc required to provide function override for timerISR.
 
 extern int mainprog();
 extern void mainprogInit();
+FILE *fp;                   /* File for results */
 /* The serial port defined here is created and opened, shared with serial.cpp */
 QSerialPort* port;
 const qint32 bauds[8] = {1200,2400,4800,9600,19200,38400,57600,115200};
@@ -105,42 +107,50 @@ If the main program returns a false condition, restart from the beginning. */
 This creates the interface settings to communicate with the XBee, and
 initialises some GUI elements.
 
-@param[in] QString* p: Serial Port object pointer
+@param[in] QString* p: pointer to serial port name
 @param[in] uint initialBaudrate: index to baudrate array
 @param[in] bool commandLine: use command line I/O only
 @param[in] bool debug: print debug messages
+@param[in] QString* f: pointer to log file name
 @param[in] QWidget* parent: Parent widget.
 */
 
-XbeeNodeTest::XbeeNodeTest(QString* p,uint initialBaudrate,bool commandLine,
-                              bool debug,QWidget* parent): QDialog(parent)
+XbeeNodeTest::XbeeNodeTest(QString* p, uint initialBaudrate, bool commandLine,
+                    bool debug, char* logFileName, QWidget* parent): QDialog(parent)
 {
     baudrate = initialBaudrate;
-    bool ok = openSerialPort(*p, initialBaudrate);
-    if (ok)
+    if (! openSerialPort(*p, initialBaudrate))
     {
-        commandLineOnly = commandLine;
-        debugMode = debug;
-        if (debugMode) qDebug() << "Default Debug Mode";
+        qDebug() << "Unable to open serial port" << *p;
+        return;
+    }
+/* Attempt to open a log file */
+    fp = fopen(logFileName, "a");
+    if (fp == NULL)
+    {
+        qDebug() << "Cannot open new results file";
+    }
+    commandLineOnly = commandLine;
+    debugMode = debug;
+    if (debugMode) qDebug() << "Default Debug Mode";
 // Set up the GUI if we are not using the command line
-        if (success())
+    if (success())
+    {
+        running = true;
+        if (commandLineOnly)
         {
-            running = true;
-            if (commandLineOnly)
-            {
-                if (debugMode) qDebug() << "Running, baud rate"<< bauds[initialBaudrate];
-                codeRun();
-            }
-            else
-            {
-                running = false;
+            if (debugMode) qDebug() << "Running, baud rate"<< bauds[initialBaudrate];
+            codeRun();
+        }
+        else
+        {
+            running = false;
 // Build the User Interface display from the Ui class in ui_mainwindowform.h
-                xbeeNodeTestFormUi.setupUi(this);
-                xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
-                xbeeNodeTestFormUi.errorMessage->setVisible(false);
-                setComboBoxes(initialBaudrate);
-                debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
-            }
+            xbeeNodeTestFormUi.setupUi(this);
+            xbeeNodeTestFormUi.debugModeCheckBox->setChecked(debugMode);
+            xbeeNodeTestFormUi.errorMessage->setVisible(false);
+            setComboBoxes(initialBaudrate);
+            debugMode = xbeeNodeTestFormUi.debugModeCheckBox->isChecked();
         }
     }
 }

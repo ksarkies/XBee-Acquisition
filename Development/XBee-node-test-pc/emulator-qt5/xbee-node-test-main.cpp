@@ -54,7 +54,9 @@ the running code.
 
 int main(int argc,char ** argv)
 {
+    char logFileName[40];
     QString serialPort = SERIAL_PORT;
+    strcpy(logFileName,LOG_FILE);
     int c;
     uint initialBaudrate = INITIAL_BAUDRATE; //!< Baudrate index to start searching
     int baudParm;
@@ -64,12 +66,15 @@ int main(int argc,char ** argv)
     QString filename;
 
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:ndb:")) != -1)
+    while ((c = getopt (argc, argv, "P:ndb:L:")) != -1)
     {
         switch (c)
         {
         case 'P':
             serialPort = optarg;
+            break;
+        case 'L':
+            strcpy(logFileName,optarg);
             break;
         case 'n':
             commandLineOnly = true;
@@ -106,7 +111,8 @@ int main(int argc,char ** argv)
     }
 
     QApplication application(argc,argv);
-    XbeeNodeTest xbeeNodeTest(&serialPort,initialBaudrate,commandLineOnly,debug);
+    XbeeNodeTest xbeeNodeTest(&serialPort,initialBaudrate,commandLineOnly,debug,
+                              logFileName);
     if (! commandLineOnly)
     {
         if (xbeeNodeTest.success())

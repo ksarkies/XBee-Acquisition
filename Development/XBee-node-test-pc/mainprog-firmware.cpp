@@ -64,6 +64,7 @@ CTS must be set in the XBee.
 
 char const *packetErrorString[] = {"No Error", "Timeout", "Unknown Type",
 "Modem Status", "Node Ident", "Command Response", "Unknown Error"};
+extern FILE *fp;
 
 /*---------------------------------------------------------------------------*/
 /* clib library functions to be bypassed */
@@ -195,9 +196,15 @@ Don't proceed until it is associated. */
                     sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Turn on battery measurement */
 #endif
                     uint8_t data[12];
+printf("I/O Command sent.");
+fprintf(fp,"I/O Command sent.");
                     int8_t dataLength = readXBeeIO(data);
+printf(" length %d",dataLength);
+fprintf(fp," length %d",dataLength);
                     uint32_t batteryVoltage = 0;
                     if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
+printf(" voltage %d\n",batteryVoltage);
+fprintf(fp," voltage %d\n",batteryVoltage);
 
 /* Initiate a data transmission to the base station. This also serves as a
 means of notifying the base station that the AVR is awake. */
@@ -212,6 +219,8 @@ means of notifying the base station that the AVR is awake. */
                     {
 if (cycleComplete) printf("Cycle Completed ");
 else printf("NEW CYCLE ");
+if (cycleComplete) fprintf(fp,"Cycle Completed ");
+else fprintf(fp,"NEW CYCLE ");
 char timeString[20];
 time_t rawtime;
 struct tm * timeinfo;
@@ -219,9 +228,11 @@ rawtime = time(NULL);
 timeinfo = localtime(&rawtime);
 strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",timeinfo);
 printf("%s\n", timeString);
+fprintf(fp,"%s\n", timeString);
                         if (transmit)
                         {
-printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
+printf("Transmit Command %c sent, Last Count %d\n", txCommand, lastCount);
+fprintf(fp,"Transmit Command %c sent, Last Count %d\n", txCommand, lastCount);
                             sendDataCommand(txCommand,
                                 lastCount+((uint32_t)batteryVoltage<<16)+
                                 ((uint32_t)retry<<30));
@@ -240,11 +251,13 @@ printf("Transmit Command %c , Last Count %d\n", txCommand, lastCount);
                         if (packetError != no_error)
                         {
 printf("Receive error: %s\n", packetErrorString[packetError]);
+fprintf(fp,"Receive error: %s\n", packetErrorString[packetError]);
                             errorCount++;
                         }
                         if (errorCount > 10)
                         {
 printf("Too many receive errors. Restarting.\n");
+fprintf(fp,"Too many receive errors. Restarting.\n");
                             return false;
                         }
 
@@ -255,12 +268,15 @@ printf("Too many receive errors. Restarting.\n");
                         {
 printf("Delivered, start processing\n");
 if (!packetReady) printf("Normal Zigbee Transmit Status Frame from local XBee\n");
+fprintf(fp,"Delivered, start processing\n");
+if (!packetReady) fprintf(fp,"Normal Zigbee Transmit Status Frame from local XBee\n");
 /* Respond to an XBee Data packet. This could be an ACK/NAK response part of
 the overall protocol, indicating the final status of the protocol, or a
 higher level command. */
                             if (packetReady)
                             {
 printf("Process Packet ready to check for ACK/NAK\n");
+fprintf(fp,"Process Packet ready to check for ACK/NAK\n");
 /* Check if the first character in the data field is an ACK or NAK. */
                                 uint8_t rxCommand = inMessage.message.rxPacket.data[0];
 /* Base station picked up an error in the previous response and sent a NAK.
@@ -269,6 +285,7 @@ command. */
                                 if (rxCommand == 'N')
                                 {
 printf("NAK received.\n");
+fprintf(fp,"NAK received.\n");
                                     if (++retry >= 3) cycleComplete = true;
                                     txCommand = 'N';
                                     transmit = true;
@@ -281,6 +298,7 @@ printf("NAK received.\n");
 and go back to sleep. This will take us to the next outer loop so set lastCount
 to zero to cause it to drop out immediately if the counts had not changed. */
 printf("ACK received.\n");
+fprintf(fp,"ACK received.\n");
                                     counter -= lastCount;
                                     lastCount = 0;
                                     cycleComplete = true;
@@ -294,6 +312,7 @@ cycle. Send an E data packet to signal to the base station. */
                             {
                                 if (++retry >= 3) cycleComplete = true;
 printf("Process Packet Error %d, Try number %d\n", packetError, retry);
+fprintf(fp,"Process Packet Error %d, Try number %d\n", packetError, retry);
                                 txCommand = 'E';
                                 transmit = true;
                             }
@@ -307,6 +326,7 @@ not received). */
                         {
                             if (++retry >= 3) cycleComplete = true;
 printf("Process Not Delivered: Try number %d\n", retry);
+fprintf(fp,"Process Not Delivered: Try number %d\n", retry);
                             txCommand = 'S';
                             transmit = true;
                         }
@@ -316,6 +336,7 @@ notification */
                         {
                             if (++retry >= 3) cycleComplete = true;
 printf("Process Timeout: Try number %d\n", retry);
+fprintf(fp,"Process Timeout: Try number %d\n", retry);
                             txCommand = 'T';
                             transmit = true;
                         }
@@ -328,10 +349,12 @@ This is intended for application commands. */
                         if (packetReady) interpretCommand(&inMessage);
                     }
 printf("Finished Cycle\n");
+fprintf(fp,"Finished Cycle\n");
 /* Notify acceptance. No response is expected. */
                     if (retry < 3)
                     {
 printf("Accepted, A sent.\n");
+fprintf(fp,"Accepted, A sent.\n");
                         sendMessage("A");
                     }
 /* Otherwise if the repeats were exceeded, notify the base station of the
@@ -339,10 +362,13 @@ abandonment of this communication attempt. No response is expected. */
                     else
                     {
 printf("Abandoned, X sent.\n");
+fprintf(fp,"Abandoned, X sent.\n");
                         sendMessage("X");
                         resetXBeeSoft();
                     }
 printf("-------------------------\n");
+fprintf(fp,"-------------------------\n");
+fflush(fp);
                 }
 else printf("Not associated.\n");
             }
@@ -440,6 +466,10 @@ printf("Data Packet: reply %c", rxMessage.message.rxPacket.data[0]);
 printf(", data contents");
 for (i=1; i<rxMessage.length; i++) printf(" %x", rxMessage.message.rxPacket.data[i]);
 printf("\n");
+fprintf(fp,"Data Packet: reply %c", rxMessage.message.rxPacket.data[0]);
+fprintf(fp,", data contents");
+for (i=1; i<rxMessage.length; i++) fprintf(fp," %x", rxMessage.message.rxPacket.data[i]);
+fprintf(fp,"\n");
                     break;
 /* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
 transmitted message was delivered. Action to repeat will happen ONLY if
@@ -452,11 +482,18 @@ for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf(" Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
 if (! *txDelivered) printf(" not");
 printf(" delivered\n");
+fprintf(fp,"Transmit Status: data contents");
+for (i=0; i<rxMessage.length-1; i++) fprintf(fp," %x", rxMessage.message.array[i]);
+fprintf(fp," Delivery Status? %d", rxMessage.message.txStatus.deliveryStatus);
+if (! *txDelivered) fprintf(fp," not");
+fprintf(fp," delivered\n");
                     break;
 /* 0x8A is a Modem Status frame. */
                 case 0x8A:
                     packetError = modem_status;
 printf("Modem Status: status %d\n",
+    rxMessage.message.modemStatus.status);
+fprintf(fp,"Modem Status: status %d\n",
     rxMessage.message.modemStatus.status);
                     break;
 /* 0x95 is a Node Identification frame. */
@@ -465,6 +502,9 @@ printf("Modem Status: status %d\n",
 printf("Identify Packet: Length %d  data contents", rxMessage.length);
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
+fprintf(fp,"Identify Packet: Length %d  data contents", rxMessage.length);
+for (i=0; i<rxMessage.length-1; i++) fprintf(fp," %x", rxMessage.message.array[i]);
+fprintf(fp,"\n");
                     break;
 /* 0x88 is an AT Command response frame. */
                 case 0x88:
@@ -476,6 +516,13 @@ printf("Command Response : Command %c%c, status %d, data ",
 for (i=0; i<rxMessage.length-5; i++)
     printf(" %x", rxMessage.message.atResponse.data[i]);
 printf("\n");
+fprintf(fp,"Command Response : Command %c%c, status %d, data ",
+    rxMessage.message.atResponse.atCommand1,
+    rxMessage.message.atResponse.atCommand2,
+    rxMessage.message.atResponse.status);
+for (i=0; i<rxMessage.length-5; i++)
+    fprintf(fp," %x", rxMessage.message.atResponse.data[i]);
+fprintf(fp,"\n");
                     break;
 /* Unknown or unwanted packet type. Discard as error and continue. */
                 default:
@@ -484,6 +531,10 @@ printf("Unknown Frame: Type %x, Length %d ", rxMessage.frameType, rxMessage.leng
 printf(" data contents");
 for (i=0; i<rxMessage.length-1; i++) printf(" %x", rxMessage.message.array[i]);
 printf("\n");
+fprintf(fp,"Unknown Frame: Type %x, Length %d ", rxMessage.frameType, rxMessage.length);
+fprintf(fp," data contents");
+for (i=0; i<rxMessage.length-1; i++) fprintf(fp," %x", rxMessage.message.array[i]);
+fprintf(fp,"\n");
                 }
             }
 /* If message status is anything else, then this means other errors occurred
@@ -494,16 +545,19 @@ printf("\n");
 so treat it as if the delivery did not occur. This may result in data being
 duplicated if the original message was actually received correctly. */
 printf("Error in packet: message error %x ",messageStatus);
+fprintf(fp,"Error in packet: message error %x ",messageStatus);
                 *txDelivered = false;
                 if (rxMessage.frameType == 0x8B)
                 {
                     *txStatusReceived = true;
 printf("Faulty transmit status frame - treat as errored!\n");
+fprintf(fp,"Faulty transmit status frame - treat as errored!\n");
                 }
                 else
                 {
 /* With all other errors in the frame, discard everything and repeat. */
 printf("Other error detected, frame type %x\n", rxMessage.frameType);
+fprintf(fp,"Other error detected, frame type %x\n", rxMessage.frameType);
                     rxMessage.frameType = 0;
                     packetError = unknown_error;
                     *txStatusReceived = false;
@@ -523,6 +577,11 @@ if (! *txDelivered) printf("not ");
 printf("delivered ");
 if (! *txStatusReceived) printf("not ");
 printf("received\n");
+fprintf(fp,"Timeout waiting for base station: ");
+if (! *txDelivered) fprintf(fp,"not ");
+fprintf(fp,"delivered ");
+if (! *txStatusReceived) fprintf(fp,"not ");
+fprintf(fp,"received\n");
                 timeResponse = 0;
                 packetError = timeout;
                 *txDelivered = false;
