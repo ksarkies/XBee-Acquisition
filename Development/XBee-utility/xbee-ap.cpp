@@ -45,11 +45,12 @@ void showResponse(struct xbee *xbee, struct xbee_con *con,
 @param[in] parent Parent widget.
 */
 
-XbeeApTool::XbeeApTool(QWidget* parent) : QDialog(parent)
+XbeeApTool::XbeeApTool(QString* p, uint initialBaudrate,
+                        QWidget* parent): QDialog(parent)
 {
 	xbee_err ret;
-    port.device = SERIAL_PORT;
-    port.baudRate = BAUD_RATE;
+    port.device = *p;
+    port.baudRate = initialBaudrate;
     port.flowControl = FLOW_OFF;
     port.parity = PAR_NONE;
     port.dataBits = DATA_8;
@@ -71,9 +72,9 @@ XbeeApTool::XbeeApTool(QWidget* parent) : QDialog(parent)
 // Initialise xbee instance and serial port first
     struct stat st;
     if(stat("/dev/ttyUSB0",&st) == 0)       /* Check if USB0 exists */
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB0", BAUD_RATE);
+        ret = xbee_setup(&xbee, "xbeeZB", "/dev/ttyUSB0", initialBaudrate);
     else
-        ret = xbee_setup(&xbee, "xbee2", "/dev/ttyUSB1", BAUD_RATE);
+        ret = xbee_setup(&xbee, "xbeeZB", "/dev/ttyUSB1", initialBaudrate);
     if (ret != XBEE_ENONE)
     {
         errorMessage = QString("XBee on USB0 or USB1 serial port not contactable.\n"

@@ -22,18 +22,16 @@
 #ifndef XBEE_AP_TOOL_H
 #define XBEE_AP_TOOL_H
 
-#include "xbeep.h"
-#include "ui_xbee-ap.h"
-#include <QThread>
-#include <QListWidgetItem>
 #include <QDialog>
 #include <QCloseEvent>
+#include "xbeep.h"
+#include "ui_xbee-ap.h"
 
 // Default remote node address
 #define DEFAULT_ADDRESS         "0013A200408B4B82"
 #define SERIAL_PORT             "/dev/ttyUSB0"
 // Default baud rate at 38400
-#define BAUD_RATE               5
+#define BAUD_RATE               38400
 
 // Serial Port Parameters
 
@@ -86,7 +84,8 @@ class XbeeApTool : public QDialog
 {
     Q_OBJECT
 public:
-    XbeeApTool(QWidget* parent = 0);
+    XbeeApTool(QString*p,uint initialBaudrate,
+                    QWidget* parent = 0);
     ~XbeeApTool();
     bool success();
     QString error();

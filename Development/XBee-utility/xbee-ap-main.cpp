@@ -33,9 +33,18 @@ Uses: Qt version 5
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "xbee-ap.h"
 #include <QApplication>
 #include <QMessageBox>
+#include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "xbee-ap.h"
 
 //-----------------------------------------------------------------------------
 /** @brief XBee Tool Main Program
@@ -44,8 +53,50 @@ Uses: Qt version 5
 
 int main(int argc,char ** argv)
 {
+    QString serialPort = SERIAL_PORT;
+    int c;
+    uint initialBaudrate = BAUD_RATE; //!< Baudrate index to start searching
+    int baudParm;
+    QString filename;
+
+    opterr = 0;
+    while ((c = getopt (argc, argv, "P:b:")) != -1)
+    {
+        switch (c)
+        {
+        case 'P':
+            serialPort = optarg;
+            break;
+        case 'b':
+            baudParm = atoi(optarg);
+            switch (baudParm)
+            {
+            case 1200: initialBaudrate=0;break;
+            case 2400: initialBaudrate=1;break;
+            case 4800: initialBaudrate=2;break;
+            case 9600: initialBaudrate=3;break;
+            case 19200: initialBaudrate=4;break;
+            case 38400: initialBaudrate=5;break;
+            case 57600: initialBaudrate=6;break;
+            case 115200: initialBaudrate=7;break;
+            default:
+                fprintf (stderr, "Invalid Baudrate %i.\n", baudParm);
+                return false;
+            }
+            break;
+        case '?':
+            if ((optopt == 'P') || (optopt == 'b'))
+                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint (optopt))
+                fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
+            default: return false;
+        }
+    }
+
     QApplication application(argc,argv);
-    XbeeApTool xbeeApTool;
+    XbeeApTool xbeeApTool(&serialPort,initialBaudrate);
     if (xbeeApTool.success())
     {
         xbeeApTool.show();
