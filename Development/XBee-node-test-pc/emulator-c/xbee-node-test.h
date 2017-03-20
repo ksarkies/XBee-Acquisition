@@ -35,6 +35,8 @@ Tested:     ATTiny4313 at 1MHz internal clock.
 
 #define DEBUG   1
 
+#define LOG_FILE            "../xbee-node-test.dat"
+
 /* Port default */
 #define SERIAL_PORT         "/dev/ttyUSB0"
 #define BAUDRATE            B38400

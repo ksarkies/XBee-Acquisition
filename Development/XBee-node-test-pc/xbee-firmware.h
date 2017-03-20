@@ -49,7 +49,7 @@ void mainprogInit();
 
 /* Time to wait for a response from the base station. Time units depend on
 the code execution time needed to check for a received character, and F_CPU.
-Aim at 200ms with an assumption that 10 clock cycles needed for the check. */
+Aim at 200ms with an assumption that 10 clock cycles are needed for the check. */
 #define RESPONSE_DELAY          100000
 
 /* Response for a Tx Status frame should be smaller. Aim at 100ms */

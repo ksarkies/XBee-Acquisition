@@ -55,8 +55,8 @@ the running code.
 int main(int argc,char ** argv)
 {
     char logFileName[40];
-    QString serialPort = SERIAL_PORT;
     strcpy(logFileName,LOG_FILE);
+    QString serialPort = SERIAL_PORT;
     int c;
     uint initialBaudrate = INITIAL_BAUDRATE; //!< Baudrate index to start searching
     int baudParm;

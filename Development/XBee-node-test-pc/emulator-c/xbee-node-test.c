@@ -60,6 +60,7 @@ In command line mode, the program can only be stopped by ctl-C or process kill.
 
 bool debug;
 int port;
+FILE *fp;                   /* File for results */
 
 /*---------------------------------------------------------------------------*/
 /* Local prototypes */
@@ -83,6 +84,8 @@ Open a serial port and launch the running code.
 
 int main(int argc,char ** argv)
 {
+    char logFileName[40];
+    strcpy(logFileName,LOG_FILE);
     char serialPort[20] = SERIAL_PORT;
     int baudrate = BAUDRATE;
 
@@ -91,7 +94,7 @@ int main(int argc,char ** argv)
     int baudParm;
     debug = false;
     opterr = 0;
-    while ((c = getopt (argc, argv, "P:dnb:")) != -1)
+    while ((c = getopt (argc, argv, "P:dnb:L:")) != -1)
     {
         switch (c)
         {
@@ -100,6 +103,9 @@ int main(int argc,char ** argv)
             break;
         case 'd':
             debug = true;
+            break;
+        case 'L':
+            strcpy(logFileName,optarg);
             break;
         case 'n':
             break;
@@ -158,6 +164,12 @@ uartInit() in the emulated code should be set to a null function. */
         }
 
 printf("Running, baudrate %d port %s\n", baudrate, serialPort);
+/* Attempt to open a log file */
+    fp = fopen(logFileName, "a");
+    if (fp == NULL)
+    {
+        printf("Cannot open new results file");
+    }
 /* Run emulated code. The test code is split to an initialisation part and an
 operational part which falls within an (almost) infinite loop emulated here.
 After initialisation of the timer the tick function is called to update the
@@ -280,7 +292,7 @@ as \000 chars */
 
     memset(tty.c_cc,0,sizeof(tty.c_cc));    /* Null out control characters */
     tty.c_cc[VMIN]  = 0;                /* read doesn't block */
-    tty.c_cc[VTIME] = 5;                /* 0.5 seconds read timeout */
+    tty.c_cc[VTIME] = 0;                /* 0.5 seconds read timeout */
     cfsetspeed(&tty, baudrate);
 
     tcflush(port, TCIFLUSH);
