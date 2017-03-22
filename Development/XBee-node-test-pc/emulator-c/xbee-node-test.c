@@ -52,6 +52,7 @@ In command line mode, the program can only be stopped by ctl-C or process kill.
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include "xbee-node-test.h"
 #include "../xbee-firmware.h"
 
@@ -148,19 +149,19 @@ uartInit() in the emulated code should be set to a null function. */
         {
             printf("Unable to open serial port %s: %s\n",
                     serialPort, strerror(errno));
-            return;
+            return false;
         }
         if (flock(port, LOCK_EX | LOCK_NB) < 0)
         {
             printf("XBee is in use on port %s\n", serialPort);
-            return;
+            return false;
         }
         bool ok = set_serial_attribs(port, baudrate, 0);
         if (! ok)
         {
             printf("Unable to change serial attributes %s: %s\n",
                     serialPort, strerror(errno));
-            return;
+            return false;
         }
 
 printf("Running, baudrate %d port %s\n", baudrate, serialPort);
