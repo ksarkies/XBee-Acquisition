@@ -1,14 +1,10 @@
 /**
 @mainpage AVR XBee Node Firmware
-@version 2.1
+@version 1.1
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 18 March 2016
-@date 29 March 2016
 
 @brief Code for an AVR with an XBee in a Remote Low Power Node
-
-This is version two of the firmware. The rewrite is intended to expose the
-logic flow more clearly and attempt to avoid subtle errors.
 
 This code forms the interface between an XBee networking device using ZigBee
 stack, and a counter signal providing count and battery voltage
@@ -83,7 +79,8 @@ static bool stayAwake;              /* Keep XBee awake until further notice */
 /* Local Prototypes */
 
 static void interpretCommand(rxFrameType* inMessage);
-static packet_error getIncomingMessage(uint16_t timeoutDelay, rxFrameType* inMessage);
+static packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
+                                    bool* txDelivered, rxFrameType* inMessage);
 static void hardwareInit(void);
 static void wdtInit(const uint8_t waketime, bool wdeSet);
 static void sendDataCommand(const uint8_t command, const uint32_t datum);
@@ -162,9 +159,9 @@ event. */
 
     resetXBee();
     wakeXBee();
-/* Idle and blink the test pin for 12 seconds to give XBee time to associate. */
+/* Idle and blink the test pin for 7 seconds to give XBee time to associate. */
     uint8_t i = 0;
-    for (i=0; i<60; i++)
+    for (i=0; i<35; i++)
     {
 #ifdef TEST_PORT_DIR
         sbi(TEST_PORT,TEST_PIN);
@@ -175,7 +172,10 @@ event. */
 #endif
         _delay_ms(100);
     }
-/* Blink debug port to indicated ready */
+/* Check for association indication from the XBee.
+Don't start until it is associated. */
+    while (! checkAssociated());
+/* Blink debug port to indicated successful association */
 #ifdef DEBUG_PORT_DIR
     sbi(DEBUG_PORT,DEBUG_PIN);          /* Blink debug LED */
     _delay_ms(100);
@@ -231,214 +231,153 @@ until enough such events have occurred. */
                 powerUp();
                 wakeXBee();
 
-/* A cycle passes through a number of stages depending on error conditions
-until the transmission has been completed or abandoned. */
-                uint8_t retryCount = 0;
-                bool retryEnable = true;            /* Allows a retry to occur */
-                bool associated = false;
-                bool batteryCheckOK = false;        /* Got back valid response to IS command */
-                bool ack = false;                   /* received ACK from coordinator */
-                bool nak = false;                   /* received NAK from coordinator */
-                bool delivery = false;              /* Signalled as not delivered */
-                uint16_t timeoutDelay = 0;
-                uint32_t batteryVoltage = 0;
-                bool cycleComplete = false;
-                rxFrameType inMessage;              /* Received data frame */
-                txStage stage = associationCheck;
-                packet_error packetError = unknown_error;
-                while (! cycleComplete)
+/* First check for association indication from the XBee in case this was lost.
+Don't proceed until it is associated. If this times out, everything sleeps
+until the next cycle. */
+                if (checkAssociated())
                 {
-/* Wait if not associated. After forty tries (12 seconds), sleep for a while. */
-                    if (stage == associationCheck)
+
+/* Read the battery voltage from the XBee. */
+#ifdef VBATCON_PIN
+                    sbi(VBATCON_PORT,VBATCON_PIN);  /* Turn on battery measurement */
+#endif
+                    uint8_t data[12];
+                    int8_t dataLength = readXBeeIO(data);
+                    uint32_t batteryVoltage = 0;
+                    if (dataLength > 0) batteryVoltage = getXBeeADC(data,1);
+
+/* Initiate a data transmission to the base station. This also serves as a
+means of notifying the base station that the AVR is awake. */
+                    bool txDelivered = false;
+                    bool txStatusReceived = false;
+                    bool cycleComplete = false;
+                    uint8_t txCommand = 'C';
+                    bool transmit = true;
+                    uint8_t errorCount = 0;
+                    uint8_t retry = 0;      /* Retries to get base response OK */
+                    while (! cycleComplete)
                     {
-                        if (associated || (retryCount > 40))
+                        if (transmit)
                         {
-                            retryCount = 0;
-                            stage = batteryCheck;
+                            sendDataCommand(txCommand,
+                                lastCount+((uint32_t)batteryVoltage<<16)+
+                                ((uint32_t)retry<<30));
+                            txDelivered = false;    /* Allow check for Tx Status frame */
+                            txStatusReceived = false;
                         }
-                        else
-                        {
-                            timeoutDelay = 300;
-                            if (retryEnable)
-                            {
-                                sendATFrame(2,"AI");
-                                retryCount++;
-                            }
-                        }
-                        retryEnable = true;
-                    }
-/* Read the battery voltage from the XBee. If not successful, just give up and go on. */
-                    if (stage == batteryCheck)
-                    {
-                        if (batteryCheckOK || (retryCount > 3))
-                        {
-                            #ifdef VBATCON_PIN
-/* Turn off battery measurement */
-                            cbi(VBATCON_PORT_DIR,VBATCON_PIN);
-                            #endif
-                            retryCount = 0;
-                            packetError = no_error;
-                            nak = false;
-                            ack = false;
-                            stage = transmit;
-                        }
-                        else
-                        {
-                            timeoutDelay = 200;
-                            if (retryEnable)
-                            {
-                                #ifdef VBATCON_PIN
-/* Turn on battery measurement */
-                                sbi(VBATCON_PORT_DIR,VBATCON_PIN);
-                                #endif
-                                sendATFrame(2,"IS");    /* Force Sample Read */
-                                retryCount++;
-                            }
-                        }
-                        retryEnable = true;
-                    }
-/* Transmit the message. An ACK from the coordinator is required. */
-                    if (stage == transmit)
-                    {
-/* An ACK means that we can now complete the cycle gracefully. */
-                        if (ack)
-                        {
-                            sendMessage("A");
-/* Subtract the transmitted count from the current counter value. */
-                            counter -= lastCount;
-                            lastCount = 0;
-                            retryCount = 0;
-                            cycleComplete = true;
-                        }
-/* Too many retries means that we can now complete the cycle ungracefully. */
-                        else if (retryCount > 3)
-                        {
-                            sendMessage("X");
-                            _delay_ms(100);     /* Give time for message to go */
-                            resetXBee();        /* Reset the XBee */
-                            retryCount = 0;
-                            cycleComplete = true;
-                        }
-/* Otherwise decide how to respond with a retransmission. */
-                        else
-                        {
-                            timeoutDelay = 2000;
-                            if (retryEnable)
-                            {
-                                uint8_t parameter = retryCount;
-                                uint8_t txCommand = 'C';
-                                if (packetError == timeout) txCommand = 'T';
-/* Last read of XBee gave an error */
-                                else if (packetError != no_error)
-                                {
-                                    parameter = packetError;
-                                    txCommand = 'E';
-                                }
-                                if (nak) txCommand = 'N';
-/* Last attempt was a failed delivery */
-                                if (delivery > 0)
-                                {
-                                    parameter = delivery;
-                                    txCommand = 'S';
-                                }
-/* Data filed has count 16 bits, voltage 10 bits, status 6 bits */
-                                sendDataCommand(txCommand,
-                                    lastCount+((uint32_t)batteryVoltage<<16)+
-                                    ((uint32_t)parameter<<26));
-                                retryCount++;
-                            }
-                            retryEnable = true;
-                            nak = false;
-                        }
-                    }
+                        transmit = false;   /* Prevent any more transmissions until told */
 
 /* Wait for incoming messages. */
-                    packetError = getIncomingMessage(timeoutDelay, &inMessage);
-                    if (packetError == no_error)
-                    {
-/* Interpret messages and gather information returned */
-                        switch (inMessage.frameType)
+                        rxFrameType inMessage;      /* Buffered data frame */
+                        bool packetReady = false;
+                        packet_error packetError =
+                            readIncomingMessages(&packetReady, &txStatusReceived,
+                                                 &txDelivered, &inMessage);
+/* Drop out if there are too many errors */
+                        if (packetError != no_error) errorCount++;
+                        if (errorCount > 10) break;
+
+/* ============ Interpret messages and decide on actions to take */
+
+/* The transmitted data message was (supposedly) delivered. */
+                        if (txDelivered)
                         {
-                        case AT_COMMAND_RESPONSE:
-                            if (inMessage.message.atResponse.status != 0)
-                                packetError = frame_error;
-                            else
+/* Respond to an XBee Data packet. This could be an ACK/NAK response part of
+the overall protocol, indicating the final status of the protocol, or a
+higher level command. */
+                            if (packetReady)
                             {
-/* Association Indication */
-                                if ((inMessage.message.atResponse.atCommand1 == 'A') && \
-                                    (inMessage.message.atResponse.atCommand2 == 'I'))
-                                {
-                                    if (stage != associationCheck) retryEnable = false;
-                                    associated = (inMessage.message.atResponse.data[0] == 0);
-                                }
-/* Battery Voltage Measurement */
-                                if ((inMessage.message.atResponse.atCommand1 == 'I') && \
-                                    (inMessage.message.atResponse.atCommand2 == 'S'))
-                                {
-                                    if (stage != batteryCheck) retryEnable = false;
-                                    batteryCheckOK = true;
-                                    if (inMessage.length > 5)
-                                        batteryVoltage = 
-                                            getXBeeADC(inMessage.message.atResponse.data,1);
-                                }
-                            }
-                            break;
-/* Irrelevant message types that can be ignored. */
-                        case MODEM_STATUS:
-                            packetError = modem_status;
-                            retryEnable = false;
-                            break;
-                        case NODE_IDENT:
-                            packetError = node_ident;
-                            retryEnable = false;
-                            break;
-                        case IO_DATA_SAMPLE:
-                            packetError = io_data_sample;
-                            retryEnable = false;
-                            break;
-/* Status of previous transmission attempt. */
-                        case TX_STATUS:
-                            delivery = inMessage.message.txStatus.deliveryStatus;
-                            retryEnable = false;
-                            break;
-/* Receive Packet. This can be of a variety of types. */
-                        case RX_PACKET:
-                            {
+/* Check if the first character in the data field is an ACK or NAK. */
                                 uint8_t rxCommand = inMessage.message.rxPacket.data[0];
-                                if (stage == transmit)
+/* Base station picked up an error in the previous response and sent a NAK.
+Retry three times with an N command then give up the entire cycle with an X
+command. */
+                                if (rxCommand == 'N')
                                 {
-/* Check if the first character in the data field is an ACK or NAK.
-These messages are ONLY valid in the transmit stage and could confuse the
-protocol in other stages. */
-/* Base station picked up an error in the previous response and sent a NAK. */
-                                    if (rxCommand == 'N') nak = true;
+                                    if (++retry >= 3) cycleComplete = true;
+                                    txCommand = 'N';
+                                    transmit = true;
+                                    packetReady = false;
+                                }
 /* Got an ACK: aaaah that feels good. */
-                                    else if (rxCommand == 'A') ack = true;
-/* Otherwise report an error in the command field. */
-                                    else packetError = command_error;
-                                }
-                                else  retryEnable = false;
-/* Got a special command plus possible parameters from the coordinator for action.
-This must be allowed to occur at any stage. */
-                                if (rxCommand == 'D')
+                                else if (rxCommand == 'A')
                                 {
-                                    interpretCommand(&inMessage);
-                                    packetError = no_error;
-                                    retryEnable = false;
+/* We can now subtract the transmitted count from the current counter value
+and go back to sleep. This will take us to the next outer loop so set lastCount
+to zero to cause it to drop out immediately if the counts had not changed. */
+                                    counter -= lastCount;
+                                    lastCount = 0;
+                                    cycleComplete = true;
+                                    packetReady = false;
                                 }
+/* If not an ACK/NAK, process below as an application data/command frame */
                             }
-                            break;
+/* Errors found in received packet. Retry three times then give up the entire
+cycle. Send an E data packet to signal to the base station. */
+                            else if (packetError != no_error)
+                            {
+                                if (++retry >= 3) cycleComplete = true;
+                                txCommand = 'E';
+                                transmit = true;
+                            }
                         }
+/* If the message was signalled as definitely not delivered (or was errored),
+that is, txStatusReceived but not txDelivered, repeat up to three times then
+give up the entire cycle. Send an S packet to signal to the base station which
+should avoid any unlikely duplication (even though previous transmissions were
+not received). */
+                        else if (txStatusReceived)
+                        {
+                            if (++retry >= 3) cycleComplete = true;
+                            txCommand = 'S';
+                            transmit = true;
+                        }
+/* If timeout, repeat, or for the initial transmission, send back a timeout
+notification */
+                        else if (packetError == timeout)
+                        {
+                            if (++retry >= 3) cycleComplete = true;
+                            txCommand = 'T';
+                            transmit = true;
+                        }
+
+/* ============ Command Packets */
+
+/* If a command packet arrived outside the data transmission protocol then
+this will catch it (i.e. independently of the Base station status response).
+This is intended for application commands. */
+                        if (packetReady) interpretCommand(&inMessage);
                     }
+/* Notify acceptance. No response is expected. */
+                    if (retry < 3) sendMessage("A");
+/* Otherwise if the repeats were exceeded, notify the base station of the
+abandonment of this communication attempt. No response is expected.
+As this represents a complete failure, reset the entire program. */
+                    else
+                    {
+                        sendMessage("X");
+                        resetXBee();            /* Reset the XBee */
+                    }
+
+#ifdef TEST_PORT_DIR
+                    cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */
+#endif
                 }
-/* Cycle Complete */
+                else
+                {
+/* Blink debug LED to indicate not associated */
+#ifdef DEBUG_PORT_DIR
+                    sbi(DEBUG_PORT,DEBUG_PIN); 
+                    _delay_ms(100);
+                    cbi(DEBUG_PORT,DEBUG_PIN);
+#endif
+                }
             }
+
+            _delay_ms(1);
         }
         while (counter != lastCount);
 
-        #ifdef TEST_PORT_DIR
-        cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */
-        #endif
 /* Power down the AVR to deep sleep until an interrupt occurs */
         sei();
         if (! stayAwake)
@@ -489,48 +428,111 @@ commands as they will be confused with late ACK/NAK messages. */
 }
 
 /****************************************************************************/
-/** @brief Pull in a Received Data Message from the XBee.
+/** @brief Read a Received Data Message from the XBee.
 
-Deal with incoming message assembly. A message is expected as a result of a
-previous transmission, therefore this loops until a message is received, an
-error or a timeout occurs.
+Deal with incoming message assembly for Tx Status and base station response
+or command reception. A message is expected as a result of a previous
+transmission, therefore this loops until a message is received, an error or a
+timeout occurs.
 
-@param[in] uint16_t timeoutDelay. Millisecond delay allowed for a message to come.
+@param[out] bool* packetReady
+@param[out] bool* txStatusReceived
+@param[out] bool* txDelivered
 @param[out] rxFrameType* inMessage: The received frame.
-@returns bool: packet_error. no_error, timeout, checksum_error, frame_error, unknown_error.
+@returns bool: error status.
 */
 
-packet_error getIncomingMessage(uint16_t timeoutDelay, rxFrameType* inMessage)
+packet_error readIncomingMessages(bool* packetReady, bool* txStatusReceived,
+                             bool* txDelivered, rxFrameType* inMessage)
 {
-    uint16_t timeResponse = 0;
+    rxFrameType rxMessage;              /* Received frame */
+    uint32_t timeResponse = 0;
     packet_error packetError = no_error;
     uint8_t messageState = 0;
+    uint8_t i;
 /* Loop until the message is received or an error occurs. */
     while (true)
     {
 
 /* Read in part of an incoming frame. */
-        uint8_t messageStatus = receiveMessage(inMessage, &messageState);
+        uint8_t messageStatus = receiveMessage(&rxMessage, &messageState);
         if (messageStatus != XBEE_INCOMPLETE)
         {
-/* If message status is not a frame complete without error, then this means
-other errors occurred (namely checksum or packet length is wrong). */
-            if (messageStatus != XBEE_COMPLETE)
+            timeResponse = 0;               /* reset timeout counter */
+/* Got a frame complete without error. */
+            if (messageStatus == XBEE_COMPLETE)
             {
-                if (messageStatus == XBEE_CHECKSUM) packetError = checksum_error;
-                else if (messageStatus == XBEE_STATE_MACHINE) packetError = frame_error;
-                else packetError = unknown_error;
+                *txDelivered = false;
+                *txStatusReceived = false;
+/* 0x90 is a Zigbee Receive Packet frame that will contain command and data
+from the base station system. Copy to a buffer for later processing. */
+                switch (rxMessage.frameType)
+                {
+                case 0x90:
+                    inMessage->length = rxMessage.length;
+                    inMessage->checksum = rxMessage.checksum;
+                    inMessage->frameType = rxMessage.frameType;
+                    for (i=0; i<RF_PAYLOAD; i++)
+                        inMessage->message.rxPacket.data[i] =
+                            rxMessage.message.rxPacket.data[i];
+                    *txDelivered = true;
+                    *packetReady = true;
+                    break;
+/* 0x8B is a Zigbee Transmit Status frame. Check if it is telling us the
+transmitted message was delivered. Action to repeat will happen ONLY if
+txDelivered is false and txStatusReceived is true. */
+                case 0x8B:
+                    *txDelivered = (rxMessage.message.txStatus.deliveryStatus == 0);
+                    *txStatusReceived = true;
+                    break;
+/* 0x8A is a Modem Status frame. */
+                case 0x8A:
+                    packetError = modem_status;
+                    break;
+/* 0x95 is a Node Identification frame. */
+                case 0x95:
+                    packetError = node_ident;
+                    break;
+/* 0x88 is an AT Command response frame. */
+                case 0x88:
+                    packetError = command_response;
+                    break;
+/* Unknown or unwanted packet type. Discard as error and continue. */
+                default:
+                    packetError = unknown_frame_type;
+                }
             }
-            break;                  /* Drop out of the loop */
+/* If message status is anything else, then this means other errors occurred
+(namely checksum or packet length is wrong). */
+            else
+            {
+/* For any received errored Tx Status frame, we are unsure about its validity,
+so treat it as if the delivery did not occur. This may result in data being
+duplicated if the original message was actually received correctly. */
+                *txDelivered = false;
+                if (rxMessage.frameType == 0x8B)
+                    *txStatusReceived = true;
+                else
+                {
+/* With all other errors in the frame, discard everything and repeat. */
+                    rxMessage.frameType = 0;
+                    packetError = unknown_error;
+                    *txStatusReceived = false;
+                }
+            }
+            messageState = 0;   /* Reset packet counter */
+            break;              /* Drop out of the loop */
         }
-/* Nothing received or message still in progress, check for timeout waiting for
-the base station response. Otherwise continue waiting. */
+/* If nothing received check for timeout waiting for a base station response.
+Otherwise continue waiting. */
         else
         {
-            _delay_ms(1);       /* one ms delay to provide precise timing */
-            if (timeResponse++ > timeoutDelay)
+            if (timeResponse++ > RESPONSE_DELAY)
             {
+                timeResponse = 0;
                 packetError = timeout;
+                *txDelivered = false;
+                *txStatusReceived = false;
                 break;
             }
         }
