@@ -26,6 +26,8 @@ Kicad-XBee/symbols/
 Kicad-XBee/footprints/
 *.kicad_pcb-bak
 *-cache.lib
+*.dat
+*.txt
 *.bak
 *.cmp
 *.net

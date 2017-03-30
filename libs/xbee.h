@@ -34,10 +34,14 @@
 #define RF_PAYLOAD              32
 
 /* Frame Types */
-#define RX_REQUEST              0x90
+#define AT_COMMAND              0x08
 #define TX_REQUEST              0x10
 #define AT_COMMAND_RESPONSE     0x88
-#define AT_COMMAND              0x08
+#define MODEM_STATUS            0x8A
+#define TX_STATUS               0x8B
+#define RX_PACKET               0x90
+#define IO_DATA_SAMPLE          0x92
+#define NODE_IDENT              0x95
 
 /* Serial buffer size */
 #define BUFFER_SIZE 60
@@ -109,8 +113,10 @@ typedef struct
     uint8_t checksum;
 } txFrameType;
 
-typedef enum {no_error, timeout, unknown_frame_type, modem_status, node_ident,
-              command_response, unknown_error} packet_error;
+typedef enum {associationCheck, batteryCheck, transmit} txStage;
+typedef enum {no_error, timeout, unknown_frame_type, checksum_error, frame_error,
+              modem_status, node_ident, io_data_sample,
+              protocol_error, command_error, unknown_error} packet_error;
 
 /*----------------------------------------------------------------------*/
 /* Prototypes */

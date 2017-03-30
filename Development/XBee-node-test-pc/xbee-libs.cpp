@@ -224,7 +224,8 @@ bool checkAssociated(void)
         while (messageError == XBEE_INCOMPLETE)
         {
             messageError = receiveMessage(&rxMessage, &messageState);
-            if (timeout++ > 30000) break;
+            usleep(1000);               /* one ms delay to get exact timing */
+            if (timeout++ > 300) break;
         }
 /* If errors occur, or frame is the wrong type, just try again */
         associated = ((messageError == XBEE_COMPLETE) && \
