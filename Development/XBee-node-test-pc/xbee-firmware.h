@@ -35,6 +35,8 @@ Tested:     ATtiny4313 at 1MHz internal clock.
 int mainprog();
 void mainprogInit();
 
+#define VERSION "2.1"
+
 /* WDT count to give desired time between activations of the AVR */
 #define ACTION_MINUTES          10
 

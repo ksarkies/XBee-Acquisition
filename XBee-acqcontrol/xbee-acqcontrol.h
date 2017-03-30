@@ -23,6 +23,8 @@ Title:    XBee Acquisition Control process
 #ifndef XBEE_ACQCONTROL_H
 #define XBEE_ACQCONTROL_H
 
+#define VERSION "1.2"
+
 #define DEBUG   1
 
 // Limit definitions

@@ -1,6 +1,6 @@
 /**
 @mainpage XBee Acquisition Control Process
-@version 1.1
+@version 1.2
 @author Ken Sarkies (www.jiggerjuice.net)
 @date 10 January 2013
 @date 28 March 2017
@@ -198,6 +198,29 @@ d - basic debug mode 1.
     }
     if (dirname[strlen(dirname)-1] != '/') dirname[strlen(dirname)] = '/';
 
+/*--------------------------------------------------------------------------*/
+/* A bit of logging stuff.*/
+
+#ifdef DEBUG
+    if (debug) printf("XBee Acquisition Control version %s\n",VERSION);
+#endif
+
+/* Initialise the results storage. Abort the program if this fails. */
+
+    fp = NULL;
+    if (! dataFileCheck())
+    {
+        closelog();
+        return 1;
+    }
+
+    fprintf(fp,"XBee Acquisition Control version %s\n",VERSION);
+
+/* Update the rsyslog.conf files to link local7 to a
+log file */
+
+    openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
+
 /* Setup XBee only logging. */
 
 #ifdef DEBUG
@@ -214,12 +237,6 @@ d - basic debug mode 1.
             xbee_logTxSet(xbee,true);
         }
 #endif
-
-/*--------------------------------------------------------------------------*/
-/* A bit of logging stuff. Update the rsyslog.conf files to link local7 to a
-log file */
-
-    openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
 
 /*--------------------------------------------------------------------------*/
 /* Initialise the libxbee instance. If failed to contact XBee, abort. */
@@ -250,16 +267,6 @@ log file */
         return 1;
     }
     debugDumpNodeTable();
-
-/*--------------------------------------------------------------------------*/
-/* Initialise the results storage. Abort the program if this fails. */
-
-    fp = NULL;
-    if (! dataFileCheck())
-    {
-        closelog();
-        return 1;
-    }
 
 /*--------------------------------------------------------------------------*/
 /* Create the necessary connections locally and globally and poll for existing

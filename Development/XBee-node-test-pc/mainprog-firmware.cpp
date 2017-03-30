@@ -113,6 +113,7 @@ packet_error getIncomingMessage(uint16_t timeoutDelay, rxFrameType* inMessage);
 
 void mainprogInit()
 {
+printData(0,0);
     hardwareInit();             /* Initialize the processor specific hardware */
     resetXBee();
     wakeXBee();
@@ -678,6 +679,9 @@ void printData(uint8_t item, uint16_t data)
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",timeinfo);
     switch (item)
     {
+    case 0:
+        printf("XBee Firmware Emulator version %s\n",VERSION);
+        fprintf(fp,"XBee Firmware Emulator version %s\n",VERSION);
     case 1:
         printf("--------------------------\nNEW CYCLE ");
         fprintf(fp,"--------------------------\nNEW CYCLE ");
