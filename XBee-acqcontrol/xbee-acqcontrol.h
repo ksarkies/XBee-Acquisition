@@ -99,7 +99,6 @@ typedef struct {
     struct xbee_con *dataCon;// libxbee connection for data reception;
     struct xbee_con *atCon; // libxbee connection for AT commands reception;
     struct xbee_con *ioCon; // libxbee connection for I/O received frames
-    struct xbee_con *txStatusCon; // libxbee connection for transmit status
 } nodeEntry;
 
 extern int numberNodes;

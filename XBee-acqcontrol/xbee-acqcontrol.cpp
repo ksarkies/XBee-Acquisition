@@ -1,8 +1,9 @@
 /**
 @mainpage XBee Acquisition Control Process
-@version 1.0
+@version 1.1
 @author Ken Sarkies (www.jiggerjuice.net)
 @date 10 January 2013
+@date 28 March 2017
 
 This program is intended to run as a background process in a Unix environment
 to interface to a local XBee coordinator and a network of XBee router/end
@@ -76,6 +77,7 @@ struct xbee *xbee;
 struct xbee_con *localATCon;    /* Connection for local AT commands */
 struct xbee_con *identifyCon;   /* Connection for identify packets */
 struct xbee_con *modemStatusCon; /* Connection for modem status packets */
+struct xbee_con *txStatusCon;   /* Connection for transmit status packets */
 int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
 char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
@@ -121,6 +123,11 @@ int findRowBy64BitAddress(unsigned char *addr);
 int findRowBy16BitAddress(uint16_t addr);
 void debugDumpNodeTable(void);
 void debugDumpPacket(struct xbee_pkt **pkt);
+void printNodeID(struct xbee_pkt **pkt);
+void printRemoteATResponse(struct xbee_pkt **pkt);
+void printLocalATResponse(struct xbee_pkt **pkt);
+void printTxStatus(struct xbee_pkt **pkt);
+void printModemStatus(struct xbee_pkt **pkt);
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /** @brief XBee Acquisition Control Main Program
@@ -191,27 +198,6 @@ d - basic debug mode 1.
     }
     if (dirname[strlen(dirname)-1] != '/') dirname[strlen(dirname)] = '/';
 
-/*--------------------------------------------------------------------------*/
-/* A bit of logging stuff. Update the rsyslog.conf files to link local7 to a
-log file */
-
-    openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
-
-/*--------------------------------------------------------------------------*/
-/* Initialise the xbee instance and probe for any new nodes on the network.
-If failed to contact XBee, abort. */
-
-    syslog(LOG_INFO, "Starting XBee Instance\n");
-#ifdef DEBUG
-    if (debug)
-        printf("Starting XBee Instance\n");
-#endif
-    if (setupXbeeInstance())
-    {
-        closelog();
-        return 1;
-    }
-
 /* Setup XBee only logging. */
 
 #ifdef DEBUG
@@ -227,11 +213,35 @@ If failed to contact XBee, abort. */
             xbee_logRxSet(xbee,true);
             xbee_logTxSet(xbee,true);
         }
-        printf("XBee Instance Started\n");
-    }
 #endif
+
 /*--------------------------------------------------------------------------*/
-/* Initialise the node file and fill the node table.*/
+/* A bit of logging stuff. Update the rsyslog.conf files to link local7 to a
+log file */
+
+    openlog("xbee_acqcontrol", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
+
+/*--------------------------------------------------------------------------*/
+/* Initialise the libxbee instance. If failed to contact XBee, abort. */
+
+    syslog(LOG_INFO, "Starting XBee Instance\n");
+#ifdef DEBUG
+    if (debug)
+        printf("Starting XBee Instance\n");
+#endif
+    if (setupXbeeInstance())
+    {
+        closelog();
+        return 1;
+    }
+
+#ifdef DEBUG
+    if (debug)
+        printf("XBee Instance Started\n");
+#endif
+    }
+/*--------------------------------------------------------------------------*/
+/* Initialise the node file and fill the node table. */
 
     fpd = NULL;
     if (! fillNodeTable())
@@ -239,6 +249,7 @@ If failed to contact XBee, abort. */
         closelog();
         return 1;
     }
+    debugDumpNodeTable();
 
 /*--------------------------------------------------------------------------*/
 /* Initialise the results storage. Abort the program if this fails. */
@@ -251,8 +262,9 @@ If failed to contact XBee, abort. */
     }
 
 /*--------------------------------------------------------------------------*/
-/* Create the necessary connections locall and globally and poll for existing
-remote XBee nodes */
+/* Create the necessary connections locally and globally and poll for existing
+and new remote XBee nodes */
+
     openRemoteConnections();
     nodeProbe();
     openGlobalConnections();
@@ -694,8 +706,8 @@ int yes=1;        /* for setsockopt() SO_REUSEADDR, below */
 /*--------------------------------------------------------------------------*/
 /** @brief Check for Internet connections
 
-This checks for any incoming connections and calls a command handler with the
-data received.
+This checks for any incoming Internet connections and calls a command handler
+with the data received.
 
 @parameter  fd_set *master: list of file descriptors 
 @parameter  int *fd_max: number of file descriptors in list
@@ -766,8 +778,9 @@ of error just let client die as we are running as a background process) */
 /*--------------------------------------------------------------------------*/
 /** @brief Create the XBee instance
 
-The xbee instance is created for an attached XBee, along with a local AT command
-interface temporarily for checking that the XBee is working.
+The libxbee instance is created for an attached XBee, along with a local AT
+command interface temporarily for checking that the XBee is working. This is a
+requirement of libxbee that allows for more than one XBee network to be managed.
 
 Globals:
 xbee instance
@@ -824,7 +837,7 @@ fails. */
         return ret;
     }
 /* Attempt to send an AP command to change the coordinator to mode 1 (in case
-it was set to mode 2).
+it was set to mode 2). This also serves as a test of the XBee interface.
 For some reason the XBee needs a command like this before sending out the ND,
 otherwise it doesn't pick up the responses.
 Try several times if a timeout occurs. */
@@ -848,22 +861,22 @@ could get mixed up with the ND responses. */
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Open Remote Node connections
+/** @brief Open a Remote Node connection
 
 The entry to the node table structure is set as valid and a set of xbee
-connections is built if it is not already present.
+connections is built if these are not already present.
 
 Globals:
 xbee instance
-nodeInfo node information array
+nodeInfo: node information array
 
 @parameter  int node. The table node entry to be set.
 */
 
 void openRemoteConnection(int node)
 {
-/* Setup an address to build connections for incoming data, remote AT and I/O
-frames */
+/* Setup an address to build connections for incoming data, remote AT, I/O
+and transmit status frames */
 //    struct xbee_conSettings settings;
     xbee_err ret;
     struct xbee_conAddress address;
@@ -884,9 +897,14 @@ frames */
             ((ret = xbee_conCallbackSet(nodeInfo[node].dataCon, dataCallback, NULL))
                     != XBEE_ENONE))
         {
+            nodeInfo[node].dataCon = NULL;
             syslog(LOG_INFO, "Unable to create Data connection for node %d, %s\n",
                 node,xbee_errorToStr(ret));
-            nodeInfo[node].dataCon = NULL;
+#ifdef DEBUG
+            if (debug)
+                printf("Unable to create Data connection for node %d, %s\n",
+                    node,xbee_errorToStr(ret));
+#endif
         }
 //        xbee_conSettings(nodeInfo[node].dataCon, NULL, &settings);
 //        printf("Data Connection Made %d\n", settings.disableAck);
@@ -901,6 +919,11 @@ frames */
         {
             syslog(LOG_INFO, "Unable to create Remote AT connection for node %d, %s\n",
                 node,xbee_errorToStr(ret));
+#ifdef DEBUG
+            if (debug)
+                printf("Unable to create Remote AT connection for node %d, %s\n",
+                    node,xbee_errorToStr(ret));
+#endif
             nodeInfo[node].atCon = NULL;
         }
     }
@@ -913,25 +936,18 @@ frames */
         {
             syslog(LOG_INFO, "Unable to create I/O connection for node %d, %s\n",
                 node,xbee_errorToStr(ret));
+#ifdef DEBUG
+            if (debug)
+                printf("Unable to create I/O connection for node %d, %s\n",
+                    node,xbee_errorToStr(ret));
+#endif
             nodeInfo[node].ioCon = NULL;
-        }
-    }
-    if (nodeInfo[node].txStatusCon == NULL)
-    {
-        if (((ret = xbee_conNew(xbee, &nodeInfo[node].txStatusCon, "Transmit Status", NULL))
-                    != XBEE_ENONE) ||
-            ((ret = xbee_conCallbackSet(nodeInfo[node].txStatusCon, txStatusCallback, NULL))
-                    != XBEE_ENONE))
-        {
-            syslog(LOG_INFO, "Unable to create Transmit Status connection for node %d, %s\n",
-                node,xbee_errorToStr(ret));
-            nodeInfo[node].txStatusCon = NULL;
         }
     }
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Open all remote node connections in the table
+/** @brief Open all remote node connections in the node information table
 
 Globals:
 xbee instance
@@ -949,7 +965,10 @@ void openRemoteConnections()
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Close down a single remote node connections
+/** @brief Close down a single remote node connection
+
+If the connection address is present in the table, set to NULL and terminate the
+associated libxbee connection. This is done silently.
 
 Globals:
 xbee instance
@@ -966,8 +985,6 @@ void closeRemoteConnection(int node)
     nodeInfo[node].atCon = NULL;
     if (nodeInfo[node].ioCon != NULL) xbee_conEnd(nodeInfo[node].ioCon);
     nodeInfo[node].ioCon = NULL;
-    if (nodeInfo[node].txStatusCon != NULL) xbee_conEnd(nodeInfo[node].txStatusCon);
-    nodeInfo[node].txStatusCon = NULL;
     nodeInfo[node].valid = false;
 }
 
@@ -991,9 +1008,9 @@ void closeRemoteConnections()
 }
 
 /*--------------------------------------------------------------------------*/
-/** @brief Open all long-running connections
+/** @brief Open all long-running connections for the coordinator XBee.
 
-Connections for local AT response, modem status and identify are left open.
+Connections for local AT response, modem status and identify are opened.
 
 @returns    libxbee error value
 */
@@ -1003,10 +1020,16 @@ int openGlobalConnections()
     xbee_err ret;
 
 /* Set the local AT response connection */
+    xbee_conEnd(localATCon);       /* terminate if it happens to be open */
     if ((ret = xbee_conNew(xbee, &localATCon, "Local AT", NULL)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Local AT connection failed: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Local AT connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
         return ret;
     }
 #ifdef DEBUG
@@ -1016,20 +1039,32 @@ int openGlobalConnections()
     if ((ret = xbee_conCallbackSet(localATCon, localATCallback, NULL))
             != XBEE_ENONE)
     {
+        xbee_conEnd(localATCon);
         syslog(LOG_INFO, "Local AT Callback Set failed: %d (%s)", ret,
                xbee_errorToStr(ret));
-        xbee_conEnd(localATCon);
+#ifdef DEBUG
+        if (debug)
+            printf("Local AT Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
         return ret;
     }
 #ifdef DEBUG
     if (debug) printf("Local AT Callback OK\n");
 #endif
+
 /* Set the Modem Status Connection */
+    xbee_conEnd(modemStatusCon);   /* terminate if it happens to be open */
     if ((ret = xbee_conNew(xbee, &modemStatusCon, "Modem Status", NULL))
                 != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Modem Status connection failed: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Modem Status Connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
         return ret;
     }
 #ifdef DEBUG
@@ -1039,20 +1074,31 @@ int openGlobalConnections()
     if ((ret = xbee_conCallbackSet(modemStatusCon, modemStatusCallback, NULL))
                 != XBEE_ENONE)
     {
+        xbee_conEnd(modemStatusCon);
         syslog(LOG_INFO, "Modem Status Callback Set failed: %d (%s)", ret,
                xbee_errorToStr(ret));
-        xbee_conEnd(modemStatusCon);
+#ifdef DEBUG
+        if (debug)
+            printf("Modem Status Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
         return ret;
     }
 #ifdef DEBUG
     if (debug) printf("Modem Status Callback OK\n");
 #endif
-/* Setup a long-running connection for Identify packets for nodes starting up
-later. */
+
+/* Set the Identify packets connection. */
+    xbee_conEnd(identifyCon);      /* terminate if it happens to be open */
     if ((ret = xbee_conNew(xbee, &identifyCon, "Identify", NULL)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Identify Connection failed: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Identify Connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
         return ret;
     }
 #ifdef DEBUG
@@ -1062,13 +1108,52 @@ later. */
     if ((ret = xbee_conCallbackSet(identifyCon, nodeIDCallback, NULL))
             != XBEE_ENONE)
     {
+        xbee_conEnd(identifyCon);
         syslog(LOG_INFO, "Identify Callback Set failed: %d (%s)", ret,
                xbee_errorToStr(ret));
-        xbee_conEnd(identifyCon);
+#ifdef DEBUG
+        if (debug)
+            printf("Identify Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
     }
 #ifdef DEBUG
     if (debug) printf("Identify Callback OK\n");
 #endif
+
+/* Set the Transmit Status Connection. */
+    xbee_conEnd(txStatusCon);      /* terminate if it happens to be open */
+    if ((ret = xbee_conNew(xbee, &txStatusCon, "Transmit Status", NULL)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Transmit Status Connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Transmit Status Connection failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
+        return ret;
+    }
+#ifdef DEBUG
+    if (debug) printf("Transmit Status Connection OK\n");
+#endif
+/* Set the callback for the Transmit Status response. */
+    if ((ret = xbee_conCallbackSet(txStatusCon, txStatusCallback, NULL))
+            != XBEE_ENONE)
+    {
+        xbee_conEnd(txStatusCon);
+        syslog(LOG_INFO, "Transmit Status Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Transmit Status Callback Set failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
+    }
+#ifdef DEBUG
+    if (debug) printf("Transmit Status Callback OK\n");
+#endif
+
     return ret;
 }
 
@@ -1088,17 +1173,42 @@ int closeGlobalConnections()
     {
         syslog(LOG_INFO, "Could not close local AT connection %d (%s)", ret,
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Could not close local AT connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#endif
         return ret;
     }
     if ((ret = xbee_conEnd(modemStatusCon)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Could not close modem status connection %d (%s)", ret,
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Could not close modem status connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#endif
     }
     if ((ret = xbee_conEnd(identifyCon)) != XBEE_ENONE)
     {
         syslog(LOG_INFO, "Could not close identify connection %d (%s)", ret,
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Could not close identify connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#endif
+    }
+    if ((ret = xbee_conEnd(txStatusCon)) != XBEE_ENONE)
+    {
+        syslog(LOG_INFO, "Could not close transmit status connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Could not close transmit status connection %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#endif
     }
     return ret;
 }
@@ -1129,6 +1239,11 @@ int nodeProbe()
         {
             syslog(LOG_INFO, "Cannot sleep local connection: %d (%s)", ret,
                    xbee_errorToStr(ret));
+#ifdef DEBUG
+            if (debug)
+                printf("Cannot sleep local connection: %d (%s)", ret,
+                   xbee_errorToStr(ret));
+#endif
             return ret;
         }
         sleeping = true;
@@ -1139,6 +1254,11 @@ int nodeProbe()
     {
         syslog(LOG_INFO, "Local AT connection for node probe failed: %d (%s)", ret,
                xbee_errorToStr(ret));
+#ifdef DEBUG
+        if (debug)
+            printf("Local AT connection for node probe failed: %d (%s)", ret,
+               xbee_errorToStr(ret));
+#endif
     }
     else
     {
@@ -1223,6 +1343,8 @@ Node Identification message but it is an AT Command Response. */
 }
 
 /*--------------------------------------------------------------------------*/
+/* libxbee CALLBACKS */
+/*--------------------------------------------------------------------------*/
 /** @brief Callback for the ND and Identify command, to load up the node list.
 
 This is a callback required by libxbee. It operates on the global
@@ -1235,9 +1357,8 @@ present. Data, I/O and AT command and Transmit Status connections are added.
 Although there may be incomplete or erroneous entries, we may leave them and
 check later by other means to attempt to correct the problem.
 
-If a device powers off and back on again it will be dealt with adequately by
-this callback. Connections are only added if the entry is not valid or is a new
-entry.
+If a device already has an entry, its remote connections are closed and
+reopened.
 
 @param struct xbee *xbee. The XBee instance created in setupXbeeInstance().
 @param struct xbee_con *con. Connection (not used).
@@ -1248,58 +1369,11 @@ entry.
 void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
-    uint16_t adr = ((*pkt)->data[0] << 8) + (*pkt)->data[1];
-    uint32_t SH =  ((*pkt)->data[2] << 24) + ((*pkt)->data[3] << 16) + 
-                   ((*pkt)->data[4] << 8) + (*pkt)->data[5];
-    uint32_t SL =  ((*pkt)->data[6] << 24) + ((*pkt)->data[7] << 16) + 
-                   ((*pkt)->data[8] << 8) + (*pkt)->data[9];
 #ifdef DEBUG
-    if (debug)
-    {
-        printf("Identify Packet: length %d", (*pkt)->dataLen);
-        printf(", 16 bit address %04X", adr);
-        printf(", 64 bit address %08X %08X", SH, SL);
-        printf(", ID ");
-        if (fp != NULL)
-        {
-            fprintf(fp,"Identify Packet: length %d", (*pkt)->dataLen);
-            fprintf(fp,", 16 bit address %04X", adr);
-            fprintf(fp,", 64 bit address %08X %08X", SH, SL);
-            fprintf(fp,", ID ");
-        }
-        int i = 10;
-        while ((*pkt)->data[i] > 0) printf("%c", (*pkt)->data[i++]);
-        i++;
-        unsigned int parent =  (*pkt)->data[i++];
-        parent = (parent << 8) +  (*pkt)->data[i++];
-        int type = (*pkt)->data[i++];
-        printf(", parent address %04X",parent);
-        if (type == 0) printf(" Coordinator");
-        else if (type == 1) printf(" Router");
-        else if (type == 2) printf(" End Device");
-        else printf(" Unknown type");
-        for (; i<(*pkt)->dataLen; i++) printf(" %02X", (*pkt)->data[i]);
-        printf("\n");
-
-        if (fp != NULL)
-        {
-            int i = 10;
-            while ((*pkt)->data[i] > 0) fprintf(fp,"%c", (*pkt)->data[i++]);
-            fprintf(fp,", parent address %04X",parent);
-            if (type == 0) fprintf(fp," Coordinator");
-            else if (type == 1) fprintf(fp," Router");
-            else if (type == 2) fprintf(fp," End Device");
-            else fprintf(fp," Unknown type");
-            for (; i<(*pkt)->dataLen; i++) fprintf(fp," %02X", (*pkt)->data[i]);
-            fprintf(fp,"\n");
-        }
-    }
+    if (debug) printNodeID(pkt);
 #endif
 /* Check if the serial number already exists. If not, then it is a new node. */
-    int node = 0;
-    for (;node < numberNodes; node++)
-        if ((nodeInfo[node].SH == SH) && (nodeInfo[node].SL == SL)) break;
-/* Fill in or refresh the info fields if there is room in the table. */
+    int node = findRowBy64BitAddress((*pkt)->data+2);
     if (node > MAXNODES)
     {
 #ifdef DEBUG
@@ -1307,9 +1381,12 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
 #endif
         return;
     }
-    nodeInfo[node].adr = adr;
-    nodeInfo[node].SH = SH;
-    nodeInfo[node].SL = SL;
+/* Fill in or refresh the info fields if there is room in the table. */
+    nodeInfo[node].adr = ((*pkt)->data[0] << 8) + (*pkt)->data[1];
+    nodeInfo[node].SH = ((*pkt)->data[2] << 24) + ((*pkt)->data[3] << 16) + 
+                        ((*pkt)->data[4] << 8) + (*pkt)->data[5];
+    nodeInfo[node].SL = ((*pkt)->data[6] << 24) + ((*pkt)->data[7] << 16) + 
+                        ((*pkt)->data[8] << 8) + (*pkt)->data[9];
     int i = 10;
     do
     {
@@ -1325,6 +1402,7 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
     nodeInfo[node].profileID = (*pkt)->data[i++] + (temp << 8);
     temp = (*pkt)->data[i++];
     nodeInfo[node].manufacturerID = (*pkt)->data[i++] + (temp << 8);
+/* Add in a new node at the end of the table */
     if (node == numberNodes)
     {
         numberNodes++;
@@ -1345,14 +1423,17 @@ void nodeIDCallback(struct xbee *xbee, struct xbee_con *con,
             fflush(fpd);
         }
 
-/* Disable all connections on new entry to allow them to be created below. */
+/* Clear all connection addresses on the new entry to allow them to be created
+below. */
         nodeInfo[node].valid = false;
         nodeInfo[node].dataCon = NULL;
         nodeInfo[node].ioCon = NULL;
         nodeInfo[node].atCon = NULL;
-        nodeInfo[node].txStatusCon = NULL;
     }
-/* Add (for new nodes) or rebuild (for failed attempts earlier) connections. */
+/* If an existing entry, close off its remote connections */
+    else closeRemoteConnection(node);
+        
+/* Add or rebuild connections. */
     openRemoteConnection(node);
     nodeInfo[node].valid = true;
 }
@@ -1529,10 +1610,16 @@ the string */
 #ifdef DEBUG
         if (debug && (txError != XBEE_ENONE))
         {
-            printf("Tx Fail %s: %s\n",
-                    nodeInfo[row].nodeIdent, xbee_errorToStr(txError));
-            if (fp != NULL) fprintf(fp,"Tx Fail %s: %s\n",
-                        nodeInfo[row].nodeIdent, xbee_errorToStr(txError));
+            char timeString[20];
+            time_t now;
+            now = time(NULL);
+            struct tm *tmp;
+            tmp = localtime(&now);
+            strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+            printf("Tx Fail %s: %s %s\n",
+                    nodeInfo[row].nodeIdent, timeString, xbee_errorToStr(txError));
+            if (fp != NULL) fprintf(fp,"Tx Fail %s: %s %s\n",
+                        nodeInfo[row].nodeIdent, timeString, xbee_errorToStr(txError));
         }
 #endif
     }
@@ -1623,18 +1710,7 @@ void remoteATCallback(struct xbee *xbee, struct xbee_con *con,
                       struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug)
-    {
-        printf("Remote AT Response: length %d, data ",(*pkt)->dataLen);
-        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
-        printf("\n");
-        if (fp != NULL)
-        {
-            fprintf(fp,"Remote AT Response: length %d, data ",(*pkt)->dataLen);
-            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
-            fprintf(fp,"\n");
-        }
-    }
+    if (debug) printRemoteATResponse(pkt);
 #endif
     remoteATResponseRcvd = true;
     remoteATLength = (*pkt)->dataLen;
@@ -1666,18 +1742,7 @@ void localATCallback(struct xbee *xbee, struct xbee_con *con,
                      struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug)
-    {
-        printf("Local AT Response: length %d, data ",(*pkt)->dataLen);
-        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
-        printf("\n");
-        if (fp != NULL)
-        {
-            fprintf(fp,"Local AT Response: length %d, data ",(*pkt)->dataLen);
-            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
-            fprintf(fp,"\n");
-        }
-    }
+    if (debug) printLocalATResponse(pkt);
 #endif
     localATResponseRcvd = true;
     localATLength = (*pkt)->dataLen;
@@ -1799,40 +1864,7 @@ void txStatusCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug > 1)
-    {
-        int row = findRowBy16BitAddress(((uint16_t)(*pkt)->data[1] << 8) + (*pkt)->data[2]);
-        char timeString[20];
-        time_t now;
-        now = time(NULL);
-        struct tm *tmp;
-        tmp = localtime(&now);
-        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
-        printf("Transmit Status: %s ",timeString);
-        printf("Length: %d ",(*pkt)->dataLen);
-        printf("FrameID %02X, ", (*pkt)->data[0]);
-        printf("16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
-        if (row == numberNodes) printf("Unknown ");
-        else printf("%s ", nodeInfo[row].nodeIdent);
-        printf("Retry count %d, ", (*pkt)->data[3]);
-        printf("Delivery status %02X, ", (*pkt)->data[4]);
-        printf("Discovery status %02X", (*pkt)->data[5]);
-        printf("\n");
-/* Also print to file */
-        if (fp != NULL)
-        {
-            fprintf(fp,"Transmit Status: %s ",timeString);
-            fprintf(fp,"Length: %d ",(*pkt)->dataLen);
-            fprintf(fp,"FrameID %02X, ", (*pkt)->data[0]);
-            fprintf(fp,"16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
-            if (row == numberNodes) fprintf(fp,"Unknown ");
-            else fprintf(fp,"%s ", nodeInfo[row].nodeIdent);
-            fprintf(fp,"Retry count %d, ", (*pkt)->data[3]);
-            fprintf(fp,"Delivery status %02X, ", (*pkt)->data[4]);
-            fprintf(fp,"Discovery status %02X", (*pkt)->data[5]);
-            fprintf(fp,"\n");
-        }
-    }
+    if (debug > 1) printTxStatus(pkt);
 #endif
 }
 
@@ -1855,24 +1887,12 @@ void modemStatusCallback(struct xbee *xbee, struct xbee_con *con,
                     struct xbee_pkt **pkt, void **data)
 {
 #ifdef DEBUG
-    if (debug > 1)
-    {
-        char timeString[20];
-        time_t now;
-        now = time(NULL);
-        struct tm *tmp;
-        tmp = localtime(&now);
-        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
-        printf("Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
-/* Also print to file */
-        if (fp != NULL)
-        {
-            fprintf(fp,"Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
-        }
-    }
+    if (debug > 1) printModemStatus(pkt);
 #endif
 }
 
+/*--------------------------------------------------------------------------*/
+/* UTILITY FUNCTIONS */
 /*--------------------------------------------------------------------------*/
 /** @brief Check the data file usage.
 
@@ -2092,10 +2112,9 @@ void deleteNodeTableRow(int row)
     numberNodes--;
     for (int i=row; i<numberNodes; i++)
         nodeInfo[i] = nodeInfo[i+1];
-    nodeInfo[numberNodes].atCon = NULL;     /* Nullify defunct row pointers */
-    nodeInfo[numberNodes].ioCon = NULL;
     nodeInfo[numberNodes].dataCon = NULL;
-    nodeInfo[numberNodes].txStatusCon = NULL;
+    nodeInfo[numberNodes].ioCon = NULL;
+    nodeInfo[numberNodes].atCon = NULL;     /* Nullify defunct row pointers */
     writeNodeFile();
 }
 
@@ -2198,6 +2217,8 @@ int findRowBy16BitAddress(uint16_t addr)
 }
 
 /*--------------------------------------------------------------------------*/
+/* DEBUG PRINT */
+/*--------------------------------------------------------------------------*/
 /** @brief Print out contents of node table.
 
 This is a debug only function. Only the first four components are printed.
@@ -2260,6 +2281,189 @@ void debugDumpPacket(struct xbee_pkt **pkt)
             fprintf(fp,"len %d ", (*pkt)->dataLen);
             for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%c", (*pkt)->data[i]);
             fprintf(fp,"\n");
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a Node ID packet.
+
+This is a debug only function. It displays all relevant information in the
+packet.
+*/
+
+void printNodeID(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        uint16_t adr = ((*pkt)->data[0] << 8) + (*pkt)->data[1];
+        uint32_t SH =  ((*pkt)->data[2] << 24) + ((*pkt)->data[3] << 16) + 
+                       ((*pkt)->data[4] << 8) + (*pkt)->data[5];
+        uint32_t SL =  ((*pkt)->data[6] << 24) + ((*pkt)->data[7] << 16) + 
+                       ((*pkt)->data[8] << 8) + (*pkt)->data[9];
+        printf("Identify Packet: length %d", (*pkt)->dataLen);
+        printf(", 16 bit address %04X", adr);
+        printf(", 64 bit address %08X %08X", SH, SL);
+        printf(", ID ");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Identify Packet: length %d", (*pkt)->dataLen);
+            fprintf(fp,", 16 bit address %04X", adr);
+            fprintf(fp,", 64 bit address %08X %08X", SH, SL);
+            fprintf(fp,", ID ");
+        }
+        int i = 10;
+        while ((*pkt)->data[i] > 0) printf("%c", (*pkt)->data[i++]);
+        i++;
+        unsigned int parent =  (*pkt)->data[i++];
+        parent = (parent << 8) +  (*pkt)->data[i++];
+        int type = (*pkt)->data[i++];
+        printf(", parent address %04X",parent);
+        if (type == 0) printf(" Coordinator");
+        else if (type == 1) printf(" Router");
+        else if (type == 2) printf(" End Device");
+        else printf(" Unknown type");
+        for (; i<(*pkt)->dataLen; i++) printf(" %02X", (*pkt)->data[i]);
+        printf("\n");
+
+        if (fp != NULL)
+        {
+            int i = 10;
+            while ((*pkt)->data[i] > 0) fprintf(fp,"%c", (*pkt)->data[i++]);
+            fprintf(fp,", parent address %04X",parent);
+            if (type == 0) fprintf(fp," Coordinator");
+            else if (type == 1) fprintf(fp," Router");
+            else if (type == 2) fprintf(fp," End Device");
+            else fprintf(fp," Unknown type");
+            for (; i<(*pkt)->dataLen; i++) fprintf(fp," %02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a remote AT Response packet.
+
+This is a debug only function. It displays all relevant information in the
+packet.
+*/
+
+void printRemoteATResponse(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        printf("Remote AT Response: length %d, data ",(*pkt)->dataLen);
+        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
+        printf("\n");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Remote AT Response: length %d, data ",(*pkt)->dataLen);
+            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a local AT Response packet.
+
+This is a debug only function. It displays all relevant information in the
+packet.
+*/
+
+void printLocalATResponse(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        printf("Local AT Response: length %d, data ",(*pkt)->dataLen);
+        for (int i=0; i<(*pkt)->dataLen; i++) printf("%02X", (*pkt)->data[i]);
+        printf("\n");
+        if (fp != NULL)
+        {
+            fprintf(fp,"Local AT Response: length %d, data ",(*pkt)->dataLen);
+            for (int i=0; i<(*pkt)->dataLen; i++) fprintf(fp,"%02X", (*pkt)->data[i]);
+            fprintf(fp,"\n");
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a Transmit Status packet.
+
+This is a debug only function. It displays all relevant information in the
+packet.
+*/
+
+void printTxStatus(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        int row = findRowBy16BitAddress(((uint16_t)(*pkt)->data[1] << 8) + (*pkt)->data[2]);
+        char timeString[20];
+        time_t now;
+        now = time(NULL);
+        struct tm *tmp;
+        tmp = localtime(&now);
+        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+        printf("Transmit Status: %s ",timeString);
+        printf("Length: %d ",(*pkt)->dataLen);
+        printf("FrameID %02X, ", (*pkt)->data[0]);
+        printf("16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
+        if (row == numberNodes) printf("Unknown ");
+        else printf("%s ", nodeInfo[row].nodeIdent);
+        printf("Retry count %d, ", (*pkt)->data[3]);
+        printf("Delivery status %02X, ", (*pkt)->data[4]);
+        printf("Discovery status %02X", (*pkt)->data[5]);
+        printf("\n");
+    /* Also print to file */
+        if (fp != NULL)
+        {
+            fprintf(fp,"Transmit Status: %s ",timeString);
+            fprintf(fp,"Length: %d ",(*pkt)->dataLen);
+            fprintf(fp,"FrameID %02X, ", (*pkt)->data[0]);
+            fprintf(fp,"16 Bit Address %02X%02X, ", (*pkt)->data[1], (*pkt)->data[2]);
+            if (row == numberNodes) fprintf(fp,"Unknown ");
+            else fprintf(fp,"%s ", nodeInfo[row].nodeIdent);
+            fprintf(fp,"Retry count %d, ", (*pkt)->data[3]);
+            fprintf(fp,"Delivery status %02X, ", (*pkt)->data[4]);
+            fprintf(fp,"Discovery status %02X", (*pkt)->data[5]);
+            fprintf(fp,"\n");
+        }
+    }
+#endif
+}
+
+/*--------------------------------------------------------------------------*/
+/** @brief Print out contents of a Modem Status packet.
+
+This is a debug only function. It displays all relevant information in the
+packet.
+*/
+
+void printModemStatus(struct xbee_pkt **pkt)
+{
+#ifdef DEBUG
+    if (debug > 1)
+    {
+        char timeString[20];
+        time_t now;
+        now = time(NULL);
+        struct tm *tmp;
+        tmp = localtime(&now);
+        strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
+        printf("Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
+    /* Also print to file */
+        if (fp != NULL)
+        {
+            fprintf(fp,"Modem Status: %s Status %02X\n",timeString,(*pkt)->data[0]);
         }
     }
 #endif
