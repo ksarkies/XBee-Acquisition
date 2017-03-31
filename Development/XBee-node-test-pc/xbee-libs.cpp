@@ -343,8 +343,13 @@ int8_t readXBeeIO(uint8_t* data)
 /****************************************************************************/
 /** @brief Access ADC data from the XBee.
 
-The XBee returns a variable length data field
-depending on what ports have been enabled.
+This is the data set of an IS command to the XB. The XBee returns a variable
+length data field depending on what ports have been enabled.
+Byte 0      [always 1 sample set]
+Bytes 2,3   [Digital Inputs that have been enabled (mask)]
+Byte 4      [Analog Inputs that have been enabled (mask)]
+Bytes 6 on  [Digital input states if digital mask is > 0, otherwise omitted]
+            [Analog input values, 2 bytes each]
 
 @param[in] uint8_t* data: data field from the XBee after a readXBeeIO.
 @returns uint16_t AD2 value; XBee A/D converter is 10 bits.

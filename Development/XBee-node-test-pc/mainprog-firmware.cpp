@@ -1,11 +1,14 @@
 /*      Main program of code to be tested
-                Firmware Test
+                Firmware
 
 @mainpage AVR XBee Node Firmware
 @version 2.1
 @author Ken Sarkies (www.jiggerjuice.info)
 @date 18 March 2016
-@date 29 March 2016
+@date 29 March 2017
+
+This provides an emulated firmware with full protocol implementation for the
+watermeter system. It matches the firmware provided in XBee-firmware.
 
 This is version two of the firmware. The rewrite is intended to expose the
 logic flow more clearly and attempt to avoid subtle errors.
@@ -289,7 +292,7 @@ printData(7,0);
                             timeoutDelay = 2000;
                             if (retryEnable)
                             {
-                                uint8_t parameter = retryCount;
+                                uint32_t parameter = retryCount;
                                 uint8_t txCommand = 'C';
                                 if (packetError == timeout) txCommand = 'T';
 /* Last read of XBee gave an error */
@@ -307,8 +310,8 @@ printData(7,0);
                                 }
 /* Data field has count 16 bits, voltage 10 bits, status 6 bits */
                                 sendDataCommand(txCommand,
-                                    lastCount+((uint32_t)batteryVoltage<<16)+
-                                    ((uint32_t)parameter<<26));
+                                    lastCount+((batteryVoltage & 0x3FF)<<16)+
+                                    ((parameter & 0x3F)<<26));
                                 retryCount++;
 printData(8,txCommand);
                             }

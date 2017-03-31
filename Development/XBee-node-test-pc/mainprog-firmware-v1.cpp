@@ -1,5 +1,13 @@
 /*      Main program of code to be tested
-                Firmware Test
+                Firmware
+
+@mainpage AVR XBee Node Firmware
+@version 2.1
+@author Ken Sarkies (www.jiggerjuice.info)
+@date 18 March 2016
+
+This provides an emulated firmware with full protocol implementation for the
+watermeter system. It matches the firmware provided in XBee-firmware.
 
 ** Omit the sleep sections for obvious reasons. The WDT is replaced by the
 ** simulated timer section.

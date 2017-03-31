@@ -1,6 +1,9 @@
 XBee Data Acquisition Remote Firmware using NARTOS Scheduler
 ------------------------------------------------------------
 
+This code has been abandoned and is outdated and will need to be modified if the
+scheduler approach is to be used. It needs modification before it will compile.
+
 This is the firmware for the remote unit. Written in C under avr-gcc.
 The NARTOS scheduler is used to manage the complexity of the logic.
 
@@ -57,9 +60,6 @@ differences, and a new defines file placed in the lib directory. The makefile
 creates an integer variable MCU_TYPE, derived from the MCU variable, (see the
 makefile) and passes it to the source files. This variable must then be used in
 the defines.h header to incorporate the appropriate MCU specific defines file.
-
-This code has been abandoned and is outdated and will need to be modified if the
-scheduler approach is to be used. It needs modification before it will compile.
 
 K. Sarkies
 7 December 2016

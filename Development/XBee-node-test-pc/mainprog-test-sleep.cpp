@@ -1,5 +1,8 @@
 /*      Main program of code to be tested
 
+This provides an emulated firmware matching the firmware provided in
+XBee-node-test that sends a data message at regular intervals.
+
 Split the code to be tested into an initialization part and an operational
 part that normally falls within an infinite loop. Place the initialization part
 into the function called mainprogInit(), and the operational part into

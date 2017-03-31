@@ -274,7 +274,7 @@ until the transmission has been completed or abandoned. */
                         {
                             #ifdef VBATCON_PIN
 /* Turn off battery measurement */
-                            cbi(VBATCON_PORT_DIR,VBATCON_PIN);
+                            cbi(VBATCON_PORT,VBATCON_PIN);
                             #endif
                             retryCount = 0;
                             packetError = no_error;
@@ -289,7 +289,7 @@ until the transmission has been completed or abandoned. */
                             {
                                 #ifdef VBATCON_PIN
 /* Turn on battery measurement */
-                                sbi(VBATCON_PORT_DIR,VBATCON_PIN);
+                                sbi(VBATCON_PORT,VBATCON_PIN);
                                 #endif
                                 sendATFrame(2,"IS");    /* Force Sample Read */
                                 retryCount++;
@@ -325,7 +325,7 @@ until the transmission has been completed or abandoned. */
                             timeoutDelay = 2000;
                             if (retryEnable)
                             {
-                                uint8_t parameter = retryCount;
+                                uint32_t parameter = retryCount;
                                 uint8_t txCommand = 'C';
                                 if (packetError == timeout) txCommand = 'T';
 /* Last read of XBee gave an error */
@@ -343,8 +343,8 @@ until the transmission has been completed or abandoned. */
                                 }
 /* Data filed has count 16 bits, voltage 10 bits, status 6 bits */
                                 sendDataCommand(txCommand,
-                                    lastCount+((uint32_t)batteryVoltage<<16)+
-                                    ((uint32_t)parameter<<26));
+                                    lastCount+((batteryVoltage & 0x3FF)<<16)+
+                                    ((parameter & 0x3F)<<26));
                                 retryCount++;
                             }
                             retryEnable = true;

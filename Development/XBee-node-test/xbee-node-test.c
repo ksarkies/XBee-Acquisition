@@ -139,6 +139,10 @@ event. */
 Don't start until it is associated. */
     while (! checkAssociated());
 
+#if defined VBATCON_PIN && defined BATTERY_MEASURE
+/* Turn on battery measurement and leave on permanently. */
+    sbi(VBATCON_PORT,VBATCON_PIN);
+#endif
 /*---------------------------------------------------------------------------*/
 /* Main loop */
 

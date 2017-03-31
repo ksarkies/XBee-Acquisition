@@ -1,5 +1,8 @@
 /*      Main program of code to be tested
 
+This provides a test emulated firmware that received data messages from the
+coordinator and echoes back.
+
 Split the code to be tested into an initialization part and an operational
 part that normally falls within an infinite loop. Place the initialization part
 into the function called mainprogInit(), and the operational part into
