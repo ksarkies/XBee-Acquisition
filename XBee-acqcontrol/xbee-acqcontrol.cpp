@@ -1571,10 +1571,10 @@ the string */
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
             if (checksum != 0) error = true;
 #ifdef DEBUG
-            printf(" Count %lu Voltage %f V Retry %lu\n",
-                (count & 0xFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 30));
-            if (fp != NULL) fprintf(fp," Count %lu Voltage %f V Retry %lu\n",
-                (count & 0xFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 30));
+            printf(" Count %lu Voltage %f V Parameter %lu\n",
+                (count & 0xFFFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 26));
+            if (fp != NULL) fprintf(fp," Count %lu Voltage %f V Parameter %lu\n",
+                (count & 0xFFFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 26));
 #endif
         }
         xbee_err txError;

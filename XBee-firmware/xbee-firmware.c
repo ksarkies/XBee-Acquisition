@@ -192,8 +192,6 @@ event. */
 
 /* Initialise watchdog timer count */
     wdtCounter = 0;
-/* Initialise process counter */
-    counter = 0;
     stayAwake = XBEE_STAY_AWAKE;
     transmitMessage = false;
 
@@ -433,6 +431,9 @@ This must be allowed to occur at any stage. */
                 }
 /* Cycle Complete */
             }
+/* Delay here to prevent sleep mode from occurring until counts have settled.
+Count period is typically less than 10ms. */
+            _delay_ms(10);
         }
         while (counter != lastCount);
 
@@ -448,7 +449,6 @@ This must be allowed to occur at any stage. */
 #ifdef VBATCON_PIN
             cbi(VBATCON_PORT,VBATCON_PIN);   /* Turn off battery measurement */
 #endif
-/* Power down the AVR to deep sleep until an interrupt occurs */
             set_sleep_mode(SLEEP_MODE_PWR_DOWN);
             sleep_mode();
         }
