@@ -103,6 +103,15 @@ typedef struct {
     struct xbee_con *ioCon; // libxbee connection for I/O received frames
 } nodeEntry;
 
+/* Error detected in data packet */
+enum DataError
+{
+    none = 0,
+    badLength = 1,
+    badHex = 2,
+    badChecksum = 3
+};
+
 extern int numberNodes;
 extern nodeEntry nodeInfo[25];
 

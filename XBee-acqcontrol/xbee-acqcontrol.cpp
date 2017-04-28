@@ -1481,7 +1481,6 @@ other data types.
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
                   struct xbee_pkt **pkt, void **data)
 {
-    char buffer[DATA_BUFFER_SIZE];
     int row = findRowBy64BitAddress((*pkt)->address.addr64);
     char timeString[20];
     time_t now;
@@ -1491,10 +1490,11 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
     int writeLength = (*pkt)->dataLen;
     if (writeLength > DATA_BUFFER_SIZE) writeLength = DATA_BUFFER_SIZE;
+/* If the node is not recognised, abort processing */
+    if (row == numberNodes)
 #ifdef DEBUG
-    if (debug)
     {
-        if (row == numberNodes)
+        if (debug)
         {
             printf("Node Unknown, unable to process packet.\n");
             printf("Packet Dump:");
@@ -1505,24 +1505,30 @@ void dataCallback(struct xbee *xbee, struct xbee_con *con,
             }
             debugDumpNodeTable();
         }
-        else
+        debugDumpPacket(pkt);
+#endif
+        return;
+    }
+#ifdef DEBUG
+    if (debug)
+    {
+        printf("Node %s Data Packet:", nodeInfo[row].nodeIdent);
+        if (fp != NULL)
         {
-            printf("Node %s Data Packet:", nodeInfo[row].nodeIdent);
-            if (fp != NULL) fprintf(fp,"Node %s Data Packet:",
-                                           nodeInfo[row].nodeIdent);
+            fprintf(fp,"Node %s Data Packet:",
+                                       nodeInfo[row].nodeIdent);
         }
         debugDumpPacket(pkt);
     }
 #endif
-/* If the node is not recognised, abort processing */
-    if (row == numberNodes) return;
 /* Add 16 bit address to node table in case it was not already saved. */
     nodeInfo[row].adr = (((uint16_t)(*pkt)->address.addr16[0] << 8)+(*pkt)->address.addr16[1]);
 /* Determine if the packet received is a data packet and check for errors.
 The command is that sent by the application layer protocol in the remote. */
     char command = (*pkt)->data[0];
-    bool error = false;
+    DataError error = none;
     unsigned long int count = 0;
+    unsigned long int dataField = 0;
     bool storeData = false;
 /* These messages result from initial data transmission and error conditions in
 the remote. If the message length is 11, the defined length of a data packet,
@@ -1531,17 +1537,9 @@ Error is signalled if length or checksum are wrong. */
     if ((command == 'C') || (command == 'T') || (command == 'N')
                          || (command == 'E') || (command == 'S'))
     {
-#ifdef DEBUG
-        if (debug)
-        {
-            printf("Command Received %c %s",command,nodeInfo[row].nodeIdent);
-            if (fp != NULL) fprintf(fp,"Command Received %c %s",
-                                            command,nodeInfo[row].nodeIdent);
-        }
-#endif
         nodeInfo[row].protocolState = 1;        /* Start of protocol cycle. */
-        if (writeLength != 11) error = true;
-        if (!error)
+        if (writeLength != 11) error = badLength;
+        if (error == none)
         {
 /* Convert hex ASCII checksum and count to an integer from the latter part of
 the string */
@@ -1551,7 +1549,7 @@ the string */
                 char hex = (*pkt)->data[i+3];
                 if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
                 else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
-                else error = true;
+                else error = badHex;
                 count = (count << 4) + digit;
             }
 /* Convert checksum in first part of string */
@@ -1562,32 +1560,28 @@ the string */
                 char hex = (*pkt)->data[i+1];
                 if ((hex >= '0') && (hex <= '9')) digit = hex - '0';
                 else if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
-                else error = true;
+                else error = badHex;
                 checksum = (checksum << 4) + digit;
             }
 /* Compute checksum of data and add to transmitted checksum */
             checksum += count + (count >> 8) + 
                        (count >> 16) + (count >> 24);
 /* Checksum should add up to zero, so send an ACK, otherwise send a NAK */
-            if (checksum != 0) error = true;
-#ifdef DEBUG
-            printf(" Count %lu Voltage %f V Parameter %lu\n",
-                (count & 0xFFFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 26));
-            if (fp != NULL) fprintf(fp," Count %lu Voltage %f V Parameter %lu\n",
-                (count & 0xFFFF), (float)((count >> 16) & 0x3FF)*0.004799415, (count >> 26));
-#endif
+            if (checksum != 0) error = badChecksum;
         }
         xbee_err txError;
         char ackResponse[3];
         ackResponse[1] = command;
-        if (error)
+        if (error != none)
         {
 #ifdef DEBUG
             if (debug)
             {
-                printf("Error detected - sent NAK %s\n",nodeInfo[row].nodeIdent);
-                if (fp != NULL) fprintf(fp,"Error detected - sent NAK %s\n",
-                                        nodeInfo[row].nodeIdent);
+                printf("Error detected - sent NAK %s error %d\n",
+                        nodeInfo[row].nodeIdent, error);
+                if (fp != NULL)
+                    fprintf(fp,"Error detected - sent NAK %s error %d\n",
+                            nodeInfo[row].nodeIdent, error);
             }
 #endif
 /* Negative Acknowledge */
@@ -1603,8 +1597,9 @@ the string */
                 if (fp != NULL) fprintf(fp,"Sent ACK %s\n",nodeInfo[row].nodeIdent);
             }
 #endif
-/* If no error, store data field aside for later recording. */
+/* Store data field aside for later recording. */
             for (int i=0; i<DATA_LENGTH; i++) remoteData[i][row] = (*pkt)->data[i+1];
+            dataField = count;
 /* Check if there are any pending data transmissions to the remote and send now */
 // txError = xbee_conTx(con, NULL, "P");    /* Insert application packet for test */
 // usleep(500000);                 /* Insert delay for test */
@@ -1617,12 +1612,6 @@ the string */
 #ifdef DEBUG
         if (debug && (txError != XBEE_ENONE))
         {
-            char timeString[20];
-            time_t now;
-            now = time(NULL);
-            struct tm *tmp;
-            tmp = localtime(&now);
-            strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",tmp);
             printf("Tx Fail %s: %s %s\n",
                     nodeInfo[row].nodeIdent, timeString, xbee_errorToStr(txError));
             if (fp != NULL) fprintf(fp,"Tx Fail %s: %s %s\n",
@@ -1649,8 +1638,11 @@ has detected ongoing errors and will now not reset its count. */
     {
         nodeInfo[row].protocolState = 1;        /* Reset protocol state */
 #ifdef DEBUG
-        if (debug) printf("Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
-        if (fp != NULL) fprintf(fp,"Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
+        if (debug)
+        {
+            printf("Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
+            if (fp != NULL) fprintf(fp,"Remote Abandoned %s\n",nodeInfo[row].nodeIdent);
+        }
 #endif
         storeData = false;
     }
@@ -1674,23 +1666,23 @@ protocol but only sends a single transmission. */
     }
 
 /* Print out received data to the file once it is verified. */
-    if (storeData)
+#ifdef DEBUG
+    if (debug)
     {
-        if (fp != NULL)
-        {
-            if (row == numberNodes) fprintf(fp,"Node Unknown ");
-            else fprintf(fp,"Node %s ", nodeInfo[row].nodeIdent);
-            fprintf(fp," %s ", timeString);
-            fprintf(fp, "Count ");
-            for (int i=0; i<DATA_LENGTH; i++) buffer[i] = remoteData[i][row];
-            fwrite(buffer,1,DATA_LENGTH,fp);
-            fprintf(fp, "\n");
-        }
-        dataFileCheck();
-/* If we are hearing from this then it is a valid node */
-        if (row < numberNodes) nodeInfo[row].valid = true;
+        printf("Command Received %c %s %s Count %lu Voltage %f V Parameter %lu\n",
+            command, nodeInfo[row].nodeIdent, timeString, (dataField & 0xFFFF),
+            (float)((dataField >> 16) & 0x3FF)*0.004799415, (dataField >> 26));
     }
-
+#endif
+    if (storeData && (fp != NULL))
+    {
+        fprintf(fp,"Command Received %c %s %s Count %lu Voltage %f V Parameter %lu\n",
+            command, nodeInfo[row].nodeIdent, timeString, (dataField & 0xFFFF),
+            (float)((dataField >> 16) & 0x3FF)*0.004799415, (dataField >> 26));
+        dataFileCheck();
+    }
+/* If we are hearing from this then it is a valid node */
+    if (row < numberNodes) nodeInfo[row].valid = true;
 }
 
 /*--------------------------------------------------------------------------*/
