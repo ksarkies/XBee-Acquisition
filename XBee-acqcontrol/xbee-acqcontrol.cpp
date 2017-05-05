@@ -81,6 +81,7 @@ struct xbee_con *txStatusCon;   /* Connection for transmit status packets */
 int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
 char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
+unsigned long int dataField = 0;/* Temporary store for processed data word. */
 bool dataResponseRcvd;          /* Signal response to an AVR command received */
 char dataResponseData[SIZE];    /* The data record received with a response */
 bool remoteATResponseRcvd;      /* Signal response to a remote AT command received */
@@ -1528,7 +1529,6 @@ The command is that sent by the application layer protocol in the remote. */
     char command = (*pkt)->data[0];
     DataError error = none;
     unsigned long int count = 0;
-    unsigned long int dataField = 0;
     bool storeData = false;
 /* These messages result from initial data transmission and error conditions in
 the remote. If the message length is 11, the defined length of a data packet,
