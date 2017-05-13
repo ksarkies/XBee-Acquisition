@@ -6,7 +6,11 @@ into a common header for the source files */
 #include <avr/interrupt.h>
 #include <inttypes.h>
 
-#if (MCU_TYPE==168)
+#if (MCU_TYPE==328)
+#include "defines-M168.h"
+#elif (MCU_TYPE==168)
+#include "defines-M168.h"
+#elif (MCU_TYPE==88)
 #include "defines-M168.h"
 #elif (MCU_TYPE==48)
 #include "defines-M168.h"
