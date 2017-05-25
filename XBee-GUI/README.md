@@ -8,5 +8,5 @@ monitoring.
 Refer to [Jiggerjuice](http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html) for details on installation and usage.
 
 K. Sarkies
-7 July 2014
+25 January 2017
 

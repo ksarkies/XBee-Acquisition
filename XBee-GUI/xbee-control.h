@@ -31,8 +31,8 @@ Title:    XBee Control and Display GUI Tool
 #include <QStandardItemModel>
 #include <QFile>
 
-#define PORT 58532        // port for the external command I/F
-#define ADDRESS "127.0.0.1"
+#define DEFAULT_TCP_PORT    58532        // port for the external command I/F
+#define DEFAULT_TCP_ADDRESS "127.0.0.1"
 
 #ifdef WIN32
 #include <Windows.h>
@@ -50,7 +50,7 @@ class XbeeControlTool : public QWidget
 {
     Q_OBJECT
 public:
-    XbeeControlTool(QWidget* parent = 0);
+    XbeeControlTool(QString tcpAddress, uint tcpPort, QWidget* parent = 0);
     ~XbeeControlTool();
     bool success();
     QString error();
@@ -85,6 +85,7 @@ private:
     quint16 blockSize;
     char deviceType;
     int row;
+    int timeout;
 // The commStatus is used to signal when data has arrived and what happened
     enum {comIdle, comSent, comReceived, comError, comXbeeError} comStatus;
     char comCommand;

@@ -48,8 +48,8 @@ or remote XBee through reading and writing parameters via the XBee API.
 @parameter parent Parent widget.
 */
 
-XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
-                                   bool remoteNode, QWidget* parent)
+XBeeConfigWidget::XBeeConfigWidget(QString tcpAddress, uint tcpPort,
+                               int nodeRow, bool remoteNode, QWidget* parent)
                     : QWidget(parent), row(nodeRow), remote(remoteNode)
 {
 // Create the TCP socket to the internet process
@@ -61,7 +61,7 @@ XBeeConfigWidget::XBeeConfigWidget(QString address, int nodeRow,
              this, SLOT(displayError(QAbstractSocket::SocketError)));
 // Connect to the host
     tcpSocket->abort();
-    tcpSocket->connectToHost(address, PORT);
+    tcpSocket->connectToHost(tcpAddress, tcpPort);
 // Pull in all the information table
     if (! tcpSocket->waitForConnected(10000)) exit(1);
 // Ask for information about the remote node.

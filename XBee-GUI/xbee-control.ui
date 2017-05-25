@@ -26,7 +26,7 @@
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="text">
     <string>Refresh Display</string>
@@ -36,7 +36,7 @@
    <property name="geometry">
     <rect>
      <x>36</x>
-     <y>94</y>
+     <y>89</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -52,7 +52,7 @@
    <property name="geometry">
     <rect>
      <x>156</x>
-     <y>94</y>
+     <y>89</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -67,8 +67,8 @@
   <widget class="QProgressBar" name="uploadProgressBar">
    <property name="geometry">
     <rect>
-     <x>416</x>
-     <y>97</y>
+     <x>535</x>
+     <y>95</y>
      <width>111</width>
      <height>23</height>
     </rect>
@@ -98,14 +98,14 @@
   <widget class="QLineEdit" name="nodeAddress">
    <property name="geometry">
     <rect>
-     <x>346</x>
+     <x>361</x>
      <y>45</y>
-     <width>181</width>
+     <width>166</width>
      <height>27</height>
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote XBee. Must be 16 bit hexadecimal or an ASCII node name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
   <widget class="QLabel" name="connectAddressLabel">
@@ -123,7 +123,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Coordinator Network Address</string>
+    <string>Base Station Network Address</string>
    </property>
   </widget>
   <widget class="QPushButton" name="connectButton">
@@ -136,7 +136,7 @@
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the remote coordinator process.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Open a TCP connection to the remote coordinator process.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="text">
     <string>Connect</string>
@@ -146,9 +146,9 @@
    <property name="geometry">
     <rect>
      <x>36</x>
-     <y>173</y>
+     <y>187</y>
      <width>641</width>
-     <height>530</height>
+     <height>516</height>
     </rect>
    </property>
    <attribute name="verticalHeaderVisible">
@@ -158,14 +158,14 @@
   <widget class="QPushButton" name="removeNodeButton">
    <property name="geometry">
     <rect>
-     <x>536</x>
-     <y>93</y>
+     <x>535</x>
+     <y>135</y>
      <width>111</width>
      <height>28</height>
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Read in an updated node table&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete the selected node from the node table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="text">
     <string>Remove Node</string>
@@ -190,8 +190,8 @@
   <widget class="QLabel" name="nodeTableLabel">
    <property name="geometry">
     <rect>
-     <x>186</x>
-     <y>145</y>
+     <x>185</x>
+     <y>170</y>
      <width>311</width>
      <height>17</height>
     </rect>
@@ -203,14 +203,14 @@
   <widget class="QPushButton" name="firmwareButton">
    <property name="geometry">
     <rect>
-     <x>286</x>
-     <y>93</y>
+     <x>415</x>
+     <y>90</y>
      <width>111</width>
      <height>28</height>
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload Firmware to remote node. Select a node from the tabnle.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload Firmware tothe selected remote node.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="text">
     <string>Firmware</string>
@@ -240,19 +240,19 @@
     <rect>
      <x>156</x>
      <y>45</y>
-     <width>181</width>
+     <width>106</width>
      <height>27</height>
     </rect>
    </property>
    <property name="toolTip">
-    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote machine with the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the Base Station machine that has the coordinator process running.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
   <widget class="QPushButton" name="refreshListButton_2">
    <property name="geometry">
     <rect>
-     <x>536</x>
-     <y>131</y>
+     <x>415</x>
+     <y>135</y>
      <width>111</width>
      <height>28</height>
     </rect>
@@ -262,6 +262,47 @@
    </property>
    <property name="text">
     <string>Application</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="waitTimeLabel">
+   <property name="geometry">
+    <rect>
+     <x>315</x>
+     <y>120</y>
+     <width>86</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>8</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Wait Time</string>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="waitTime">
+   <property name="geometry">
+    <rect>
+     <x>285</x>
+     <y>90</y>
+     <width>111</width>
+     <height>25</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="connectPort">
+   <property name="geometry">
+    <rect>
+     <x>265</x>
+     <y>45</y>
+     <width>91</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="maximum">
+    <number>65535</number>
    </property>
   </widget>
  </widget>

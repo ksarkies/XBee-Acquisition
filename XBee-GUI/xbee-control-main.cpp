@@ -35,6 +35,7 @@ Uses: Qt version 4.8.1
  * limitations under the License.                                           *
  ***************************************************************************/
 
+#include <unistd.h>
 #include "xbee-control.h"
 #include <QApplication>
 #include <QMessageBox>
@@ -46,8 +47,36 @@ Uses: Qt version 4.8.1
 
 int main(int argc,char ** argv)
 {
+/* Interpret any command line options */
+    char c;
+    opterr = 0;
+    QString tcpAddress = DEFAULT_TCP_ADDRESS;
+    uint tcpPort = DEFAULT_TCP_PORT;
+    while ((c = getopt (argc, argv, "a:p:")) != -1)
+    {
+        switch (c)
+        {
+// TCP address
+        case 'a':
+            tcpAddress = optarg;
+            break;
+// TCP port number
+        case 'p':
+            tcpPort = atoi(optarg);
+            break;
+// Unknown
+        case '?':
+            if ((optopt == 'a') || (optopt == 'p'))
+                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint (optopt))
+                fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
+            default: return false;
+        }
+    }
     QApplication application(argc,argv);
-    XbeeControlTool xbeeControlTool;
+    XbeeControlTool xbeeControlTool(tcpAddress,tcpPort);
     if (xbeeControlTool.success())
     {
         xbeeControlTool.show();

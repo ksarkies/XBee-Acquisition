@@ -57,7 +57,8 @@ QByteArray replyBuffer;
 @param[in] parent Parent widget.
 */
 
-XbeeControlTool::XbeeControlTool(QWidget* parent) : QWidget(parent)
+XbeeControlTool::XbeeControlTool(QString tcpAddress, uint tcpPort,
+                                QWidget* parent) : QWidget(parent)
 {
 // Build the User Interface display from the Ui class in ui_mainwindowform.h
     XbeeControlFormUi.setupUi(this);
@@ -77,9 +78,13 @@ XbeeControlTool::XbeeControlTool(QWidget* parent) : QWidget(parent)
     XbeeControlFormUi.nodeTable->resizeColumnToContents(6);
 // Additional widget settings
     XbeeControlFormUi.remoteConfigButton->setEnabled(false);
-    XbeeControlFormUi.connectAddress->setText(ADDRESS);
+    XbeeControlFormUi.connectAddress->setText(tcpAddress);
+    XbeeControlFormUi.connectPort->setValue(tcpPort);
     XbeeControlFormUi.uploadProgressBar->setVisible(false);
     tcpSocket = NULL;
+// Set timeout to indefinite.
+    timeout = 0;
+    XbeeControlFormUi.waitTime->setValue(timeout);
 }
 
 XbeeControlTool::~XbeeControlTool()
@@ -386,7 +391,8 @@ void XbeeControlTool::on_connectButton_clicked()
     {
         ssleep(1);
         tcpSocket->abort();
-        tcpSocket->connectToHost(XbeeControlFormUi.connectAddress->text(), PORT);
+        tcpSocket->connectToHost(XbeeControlFormUi.connectAddress->text(), 
+                                 XbeeControlFormUi.connectPort->value());
         if (tcpSocket->waitForConnected(1000)) break;
     }
     qDebug() << count;
@@ -405,9 +411,9 @@ void XbeeControlTool::on_connectButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Send commands to bring in node information table.
 
-The node information table is managed in the remote coordinator process. It contains
-information for nodes already known to be on the network, and adds new nodes as
-they are connected.
+The node information table is managed in the remote coordinator process. It
+contains information for nodes already known to be on the network, and adds new
+nodes as they are connected.
 */
 
 bool XbeeControlTool::on_refreshListButton_clicked()
@@ -463,7 +469,8 @@ void XbeeControlTool::on_removeNodeButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Attempt to reconnect with the remote node.
 
-If a node is selected, reset the connections and query with a SM command.
+If a node is selected, reset the connections and query with a CB command
+to trigger a commissioning pushbutton simulated event.
 If no node selected, build an address from the edit box and try to connect.
 If successful, add a new entry to the table.
 */
@@ -494,11 +501,11 @@ void XbeeControlTool::on_queryNodeButton_clicked()
             QByteArray commandDN;
             commandDN.clear();
             commandDN.append("DN" + addressParm);
-            if (sendAtCommand(commandDN, false, 300) != 0)
+            if (sendAtCommand(commandDN, false, timeout) != 0)
             {
-            popup("Unable to find named node");
+                popup("Unable to find named node");
 #ifdef DEBUG
-            qDebug() << "Timeout waiting for DN request response";
+                qDebug() << "Timeout waiting for DN request response";
 #endif
                 return;
             }
@@ -536,7 +543,7 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         comPbCommand.append("CB");
         comPbCommand.append('\1');
 // Wait a bit as we may have a sleeping device
-        if (sendAtCommand(comPbCommand, true, 300) > 0)
+        if (sendAtCommand(comPbCommand, true, timeout) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
@@ -547,6 +554,7 @@ void XbeeControlTool::on_queryNodeButton_clicked()
     }
     else
     {
+// Query sleep mode.
         QByteArray reconnectCommand;
         reconnectCommand.append('Q');
         reconnectCommand.append(char(row));
@@ -554,9 +562,9 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         QByteArray sleepModeCommand;
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
-        if (sendAtCommand(sleepModeCommand, true, 10) > 0)
+        if (sendAtCommand(sleepModeCommand, true, 1) > 0)
         {
-            popup("Timeout accessing remote node");
+            popup("Timeout accessing remote node while querying sleep mode.");
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
 #endif
@@ -854,7 +862,7 @@ Globals: row, response
 
 @parameter  atCommand. The AT command string as a QByteArray to send
 @parameter  remote. True if the node is a remote node
-@parameter  countMax. Number of 10ms delays in the wait loop.
+@parameter  countMax. Number of 100ms delays in the wait loop.
 @return 0 no error
         1 socket command error (usually timeout)
         2 timeout waiting for response
@@ -887,11 +895,12 @@ int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countM
         atCommand.append('\0');         // Dummy "row" value
         int count = 0;
         response = 0;
+/* Query node every 100ms until response is received or an error occurs. */
         while((response == 0) && (errorCode == 0))
         {
-            if (count++ > countMax) errorCode = 2;  //Timeout
+            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
             if (sendCommand(atCommand) > 0) errorCode = 3;
-            if (remote) millisleep(10);
+            if (remote) millisleep(100);
             qApp->processEvents();
         }
     }
