@@ -336,7 +336,8 @@ This receives a line of command from the client, processes it and returns any
 relevant data to the external client.
 
 The message received from the client must have the length of the message, the
-command and the row number to refer to the node to be addressed.
+command and the row number to refer to the node to be addressed. The latter will
+be omitted if the command does not refer to a node.
 
 The information passed back consists of the length of the response message,
 the original command, a status byte and any data. The status byte will indicate
@@ -406,18 +407,43 @@ bool command_handler(const int listener, unsigned char *buf)
     strLength = 0;
     switch (command)
     {
-/* Reset the entire XBee process, probe for nodes again and setup the global
-connections. This may be needed after an Xbee network or software reset. */
-        case 'X':
-            closeGlobalConnections();
-            closeRemoteConnections();
-            xbee_shutdown(xbee);
-            sleep(10);                  /* Wait for coordinator to initialise */
-            setupXbeeInstance();
-            openRemoteConnections();
-            nodeProbe();
-            openGlobalConnections();
+/* Send a local AT command to a node on its established connection.
+Use the libxbee connTx command as there may be zeros which would be
+misinterpreted as end of string. */
+        case 'L':
+            for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
+#ifdef DEBUG
+            if (debug)
+            {
+                printf("Local AT Command sent: ");
+                for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
+                printf("\n");
+            }
+#endif
+            replyLength = 3;
+            ret = xbee_connTx(localATCon, NULL, str, commandLength-3);
+            reply[3] = ret;
             break;
+
+/* Check for a response to a previously sent local AT command.
+An 'A' is sent before the parameters.
+If no response was received, a short message is sent back without data.*/
+        case 'l':
+            if (localATResponseRcvd)
+            {
+                replyLength = 3;
+                reply[2] = 'A';
+                localATResponseRcvd = false;
+                for (;replyLength < localATLength+3; replyLength++)
+                    reply[replyLength] = localATResponseData[replyLength-3];
+            }
+            else
+            {
+                replyLength = 3;
+                reply[2] = 0;
+            }
+            break;
+
 /* Send a remote AT command to a node on its established  connection.
 Use the libxbee connTx command as there may be zeros which would be
 misinterpreted as end of string. */
@@ -448,43 +474,6 @@ If no response was received, a short message is sent back without data.*/
                 remoteATResponseRcvd = false;
                 for (;replyLength < remoteATLength+3; replyLength++)
                     reply[replyLength] = remoteATResponseData[replyLength-3];
-            }
-            else
-            {
-                replyLength = 3;
-                reply[2] = 0;
-            }
-            break;
-
-/* Send a local AT command to a node on its established connection.
-Use the libxbee connTx command as there may be zeros which would be
-misinterpreted as end of string. */
-        case 'L':
-            for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
-#ifdef DEBUG
-            if (debug)
-            {
-                printf("Local AT Command sent: ");
-                for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
-                printf("\n");
-            }
-#endif
-            replyLength = 3;
-            ret = xbee_connTx(localATCon, NULL, str, commandLength-3);
-            reply[3] = ret;
-            break;
-
-/* Check for a response to a previously sent local AT command.
-An 'A' is sent before the parameters.
-If no response was received, a short message is sent back without data.*/
-        case 'l':
-            if (localATResponseRcvd)
-            {
-                replyLength = 3;
-                reply[2] = 'A';
-                localATResponseRcvd = false;
-                for (;replyLength < localATLength+3; replyLength++)
-                    reply[replyLength] = localATResponseData[replyLength-3];
             }
             else
             {
@@ -564,6 +553,19 @@ If no response was received, a short message is sent back without data.*/
             while (nodeInfo[row].nodeIdent[j] > 0)
                 reply[replyLength++] = nodeInfo[row].nodeIdent[j++];
             reply[replyLength++] = 0;
+            break;
+
+/* Reset the entire XBee process, probe for nodes again and setup the global
+connections. This may be needed after an Xbee network or software reset. */
+        case 'X':
+            closeGlobalConnections();
+            closeRemoteConnections();
+            xbee_shutdown(xbee);
+            sleep(10);                  /* Wait for coordinator to initialise */
+            setupXbeeInstance();
+            openRemoteConnections();
+            nodeProbe();
+            openGlobalConnections();
             break;
 
 /* Reset the connections for the selected node. */
