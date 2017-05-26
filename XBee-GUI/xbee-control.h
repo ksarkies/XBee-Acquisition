@@ -55,30 +55,28 @@ public:
     bool success();
     QString error();
 private slots:
-    void readXbeeProcess();
-    void displayError(QAbstractSocket::SocketError socketError);
-    bool on_refreshListButton_clicked();
-    int on_firmwareButton_clicked();
-    void closeEvent(QCloseEvent*);
-    void on_configButton_clicked();
     void on_connectButton_clicked();
+    bool on_refreshListButton_clicked();
     void on_removeNodeButton_clicked();
     void on_queryNodeButton_clicked();
-    void configDialogDone(int row);
+    int on_firmwareButton_clicked();
+    void readXbeeProcess();
+    void on_configButton_clicked();
 private:
 // User Interface object instance
     Ui::XBeeControlWidget XbeeControlFormUi;
 // Methods
-    int sendCommand(QByteArray command);
-    QString convertASCII(QString);
-    void hideWidgets();
-    int loadHexGUI(QFile* file, int row);
-    void updateProgress(int progress);
-    int sendAtCommand(QByteArray atCommand, bool remote, int countMax);
-    bool validTcpSocket();
+    void configDialogDone(int row);
     bool findNode();
+    bool setNodeAwake();
+    int sendCommand(QByteArray command);
+    bool validTcpSocket();
+    void displayError(QAbstractSocket::SocketError socketError);
+    int sendAtCommand(QByteArray atCommand, bool remote, int countMax);
+    void closeEvent(QCloseEvent*);
     void ssleep(int seconds);
     void popup(QString message);
+    int loadHexGUI(QFile* file, int row);
 // Variables
     QTcpSocket *tcpSocket;
     QString errorMessage;

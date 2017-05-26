@@ -93,6 +93,219 @@ XbeeControlTool::~XbeeControlTool()
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Attempt to connect to the coordinator process.
+
+This opens a TCP socket for the specified address and port (58532) to connect to
+a remote coordinator process listening on another machine or the same machine
+(address 127.0.0.1). This remote process manages the XBee network.
+*/
+
+void XbeeControlTool::on_connectButton_clicked()
+{
+    if (tcpSocket != NULL) delete tcpSocket;
+// Create the TCP socket to the internet process
+    tcpSocket = new QTcpSocket(this);
+// Setup QT signal/slots for reading and error handling
+// The readyRead signal from the QAbstractSocket is linked to the readXbeeProcess slot
+    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readXbeeProcess()));
+// Connect to the host
+    blockSize = 0;
+// Pull in all the information table
+    QMessageBox msgBox;
+    msgBox.open();
+    msgBox.setText("Attempting to connect. Please wait.");
+    int count;
+    for (count=0; count<100;count++)
+    {
+        ssleep(1);
+        tcpSocket->abort();
+        tcpSocket->connectToHost(XbeeControlFormUi.connectAddress->text(), 
+                                 XbeeControlFormUi.connectPort->value());
+        if (tcpSocket->waitForConnected(1000)) break;
+    }
+    qDebug() << count;
+    if (count >= 100) 
+    {
+#ifdef DEBUG
+        qDebug() << "Timeout on connect attempt";
+#endif
+        popup("Timeout while attempting to access coordinator process.");
+    }
+    msgBox.close();
+    on_refreshListButton_clicked();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Send commands to bring in node information table.
+
+The node information table is managed in the remote coordinator process. It
+contains information for nodes already known to be on the network, and adds new
+nodes as they are connected.
+*/
+
+bool XbeeControlTool::on_refreshListButton_clicked()
+{
+// Delete all items in all rows ready for a refresh
+    for (int row=0; row<tableLength; row++)
+    {
+        for (int column=0; column<7; column++)
+        {
+            delete table->takeItem(row,column);
+            XbeeControlFormUi.nodeTable->setRowHidden(row,true);
+        }
+    }
+// Add command and data characters to the array, then prepend with the length.
+// Get the number of rows
+    QByteArray numRowCommand;
+    numRowCommand.append('N');
+    sendCommand(numRowCommand);
+// Ask for each row in turn
+    int row;
+    for (row = 0; row < tableLength; row++)
+    {
+        QByteArray rowGetCommand;
+        rowGetCommand.append('I');
+        rowGetCommand.append(char(row));
+        sendCommand(rowGetCommand);
+    }
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Remove a selected node.
+
+If the remote checkbox is selected, find a selected row and delete the
+corresponding node. The table must be refreshed otherwise it is out of sync.
+*/
+
+void XbeeControlTool::on_removeNodeButton_clicked()
+{
+    for (row = 0; row < tableLength; row++)
+    {
+        if (table->item(row,6)->checkState() == Qt::Checked) break;
+    }
+// If nothing is selected, quit.
+    if (row == tableLength) return;
+    QByteArray rowDeleteCommand;
+    rowDeleteCommand.append('D');
+    rowDeleteCommand.append(char(row));
+    sendCommand(rowDeleteCommand);
+    on_refreshListButton_clicked();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Attempt to reconnect with a remote node.
+
+If a node is selected, reset the connections and query with a CB command
+to trigger a commissioning pushbutton simulated event.
+If no node selected, build an address from the edit box and try to connect.
+If successful, add a new entry to the table.
+*/
+
+void XbeeControlTool::on_queryNodeButton_clicked()
+{
+    findNode();                     // Just test if a row is selected.
+    if (row == tableLength)         // Nothing selected, so check editbox
+    {
+        QString nodeAddress;
+        QString addressParm = XbeeControlFormUi.nodeAddress->text().toUpper().simplified();
+        if (addressParm.size() == 0) return;    // No entry, so give up.
+// A valid address will be 16 characters and each will be a hex character
+        bool validAddress = (addressParm.size() == 16);
+        if (validAddress)
+        {
+            for (int i=0; i<16; i++)
+            {
+                char hexchar = addressParm.at(i).toLatin1();
+                if (! (((hexchar - '0') <= 9) || ((hexchar - 'A') <= 5)))
+                    validAddress = false;
+            }
+        }
+// If not a valid address, try as a node name. This might be picked
+// up from the local XBee or a router if it is known, so it can come quickly.
+        if (! validAddress)
+        {
+            QByteArray commandDN;
+            commandDN.clear();
+            commandDN.append("DN" + addressParm);
+            if (sendAtCommand(commandDN, false, timeout) != 0)
+            {
+                popup("Unable to find named node");
+#ifdef DEBUG
+                qDebug() << "Timeout waiting for DN request response";
+#endif
+                return;
+            }
+            nodeAddress = convertNum(replyBuffer,2,8,16);
+            XbeeControlFormUi.nodeAddress->setText(nodeAddress);
+        }
+        else
+        {
+            nodeAddress = addressParm;
+        }
+// Now we seem to have a valid node address, send a CB command
+// to simulate a commissioning pushbutton single press. This will
+// cause the end device to send out a node identification.
+        bool ok;
+        QByteArray newNodeCommand;
+        newNodeCommand.append('E');
+        newNodeCommand.append('\0');    // Dummy node
+        for (int i=0; i<16; i+=2)
+        {
+            newNodeCommand.append(nodeAddress.mid(i,2).toUShort(&ok,16));
+        }
+        sendCommand(newNodeCommand);
+        if (response == 'N')
+        {
+            popup("Node exists or too many nodes");
+            return;
+        }
+// Get the number of rows. The one we want is the last.
+        QByteArray numRowCommand;
+        numRowCommand.append('N');
+        sendCommand(numRowCommand);
+        row = tableLength-1;
+        QByteArray comPbCommand;
+        comPbCommand.clear();
+        comPbCommand.append("CB");
+        comPbCommand.append('\1');
+// Wait a bit as we may have a sleeping device
+        if (sendAtCommand(comPbCommand, true, timeout) > 0)
+        {
+#ifdef DEBUG
+            qDebug() << "Timeout accessing remote node sleep mode";
+#endif
+        }
+        else
+            on_refreshListButton_clicked();
+    }
+    else
+    {
+// Node is mentioned in the table
+// Query sleep mode.
+        QByteArray reconnectCommand;
+        reconnectCommand.append('Q');
+        reconnectCommand.append(char(row));
+        sendCommand(reconnectCommand);
+        QByteArray sleepModeCommand;
+        sleepModeCommand.clear();
+        sleepModeCommand.append("SM");
+        int error = sendAtCommand(sleepModeCommand, true, timeout);
+        if (error > 0)
+        {
+            popup("Timeout accessing remote node while querying sleep mode.");
+#ifdef DEBUG
+            qDebug() << "Timeout accessing remote node sleep mode";
+#endif
+        }
+        else
+        {
+            table->item(row,6)->setText("");
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Start loading AVR firmware.
 
 This assumes the existence of an on-board bootloader in the AVR.
@@ -141,6 +354,439 @@ int XbeeControlTool::on_firmwareButton_clicked()
     popup(errorMessage);
     return error;
 }
+
+//-----------------------------------------------------------------------------
+/** @brief Pull in the return data from the Internet Process.
+
+This interprets the echoed commands and performs most of the processing.
+If no response within a time limit, returns a communication error code.
+
+The incoming commands consist of a message length, ASCII command and a status.
+The status may also be a part of the returned data.
+
+This is a QT slot.
+*/
+
+void XbeeControlTool::readXbeeProcess()
+{
+    if (! validTcpSocket()) return;
+    QByteArray reply = tcpSocket->readAll();
+    int length = reply[0];
+    char command = reply[1];
+    int status = reply[2];
+    while (length > reply.size())
+    {
+// Wait for any more data up to 5 seconds, then bomb out if none
+        if (tcpSocket->waitForReadyRead(5000))
+            reply.append(tcpSocket->readAll());
+        else
+        {
+            comStatus = comError;
+            return;
+        }
+    }
+#ifdef DEBUG
+    if (reply.size() == 0) qDebug() << "Main sendCommand Null Response";
+// Attempt to exclude responses representing nothing happening
+    else if (!(((command == 'r') || (command == 'l') || (command == 's'))
+                && (reply.size() == 3)))
+    {
+        qDebug() << "Main sendCommand response received: length" << length
+                 << "Command" << command << "Status" << status;
+        if (reply.size() > 3) qDebug() << reply.right(reply.size()-3).toHex();
+    }
+#endif
+// The command sent should match the received echo.
+    if (command != comCommand)
+    {
+        comStatus = comError;
+        return;
+    }
+// Start command interpretation
+    switch (command)
+    {
+/* Response to a sent data message. The response data is stored globally. */
+        case 'E':
+            response = status;
+            break;
+        case 'r':
+            response = status;
+            for (int i = 3; i < reply.size(); i++)
+            {
+                replyBuffer[i-3] = reply[i];
+            }
+            break;
+        case 'l':
+            response = status;
+            for (int i = 3; i < reply.size(); i++)
+            {
+                replyBuffer[i-3] = reply[i];
+            }
+            break;
+        case 's':
+            response = status;
+            if (response > 0)
+            {
+                for (int i=3; i<length; i++)
+                {
+                    dataReplyMessage[i-3] = reply[i];
+                }
+            }
+            break;
+        case 'N':
+            tableLength = status;
+            break;
+        case 'I':
+            int row = status;
+            QStandardItem *rowItem = new QStandardItem(convertNum(reply,2,1,16));
+            table->setItem(row,0,rowItem);
+            QStandardItem *adrItem = new QStandardItem(convertNum(reply,3,2,16));
+            table->setItem(row,1,adrItem);
+            QStandardItem *shItem = new QStandardItem(convertNum(reply,5,4,16));
+            table->setItem(row,2,shItem);
+            QStandardItem *slItem = new QStandardItem(convertNum(reply,9,4,16));
+            table->setItem(row,3,slItem);
+            QString deviceTypeString;
+            deviceType = reply[13];
+            switch (deviceType)
+            {
+                case 0:
+                    deviceTypeString = "Coordinator";
+                    break;
+                case 1:
+                    deviceTypeString = "Router";
+                    break;
+                case 2:
+                    deviceTypeString = "End Device";
+                    break;
+            }
+            QStandardItem *devTypeItem = new QStandardItem(deviceTypeString);
+            table->setItem(row,5,devTypeItem);
+            QStandardItem *nodeIdItem = new QStandardItem((QString) reply.mid(15));
+            table->setItem(row,4,nodeIdItem);
+            QStandardItem *checkItem = new QStandardItem();
+            table->setItem(row,6,checkItem);
+            checkItem->setEnabled(true);
+            checkItem->setCheckable(true);
+            checkItem->setCheckState(Qt::Unchecked);
+            if ((int)reply[14] == 0)
+            {
+                checkItem->setText("*");
+            }
+            XbeeControlFormUi.nodeTable->setRowHidden(row,false);
+            break;
+    }
+    comStatus = comReceived;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Open a dialogue box for configuring an XBee.
+
+If the remote checkbox is selected, find a selected row and use the
+corresponding node. If no node is selected, use the coordinator XBee to
+configure.
+*/
+
+void XbeeControlTool::on_configButton_clicked()
+{
+    if (! findNode()) return;
+    bool remote = (row < tableLength);
+/* If nothing is selected, go to the coordinator XBee. Row has no meaning in
+this case. */
+    QString address = XbeeControlFormUi.connectAddress->text();
+    XBeeConfigWidget* XBeeConfigWidgetForm = new XBeeConfigWidget(address,row,remote,0);
+    connect(XBeeConfigWidgetForm, SIGNAL(terminated(int)),this,SLOT(configDialogDone(int)));
+    XBeeConfigWidgetForm->show();
+    if (remote)
+    {
+        table->item(row,6)->setEnabled(false);
+        table->item(row,6)->setCheckState(Qt::Unchecked);
+    }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief  Catch a signal from the dialogue when it is closed, and restore the
+table item for re-use */
+void XbeeControlTool::configDialogDone(int row)
+{
+    if (row < tableLength)
+    {
+        table->item(row,6)->setEnabled(true);
+        table->item(row,6)->setCheckState(Qt::Unchecked);
+    }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Find a selected row if any, and check the node responds.
+
+The rows are searched to find one that is selected, then the node is queried.
+If no row is selected, this just returns.
+
+Globals: tableLength, row
+
+@returns true if the node responds.
+*/
+
+bool XbeeControlTool::findNode()
+{
+/* Search for a box checked. If none, row will equal tableLength */
+    for (row = 0; row < tableLength; row++)
+    {
+        if (table->item(row,6)->checkState() == Qt::Checked) break;
+    }
+    if (row == tableLength) return false;
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Contact node and set to stay awake.
+
+The node selected by the row is contacted and commanded to change to a stay
+awake mode for further instructions.
+
+Globals: timeout
+
+@returns    bool: false if unable to be contacted.
+*/
+
+bool XbeeControlTool::setNodeAwake()
+{
+/* First probe for the node - use a sleep mode query but anything would do.
+Note that the row used is a global and is accessed by the sendAtCommand function. */
+    QMessageBox msgBox;
+    msgBox.open();
+    msgBox.setText("Node being contacted. Please wait.");
+    qApp->processEvents();
+    QByteArray stayAwakeCommand;
+    stayAwakeCommand.clear();
+    stayAwakeCommand.append("DW");
+    if (sendAtCommand(stayAwakeCommand,true,timeout) > 0)
+    {
+        msgBox.close();
+#ifdef DEBUG
+        qDebug() << "setNodeAwake: Timeout accessing remote node.";
+#endif
+        popup("Timeout accessing remote node.");
+        return false;
+    }
+    else msgBox.close();
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Send a command via the Internet Socket.
+
+This will compute and fill the length, set the sync bytes, send the command and
+wait for a reply up to 5s. If no reply it will return an error code. The return
+is delayed while the communications status has not been changed to receive.
+
+Globals: comStatus, comSent
+
+@parameter  QByteArray command: An array to send with length, command and any
+                                parameters if appropriate.
+@returns    0 if no error occurred.
+            1 Invalid TCP socket.
+            3 timeout waiting for response.
+*/
+
+int XbeeControlTool::sendCommand(QByteArray command)
+{
+    int errorCode = 0;
+    command.prepend(command.size()+1);
+    comStatus = comSent;
+    comCommand = command[1];
+#ifdef DEBUG
+    if ((comCommand != 'r') && (comCommand != 'l') && (comCommand != 's'))
+        qDebug() << "sendCommand command sent:" << comCommand << "string"
+                 << command.right(command.size()-3);
+#endif
+    command.append('\0');                  // Do this to terminate the string
+    if (! validTcpSocket()) return 1;
+    tcpSocket->write(command);
+// Wait up to 5s for a response. Should pass over to receiver function.
+    if (! tcpSocket->waitForReadyRead(5000)) errorCode = 3;
+    else
+    {
+// The receiver function should pick up and change away from sent status
+// We need this to synchronize across the network and to avoid overload.
+        while (comStatus == comSent);
+    }
+    return errorCode;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Check if a socket is valid, that is, connected.
+*/
+
+bool XbeeControlTool::validTcpSocket()
+{
+    if (tcpSocket == NULL)
+    {
+        popup("Not yet connected. Please click connect button.");
+        return false;
+    }
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Notify of connection failure.
+
+*/
+
+void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
+{
+    switch (socketError) {
+    case QAbstractSocket::RemoteHostClosedError:
+        break;
+    case QAbstractSocket::HostNotFoundError:
+        QMessageBox::information(this, tr("XBee GUI"),
+                                 tr("The host was not found."));
+        break;
+    case QAbstractSocket::ConnectionRefusedError:
+        QMessageBox::information(this, tr("XBee GUI"),
+                                 tr("The connection was refused by the peer."));
+        break;
+    default:
+        QMessageBox::information(this, tr("XBee GUI"),
+                                 tr("The following error occurred: %1.")
+                                 .arg(tcpSocket->errorString()));
+    }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Send an AT command over TCP connection and wait for response.
+
+The command must be formatted as for the XBee AT commands. When a response is
+checked, the result is returned in "response" with more detail provided in
+"replyBuffer".
+
+Globals: row, response, replyBuffer
+
+@parameter  atCommand. The AT command string as a QByteArray to send
+@parameter  remote. True if the node is a remote node
+@parameter  countMax. Number of 100ms delays in the wait loop.
+@return 0 no error
+        1 socket error sending command (usually timeout)
+        2 timeout waiting for response
+        3 socket error sending response (usually timeout)
+*/
+
+int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
+{
+    int errorCode = 0;
+    if (remote)
+    {
+        atCommand.prepend(row);     // row
+        atCommand.prepend('R');
+    }
+    else
+    {
+        atCommand.prepend('\0');     // Dummy "row" value
+        atCommand.prepend('L');
+    }
+    if (sendCommand(atCommand) > 0) errorCode = 1;
+    else
+    {
+/* Ask for a confirmation or error code */
+        replyBuffer.clear();
+        atCommand.clear();
+        if (remote)
+            atCommand.append('r');
+        else
+            atCommand.append('l');
+        atCommand.append('\0');         // Dummy "row" value
+        int count = 0;
+        response = 0;
+/* Query node every 100ms until response is received or an error occurs. */
+        QMessageBox msgBox;
+        msgBox.open();
+        msgBox.setText("Node being contacted. Please wait.");
+        while((response == 0) && (errorCode == 0))
+        {
+            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
+            if (sendCommand(atCommand) > 0) errorCode = 3;
+            if (remote) ssleep(1);
+        }
+    }
+    return errorCode;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Successful Setup
+
+@returns TRUE if the device gave no error
+*/
+
+bool XbeeControlTool::success()
+{
+    return (errorMessage.size() == 0);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Error Message
+
+@returns a message when the device didn't respond.
+*/
+
+QString XbeeControlTool::error()
+{
+    return errorMessage;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Close off the window and deallocate resources
+
+This may not be necessary as QT may implement it implicitly.
+*/
+
+void XbeeControlTool::closeEvent(QCloseEvent *event)
+{
+    event->accept();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Sleep for a number of centiseconds but keep processing events
+
+*/
+
+void XbeeControlTool::ssleep(int centiseconds)
+{
+    for (int i=0; i<centiseconds*10; i++)
+    {
+        qApp->processEvents();
+        millisleep(10);
+    }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Pop up a message for 2 seconds.
+
+*/
+
+void XbeeControlTool::popup(QString message)
+{
+    QMessageBox msgBox;
+    msgBox.open();
+    msgBox.setText(message);
+    ssleep(20);
+    msgBox.close();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Convert section of byte string to QString number
+
+*/
+
+QString convertNum(const QByteArray response, const uchar startIndex,
+                   const uchar length, const int base)
+{
+    QString commandData = "";
+    for (uchar i = startIndex; i < length+startIndex; i++)
+        commandData += QString("%1").arg(QString::number(response[i],base)
+                                .toUpper().right(2),2,'0');
+    return commandData;
+}
+
 //-----------------------------------------------------------------------------
 /** @brief Load a .hex file to either Flash or EEPROM with GUI feedback
 
@@ -364,623 +1010,5 @@ or abort if nothing comes back in a reasonable time. */
     return (errorCode);
 }
 
-//-----------------------------------------------------------------------------
-/** @brief Attempt to connect to the coordinator process.
-
-This opens a TCP socket for the specified address and port (58532) to connect to
-a remote coordinator process listening on another machine or the same machine
-(address 127.0.0.1). This remote process manages the XBee network.
-*/
-
-void XbeeControlTool::on_connectButton_clicked()
-{
-    if (tcpSocket != NULL) delete tcpSocket;
-// Create the TCP socket to the internet process
-    tcpSocket = new QTcpSocket(this);
-// Setup QT signal/slots for reading and error handling
-// The readyRead signal from the QAbstractSocket is linked to the readXbeeProcess slot
-    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readXbeeProcess()));
-// Connect to the host
-    blockSize = 0;
-// Pull in all the information table
-    QMessageBox msgBox;
-    msgBox.open();
-    msgBox.setText("Attempting to connect. Please wait.");
-    int count;
-    for (count=0; count<100;count++)
-    {
-        ssleep(1);
-        tcpSocket->abort();
-        tcpSocket->connectToHost(XbeeControlFormUi.connectAddress->text(), 
-                                 XbeeControlFormUi.connectPort->value());
-        if (tcpSocket->waitForConnected(1000)) break;
-    }
-    qDebug() << count;
-    if (count >= 100) 
-    {
-#ifdef DEBUG
-        qDebug() << "Timeout on connect attempt";
-#endif
-        msgBox.setText("Timeout while attempting to access coordinator process.");
-        ssleep(20);
-    }
-    msgBox.close();
-    on_refreshListButton_clicked();
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Send commands to bring in node information table.
-
-The node information table is managed in the remote coordinator process. It
-contains information for nodes already known to be on the network, and adds new
-nodes as they are connected.
-*/
-
-bool XbeeControlTool::on_refreshListButton_clicked()
-{
-// Delete all items in all rows ready for a refresh
-    for (int row=0; row<tableLength; row++)
-    {
-        for (int column=0; column<7; column++)
-        {
-            delete table->takeItem(row,column);
-            XbeeControlFormUi.nodeTable->setRowHidden(row,true);
-        }
-    }
-// Add command and data characters to the array, then prepend with the length.
-// Get the number of rows
-    QByteArray numRowCommand;
-    numRowCommand.append('N');
-    sendCommand(numRowCommand);
-// Ask for each row in turn
-    int row;
-    for (row = 0; row < tableLength; row++)
-    {
-        QByteArray rowGetCommand;
-        rowGetCommand.append('I');
-        rowGetCommand.append(char(row));
-        sendCommand(rowGetCommand);
-    }
-    return true;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Remove a selected node.
-
-If the remote checkbox is selected, find a selected row and delete the
-corresponding node. The table must be refreshed otherwise it is out of sync.
-*/
-
-void XbeeControlTool::on_removeNodeButton_clicked()
-{
-    for (row = 0; row < tableLength; row++)
-    {
-        if (table->item(row,6)->checkState() == Qt::Checked) break;
-    }
-// If nothing is selected, quit.
-    if (row == tableLength) return;
-    QByteArray rowDeleteCommand;
-    rowDeleteCommand.append('D');
-    rowDeleteCommand.append(char(row));
-    sendCommand(rowDeleteCommand);
-    on_refreshListButton_clicked();
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Attempt to reconnect with the remote node.
-
-If a node is selected, reset the connections and query with a CB command
-to trigger a commissioning pushbutton simulated event.
-If no node selected, build an address from the edit box and try to connect.
-If successful, add a new entry to the table.
-*/
-
-void XbeeControlTool::on_queryNodeButton_clicked()
-{
-    findNode();                     // Just test if a row is selected.
-    if (row == tableLength)         // Nothing selected, so check editbox
-    {
-        QString nodeAddress;
-        QString addressParm = XbeeControlFormUi.nodeAddress->text().toUpper().simplified();
-        if (addressParm.size() == 0) return;    // No entry, so give up.
-// A valid address will be 16 characters and each will be a hex character
-        bool validAddress = (addressParm.size() == 16);
-        if (validAddress)
-        {
-            for (int i=0; i<16; i++)
-            {
-                char hexchar = addressParm.at(i).toLatin1();
-                if (! (((hexchar - '0') <= 9) || ((hexchar - 'A') <= 5)))
-                    validAddress = false;
-            }
-        }
-// If not a valid address, try as a node name. This might be picked
-// up from the local XBee or a router if it is known, so it can come quickly.
-        if (! validAddress)
-        {
-            QByteArray commandDN;
-            commandDN.clear();
-            commandDN.append("DN" + addressParm);
-            if (sendAtCommand(commandDN, false, timeout) != 0)
-            {
-                popup("Unable to find named node");
-#ifdef DEBUG
-                qDebug() << "Timeout waiting for DN request response";
-#endif
-                return;
-            }
-            nodeAddress = convertNum(replyBuffer,2,8,16);
-            XbeeControlFormUi.nodeAddress->setText(nodeAddress);
-        }
-        else
-        {
-            nodeAddress = addressParm;
-        }
-// Now we seem to have a valid node address, send a CB command
-// to simulate a commissioning pushbutton single press. This will
-// cause the end device to send out a node identification.
-        bool ok;
-        QByteArray newNodeCommand;
-        newNodeCommand.append('E');
-        newNodeCommand.append('\0');    // Dummy node
-        for (int i=0; i<16; i+=2)
-        {
-            newNodeCommand.append(nodeAddress.mid(i,2).toUShort(&ok,16));
-        }
-        sendCommand(newNodeCommand);
-        if (response == 'N')
-        {
-            popup("Node exists or too many nodes");
-            return;
-        }
-// Get the number of rows. The one we want is the last.
-        QByteArray numRowCommand;
-        numRowCommand.append('N');
-        sendCommand(numRowCommand);
-        row = tableLength-1;
-        QByteArray comPbCommand;
-        comPbCommand.clear();
-        comPbCommand.append("CB");
-        comPbCommand.append('\1');
-// Wait a bit as we may have a sleeping device
-        if (sendAtCommand(comPbCommand, true, timeout) > 0)
-        {
-#ifdef DEBUG
-            qDebug() << "Timeout accessing remote node sleep mode";
-#endif
-        }
-        else
-            on_refreshListButton_clicked();
-    }
-    else
-    {
-// Query sleep mode.
-        QByteArray reconnectCommand;
-        reconnectCommand.append('Q');
-        reconnectCommand.append(char(row));
-        sendCommand(reconnectCommand);
-        QByteArray sleepModeCommand;
-        sleepModeCommand.clear();
-        sleepModeCommand.append("SM");
-        if (sendAtCommand(sleepModeCommand, true, 1) > 0)
-        {
-            popup("Timeout accessing remote node while querying sleep mode.");
-#ifdef DEBUG
-            qDebug() << "Timeout accessing remote node sleep mode";
-#endif
-        }
-        else
-        {
-            table->item(row,6)->setText("");
-        }
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Open a dialogue box for configuring an XBee.
-
-If the remote checkbox is selected, find a selected row and use the
-corresponding node. If no node is selected, use the coordinator XBee to
-configure.
-*/
-
-void XbeeControlTool::on_configButton_clicked()
-{
-    if (! findNode()) return;
-    bool remote = (row < tableLength);
-/* If nothing is selected, go to the coordinator XBee. Row has no meaning in
-this case. */
-    QString address = XbeeControlFormUi.connectAddress->text();
-    XBeeConfigWidget* XBeeConfigWidgetForm = new XBeeConfigWidget(address,row,remote,0);
-    connect(XBeeConfigWidgetForm, SIGNAL(terminated(int)),this,SLOT(configDialogDone(int)));
-    XBeeConfigWidgetForm->show();
-    if (remote)
-    {
-        table->item(row,6)->setEnabled(false);
-        table->item(row,6)->setCheckState(Qt::Unchecked);
-    }
-}
-
-/** @brief  Catch a signal from the dialogue when it is closed, and restore the
-table item for re-use */
-void XbeeControlTool::configDialogDone(int row)
-{
-    if (row < tableLength)
-    {
-        table->item(row,6)->setEnabled(true);
-        table->item(row,6)->setCheckState(Qt::Unchecked);
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Find a selected row if any, and check the node responds.
-
-The rows are searched to find one that is selected, then the node is queried.
-If no row is selected, this just returns.
-
-Globals: tableLength, row
-
-@returns true if the node responds.
-*/
-
-bool XbeeControlTool::findNode()
-{
-/* Search for a box checked. If none, row will equal tableLength */
-    for (row = 0; row < tableLength; row++)
-    {
-        if (table->item(row,6)->checkState() == Qt::Checked) break;
-    }
-    if (row == tableLength) return true;
-    bool remote = true;
-/* First probe for the node - use a sleep mode query but anything would do.
-Note that the row used is a global and is accessed by the sendAtCommand function. */
-    QMessageBox msgBox;
-    msgBox.open();
-    msgBox.setText("Node being contacted. Please wait (usually < 30 seconds).");
-    QByteArray sleepModeCommand;
-    sleepModeCommand.clear();
-    sleepModeCommand.append("SM");
-    if (sendAtCommand(sleepModeCommand,remote,3000) > 0)
-    {
-        msgBox.close();
-#ifdef DEBUG
-        qDebug() << "Findnode: Timeout accessing remote node.";
-#endif
-        popup("Timeout accessing remote node.");
-        return false;
-    }
-    else msgBox.close();
-    return true;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Send a command via the Internet Socket.
-
-This will compute and fill the length, set the sync bytes, send the command and
-wait for a reply up to 5s. If no reply it will return false.
-
-@parameter  QByteArray command: An array to send with length, command and any
-                                parameters if appropriate.
-@returns    0 if no error occurred.
-            3 timeout waiting for response.
-*/
-
-int XbeeControlTool::sendCommand(QByteArray command)
-{
-    int errorCode = 0;
-    command.prepend(command.size()+1);
-    comStatus = comSent;
-    comCommand = command[1];
-#ifdef DEBUG
-    if ((comCommand != 'r') && (comCommand != 'l') && (comCommand != 's'))
-        qDebug() << "sendCommand command sent:" << comCommand << "string"
-                 << command.right(command.size()-3);
-#endif
-    command.append('\0');                  // Do this to terminate the string
-    if (! validTcpSocket()) return 1;
-    tcpSocket->write(command);
-// Wait up to 5s for a response. Should pass over to receiver function.
-    if (! tcpSocket->waitForReadyRead(5000)) errorCode = 3;
-    else
-    {
-// The receiver function should pick up and change away from sent status
-// We need this to synchronize across the network and to avoid overload
-        while (comStatus == comSent);
-    }
-    return errorCode;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Check if a socket is valid, that is, connected.
-*/
-
-bool XbeeControlTool::validTcpSocket()
-{
-    if (tcpSocket == NULL)
-    {
-        QMessageBox msgBox;
-        msgBox.open();
-        msgBox.setText("Not yet connected. Please click connect button.");
-        ssleep(20);
-        msgBox.close();
-        return false;
-    }
-    return true;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Pull in the return data from the Internet Process.
-
-This interprets the echoed commands and performs most of the processing.
-If no response within a time limit, returns a communication error code.
-*/
-
-void XbeeControlTool::readXbeeProcess()
-{
-    if (! validTcpSocket()) return;
-    QByteArray reply = tcpSocket->readAll();
-    int length = reply[0];
-    char command = reply[1];
-    int status = reply[2];
-    while (length > reply.size())
-    {
-// Wait for any more data up to 5 seconds, then bomb out if none
-        if (tcpSocket->waitForReadyRead(5000))
-            reply.append(tcpSocket->readAll());
-        else
-        {
-            comStatus = comError;
-            return;
-        }
-    }
-#ifdef DEBUG
-    if (reply.size() == 0) qDebug() << "Main sendCommand Null Response";
-// Attempt to exclude responses representing nothing happening
-    else if (!(((command == 'r') || (command == 'l') || (command == 's'))
-                && (reply.size() == 3)))
-    {
-        qDebug() << "Main sendCommand response received: length" << length
-                 << "Status" << status << "Command" << command;
-    }
-#endif
-// The command sent should match the received echo.
-    if (command != comCommand)
-    {
-        comStatus = comError;
-        return;
-    }
-// Start command interpretation
-    switch (command)
-    {
-/* Response to a sent data message. The response data is stored globally. */
-        case 'E':
-            response = status;
-            break;
-        case 'r':
-            response = status;
-            for (int i = 3; i < reply.size(); i++)
-            {
-                replyBuffer[i-3] = reply[i];
-            }
-            break;
-        case 'l':
-            response = status;
-            for (int i = 3; i < reply.size(); i++)
-            {
-                replyBuffer[i-3] = reply[i];
-            }
-            break;
-        case 's':
-            response = status;
-            if (response > 0)
-            {
-                for (int i=3; i<length; i++)
-                {
-                    dataReplyMessage[i-3] = reply[i];
-                }
-            }
-            break;
-        case 'N':
-            tableLength = status;
-            break;
-        case 'I':
-            int row = status;
-            QStandardItem *rowItem = new QStandardItem(convertNum(reply,2,1,16));
-            table->setItem(row,0,rowItem);
-            QStandardItem *adrItem = new QStandardItem(convertNum(reply,3,2,16));
-            table->setItem(row,1,adrItem);
-            QStandardItem *shItem = new QStandardItem(convertNum(reply,5,4,16));
-            table->setItem(row,2,shItem);
-            QStandardItem *slItem = new QStandardItem(convertNum(reply,9,4,16));
-            table->setItem(row,3,slItem);
-            QString deviceTypeString;
-            deviceType = reply[13];
-            switch (deviceType)
-            {
-                case 0:
-                    deviceTypeString = "Coordinator";
-                    break;
-                case 1:
-                    deviceTypeString = "Router";
-                    break;
-                case 2:
-                    deviceTypeString = "End Device";
-                    break;
-            }
-            QStandardItem *devTypeItem = new QStandardItem(deviceTypeString);
-            table->setItem(row,5,devTypeItem);
-            QStandardItem *nodeIdItem = new QStandardItem((QString) reply.mid(15));
-            table->setItem(row,4,nodeIdItem);
-            QStandardItem *checkItem = new QStandardItem();
-            table->setItem(row,6,checkItem);
-            checkItem->setEnabled(true);
-            checkItem->setCheckable(true);
-            checkItem->setCheckState(Qt::Unchecked);
-            if ((int)reply[14] == 0)
-            {
-                checkItem->setText("*");
-            }
-            XbeeControlFormUi.nodeTable->setRowHidden(row,false);
-            break;
-    }
-    comStatus = comReceived;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Notify of connection failure.
-
-*/
-
-void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
-{
-    switch (socketError) {
-    case QAbstractSocket::RemoteHostClosedError:
-        break;
-    case QAbstractSocket::HostNotFoundError:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The host was not found."));
-        break;
-    case QAbstractSocket::ConnectionRefusedError:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The connection was refused by the peer."));
-        break;
-    default:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The following error occurred: %1.")
-                                 .arg(tcpSocket->errorString()));
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Send an AT command and wait for response.
-
-The command must be formatted as for the XBee AT commands. When a response is
-checked, the result is returned in "response" with more detail provided in
-"replyBuffer".
-
-Globals: row, response
-
-@parameter  atCommand. The AT command string as a QByteArray to send
-@parameter  remote. True if the node is a remote node
-@parameter  countMax. Number of 100ms delays in the wait loop.
-@return 0 no error
-        1 socket command error (usually timeout)
-        2 timeout waiting for response
-        3 socket response error (usually timeout)
-*/
-
-int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
-{
-    int errorCode = 0;
-    if (remote)
-    {
-        atCommand.prepend(row);     // row
-        atCommand.prepend('R');
-    }
-    else
-    {
-        atCommand.prepend('\0');     // Dummy "row" value
-        atCommand.prepend('L');
-    }
-    if (sendCommand(atCommand) > 0)  errorCode = 1;
-    else
-    {
-/* Ask for a confirmation or error code */
-        replyBuffer.clear();
-        atCommand.clear();
-        if (remote)
-            atCommand.append('r');
-        else
-            atCommand.append('l');
-        atCommand.append('\0');         // Dummy "row" value
-        int count = 0;
-        response = 0;
-/* Query node every 100ms until response is received or an error occurs. */
-        while((response == 0) && (errorCode == 0))
-        {
-            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
-            if (sendCommand(atCommand) > 0) errorCode = 3;
-            if (remote) millisleep(100);
-            qApp->processEvents();
-        }
-    }
-    return errorCode;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Successful Setup
-
-@returns TRUE if the device gave no error
-*/
-
-bool XbeeControlTool::success()
-{
-    return (errorMessage.size() == 0);
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Error Message
-
-@returns a message when the device didn't respond.
-*/
-
-QString XbeeControlTool::error()
-{
-    return errorMessage;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Close off the window and deallocate resources
-
-This may not be necessary as QT may implement it implicitly.
-*/
-
-void XbeeControlTool::closeEvent(QCloseEvent *event)
-{
-    event->accept();
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Sleep for a number of centiseconds but keep processing events
-
-*/
-
-void XbeeControlTool::ssleep(int centiseconds)
-{
-    for (int i=0; i<centiseconds*10; i++)
-    {
-        qApp->processEvents();
-        millisleep(10);
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Convert section of byte string to QString number
-
-*/
-
-void XbeeControlTool::popup(QString message)
-{
-    QMessageBox msgBox;
-    msgBox.open();
-    msgBox.setText(message);
-    ssleep(20);
-    msgBox.close();
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Convert section of byte string to QString number
-
-*/
-
-QString convertNum(const QByteArray response, const uchar startIndex,
-                   const uchar length, const int base)
-{
-    QString commandData = "";
-    for (uchar i = startIndex; i < length+startIndex; i++)
-        commandData += QString("%1").arg(QString::number(response[i],base)
-                                .toUpper().right(2),2,'0');
-    return commandData;
-}
 //-----------------------------------------------------------------------------
 
