@@ -51,24 +51,24 @@ public:
                      int timeout, QWidget* parent = 0);
     ~XBeeConfigWidget();
 private slots:
-    void readXbeeProcess();
-    void displayError(QAbstractSocket::SocketError socketError);
-    int sendCommand(QByteArray command);
-    int sendAtCommand(QByteArray atCommand, bool remote, int count);
-    void on_refreshDisplay_clicked();
+    void on_closeButton_clicked();
+    void closeEvent(QCloseEvent *event);
+    void accept();
     void on_netResetButton_clicked();
     void on_softResetButton_clicked();
     void on_disassociateButton_clicked();
     void on_writeValuesButton_clicked();
-    void on_closeButton_clicked();
-    void closeEvent(QCloseEvent *event);
-    void accept();
+    void on_refreshDisplay_clicked();
+    void readXbeeProcess();
+    void displayError(QAbstractSocket::SocketError socketError);
 signals:
     void terminated(int row);
 private:
 // Methods
     Ui::XBeeConfigWidget XBeeConfigWidgetFormUi;
     void setIOBoxes();
+    int sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
+                      int row, bool remote, int countMax);
 // Variables
     QTcpSocket *tcpSocket;
     int row;
@@ -77,8 +77,6 @@ private:
     Qt::CheckState joinNotificationCurrent;
     char oldSleepMode;
     char deviceType;
-// The commStatus is used to signal when data has arrived and what happened
-    enum {comIdle, comSent, comReceived, comError, comXbeeError} comStatus;
     char comCommand;
     char response;
     QByteArray replyBuffer;

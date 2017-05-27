@@ -42,6 +42,7 @@ acquisition network.
 #include <unistd.h>
 #include "xbee-control.h"
 #include "xbee-dialog.h"
+#include "xbee-gui-libs.h"
 
 // Local Prototypes
 QString convertNum(const QByteArray response, const uchar startIndex,
@@ -49,7 +50,6 @@ QString convertNum(const QByteArray response, const uchar startIndex,
 
 // Global data
 QByteArray dataReplyMessage;
-QByteArray replyBuffer;
 
 //-----------------------------------------------------------------------------
 /** XBee-AP-Tool Constructor
@@ -108,6 +108,8 @@ void XbeeControlTool::on_tcpConnectButton_clicked()
 // Setup QT signal/slots for reading and error handling
 // The readyRead signal from the QAbstractSocket is linked to the readXbeeProcess slot
     connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readXbeeProcess()));
+    connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)),
+             this, SLOT(displayError(QAbstractSocket::SocketError)));
 // Connect to the host
     blockSize = 0;
 // Pull in all the information table
@@ -123,13 +125,12 @@ void XbeeControlTool::on_tcpConnectButton_clicked()
                                  XbeeControlFormUi.tcpConnectPort->value());
         if (tcpSocket->waitForConnected(1000)) break;
     }
-    qDebug() << count;
     if (count >= 100) 
     {
 #ifdef DEBUG
         qDebug() << "Timeout on connect attempt";
 #endif
-        popup("Timeout while attempting to access coordinator process.");
+        QMessageBox::warning(this,"","Timeout while attempting to access coordinator process.");
     }
     msgBox.close();
     on_refreshListButton_clicked();
@@ -158,7 +159,8 @@ bool XbeeControlTool::on_refreshListButton_clicked()
 // Get the number of rows
     QByteArray numRowCommand;
     numRowCommand.append('N');
-    sendCommand(numRowCommand);
+    comCommand = numRowCommand.at(0);
+    sendCommand(&numRowCommand,tcpSocket);
 // Ask for each row in turn
     int row;
     for (row = 0; row < tableLength; row++)
@@ -166,7 +168,8 @@ bool XbeeControlTool::on_refreshListButton_clicked()
         QByteArray rowGetCommand;
         rowGetCommand.append('I');
         rowGetCommand.append(char(row));
-        sendCommand(rowGetCommand);
+        comCommand = rowGetCommand.at(0);
+        sendCommand(&rowGetCommand,tcpSocket);
     }
     return true;
 }
@@ -189,7 +192,8 @@ void XbeeControlTool::on_removeNodeButton_clicked()
     QByteArray rowDeleteCommand;
     rowDeleteCommand.append('D');
     rowDeleteCommand.append(char(row));
-    sendCommand(rowDeleteCommand);
+    comCommand = rowDeleteCommand.at(0);
+    sendCommand(&rowDeleteCommand,tcpSocket);
     on_refreshListButton_clicked();
 }
 
@@ -228,9 +232,9 @@ void XbeeControlTool::on_queryNodeButton_clicked()
             QByteArray commandDN;
             commandDN.clear();
             commandDN.append("DN" + addressParm);
-            if (sendAtCommand(commandDN, false, timeout) != 0)
+            if (sendAtCommand(&commandDN, tcpSocket, row, false, timeout) != 0)
             {
-                popup("Unable to find named node");
+                QMessageBox::warning(this,"","Unable to find named node");
 #ifdef DEBUG
                 qDebug() << "Timeout waiting for DN request response";
 #endif
@@ -254,23 +258,25 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         {
             newNodeCommand.append(nodeAddress.mid(i,2).toUShort(&ok,16));
         }
-        sendCommand(newNodeCommand);
+        comCommand = newNodeCommand.at(0);
+        sendCommand(&newNodeCommand,tcpSocket);
         if (response == 'N')
         {
-            popup("Node exists or too many nodes");
+            QMessageBox::warning(this,"","Node exists or too many nodes");
             return;
         }
 // Get the number of rows. The one we want is the last.
         QByteArray numRowCommand;
         numRowCommand.append('N');
-        sendCommand(numRowCommand);
+        comCommand = numRowCommand.at(0);
+        sendCommand(&numRowCommand,tcpSocket);
         row = tableLength-1;
         QByteArray comPbCommand;
         comPbCommand.clear();
         comPbCommand.append("CB");
         comPbCommand.append('\1');
 // Wait a bit as we may have a sleeping device
-        if (sendAtCommand(comPbCommand, true, timeout) > 0)
+        if (sendAtCommand(&comPbCommand, tcpSocket, row, true, timeout) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
@@ -286,14 +292,15 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         QByteArray reconnectCommand;
         reconnectCommand.append('Q');
         reconnectCommand.append(char(row));
-        sendCommand(reconnectCommand);
+        comCommand = reconnectCommand.at(0);
+        sendCommand(&reconnectCommand,tcpSocket);
         QByteArray sleepModeCommand;
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
-        int error = sendAtCommand(sleepModeCommand, true, timeout);
+        int error = sendAtCommand(&sleepModeCommand, tcpSocket, row, true, timeout);
         if (error > 0)
         {
-            popup("Timeout accessing remote node while querying sleep mode.");
+            QMessageBox::warning(this,"","Timeout accessing remote node while querying sleep mode.");
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
 #endif
@@ -329,7 +336,7 @@ int XbeeControlTool::on_firmwareButton_clicked()
     }
     if (row == tableLength)
     {
-        popup("No Row Selected");
+        QMessageBox::warning(this,"","No Row Selected");
         return false;
     }
 // Get filename of hex format to load
@@ -351,7 +358,7 @@ int XbeeControlTool::on_firmwareButton_clicked()
     if (error == 1) errorMessage = "Timeout waiting for erase to complete";
     if (error == 2) errorMessage = "Timeout waiting for a sent line to program";
     if (error == 3) errorMessage = "General Command Timeout";
-    popup(errorMessage);
+    QMessageBox::warning(this,"",errorMessage);
     return error;
 }
 
@@ -369,7 +376,7 @@ This is a QT slot.
 
 void XbeeControlTool::readXbeeProcess()
 {
-    if (! validTcpSocket()) return;
+    if (tcpSocket == 0) return;
     QByteArray reply = tcpSocket->readAll();
     int length = reply[0];
     char command = reply[1];
@@ -381,7 +388,7 @@ void XbeeControlTool::readXbeeProcess()
             reply.append(tcpSocket->readAll());
         else
         {
-            comStatus = comError;
+            setComStatus(comError);
             return;
         }
     }
@@ -399,7 +406,7 @@ void XbeeControlTool::readXbeeProcess()
 // The command sent should match the received echo.
     if (command != comCommand)
     {
-        comStatus = comError;
+        setComStatus(comError);
         return;
     }
 // Start command interpretation
@@ -476,7 +483,33 @@ void XbeeControlTool::readXbeeProcess()
             XbeeControlFormUi.nodeTable->setRowHidden(row,false);
             break;
     }
-    comStatus = comReceived;
+    setComStatus(comReceived);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Notify of connection failure.
+
+This is a slot.
+*/
+
+void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
+{
+    switch (socketError) {
+    case QAbstractSocket::RemoteHostClosedError:
+        break;
+    case QAbstractSocket::HostNotFoundError:
+        QMessageBox::information(this, "XBee GUI",
+                                 "The host was not found.");
+        break;
+    case QAbstractSocket::ConnectionRefusedError:
+        QMessageBox::information(this, "XBee GUI",
+                                 "The connection was refused by the peer.");
+        break;
+    default:
+        QMessageBox::information(this, QString("XBee GUI"),
+                                 QString("The following error occurred: %1.")
+                                 .arg(tcpSocket->errorString()));
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -562,57 +595,16 @@ Note that the row used is a global and is accessed by the sendAtCommand function
     QByteArray stayAwakeCommand;
     stayAwakeCommand.clear();
     stayAwakeCommand.append("DW");
-    if (sendAtCommand(stayAwakeCommand,true,timeout) > 0)
+    if (sendAtCommand(&stayAwakeCommand, tcpSocket, row, true, timeout) > 0)
     {
 #ifdef DEBUG
         qDebug() << "setNodeAwake: Timeout accessing remote node.";
 #endif
-        popup("Timeout accessing remote node.");
+        QMessageBox::warning(this,"","Timeout accessing remote node.");
         return false;
     }
     msgBox.close();
     return true;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Send a command via the Internet Socket.
-
-This will compute and fill the length, set the sync bytes, send the command and
-wait for a reply up to 5s. If no reply it will return an error code. The return
-is delayed while the communications status has not been changed to receive.
-
-Globals: comStatus, comSent
-
-@parameter  QByteArray command: An array to send with length, command and any
-                                parameters if appropriate.
-@returns    0 if no error occurred.
-            1 Invalid TCP socket.
-            3 timeout waiting for response.
-*/
-
-int XbeeControlTool::sendCommand(QByteArray command)
-{
-    int errorCode = 0;
-    command.prepend(command.size()+1);
-    comStatus = comSent;
-    comCommand = command[1];
-#ifdef DEBUG
-    if ((comCommand != 'r') && (comCommand != 'l') && (comCommand != 's'))
-        qDebug() << "sendCommand command sent:" << comCommand << "string"
-                 << command.right(command.size()-3);
-#endif
-    command.append('\0');                  // Do this to terminate the string
-    if (! validTcpSocket()) return 1;
-    tcpSocket->write(command);
-// Wait up to 5s for a response. Should pass over to receiver function.
-    if (! tcpSocket->waitForReadyRead(5000)) errorCode = 3;
-    else
-    {
-// The receiver function should pick up and change away from sent status
-// We need this to synchronize across the network and to avoid overload.
-        while (comStatus == comSent);
-    }
-    return errorCode;
 }
 
 //-----------------------------------------------------------------------------
@@ -623,93 +615,10 @@ bool XbeeControlTool::validTcpSocket()
 {
     if (tcpSocket == NULL)
     {
-        popup("Not yet connected. Please click connect button.");
+        QMessageBox::warning(this,"","Not yet connected. Please click connect button.");
         return false;
     }
     return true;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Notify of connection failure.
-
-*/
-
-void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
-{
-    switch (socketError) {
-    case QAbstractSocket::RemoteHostClosedError:
-        break;
-    case QAbstractSocket::HostNotFoundError:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The host was not found."));
-        break;
-    case QAbstractSocket::ConnectionRefusedError:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The connection was refused by the peer."));
-        break;
-    default:
-        QMessageBox::information(this, tr("XBee GUI"),
-                                 tr("The following error occurred: %1.")
-                                 .arg(tcpSocket->errorString()));
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Send an AT command over TCP connection and wait for response.
-
-The command must be formatted as for the XBee AT commands. When a response is
-checked, the result is returned in "response" with more detail provided in
-"replyBuffer".
-
-Globals: row, response, replyBuffer
-
-@parameter  atCommand. The AT command string as a QByteArray to send
-@parameter  remote. True if the node is a remote node
-@parameter  countMax. Number of 100ms delays in the wait loop.
-@return 0 no error
-        1 socket error sending command (usually timeout)
-        2 timeout waiting for response
-        3 socket error sending response (usually timeout)
-*/
-
-int XbeeControlTool::sendAtCommand(QByteArray atCommand, bool remote, int countMax)
-{
-    int errorCode = 0;
-    if (remote)
-    {
-        atCommand.prepend(row);     // row
-        atCommand.prepend('R');
-    }
-    else
-    {
-        atCommand.prepend('\0');     // Dummy "row" value
-        atCommand.prepend('L');
-    }
-    if (sendCommand(atCommand) > 0) errorCode = 1;
-    else
-    {
-/* Ask for a confirmation or error code */
-        replyBuffer.clear();
-        atCommand.clear();
-        if (remote)
-            atCommand.append('r');
-        else
-            atCommand.append('l');
-        atCommand.append('\0');         // Dummy "row" value
-        int count = 0;
-        response = 0;
-/* Query node every 100ms until response is received or an error occurs. */
-        QMessageBox msgBox;
-        msgBox.open();
-        msgBox.setText("Node being contacted. Please wait.");
-        while((response == 0) && (errorCode == 0))
-        {
-            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
-            if (sendCommand(atCommand) > 0) errorCode = 3;
-            if (remote) ssleep(1);
-        }
-    }
-    return errorCode;
 }
 
 //-----------------------------------------------------------------------------
@@ -746,34 +655,6 @@ void XbeeControlTool::closeEvent(QCloseEvent *event)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Sleep for a number of centiseconds but keep processing events
-
-*/
-
-void XbeeControlTool::ssleep(int centiseconds)
-{
-    for (int i=0; i<centiseconds*10; i++)
-    {
-        qApp->processEvents();
-        millisleep(10);
-    }
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Pop up a message for 2 seconds.
-
-*/
-
-void XbeeControlTool::popup(QString message)
-{
-    QMessageBox msgBox;
-    msgBox.open();
-    msgBox.setText(message);
-    ssleep(20);
-    msgBox.close();
-}
-
-//-----------------------------------------------------------------------------
 /** @brief Convert section of byte string to QString number
 
 */
@@ -786,6 +667,64 @@ QString convertNum(const QByteArray response, const uchar startIndex,
         commandData += QString("%1").arg(QString::number(response[i],base)
                                 .toUpper().right(2),2,'0');
     return commandData;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Send an AT command over TCP connection and wait for response.
+
+The command must be formatted as for the XBee AT commands. When a response is
+checked, the result is returned in "response" with more detail provided in
+"replyBuffer".
+
+Globals: row, response, replyBuffer
+
+@parameter  atCommand-> The AT command string as a QByteArray to send
+@parameter  remote. True if the node is a remote node
+@parameter  countMax. Number of 100ms delays in the wait loop.
+@return 0 no error
+        1 socket error sending command (usually timeout)
+        2 timeout waiting for response
+        3 socket error sending response (usually timeout)
+*/
+
+int XbeeControlTool::sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
+                                   int row, bool remote, int countMax)
+{
+    int errorCode = 0;
+    if (remote)
+    {
+        atCommand->prepend(row);     // row
+        atCommand->prepend('R');
+    }
+    else
+    {
+        atCommand->prepend('\0');     // Dummy "row" value
+        atCommand->prepend('L');
+    }
+    comCommand = atCommand->at(0);
+    if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 1;
+    else
+    {
+/* Ask for a confirmation or error code */
+        replyBuffer.clear();
+        atCommand->clear();
+        if (remote)
+            atCommand->append('r');
+        else
+            atCommand->append('l');
+        atCommand->append('\0');         // Dummy "row" value
+        int count = 0;
+        response = 0;
+/* Query node every 100ms until response is received or an error occurs. */
+        while((response == 0) && (errorCode == 0))
+        {
+            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
+            comCommand = atCommand->at(0);
+            if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 3;
+            if (remote) ssleep(1);
+        }
+    }
+    return errorCode;
 }
 
 //-----------------------------------------------------------------------------
@@ -816,7 +755,8 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     QByteArray rowGetCommand;
     rowGetCommand.append('I');
     rowGetCommand.append(char(row));
-    sendCommand(rowGetCommand);
+    comCommand = rowGetCommand.at(0);
+    sendCommand(&rowGetCommand,tcpSocket);
 #ifdef DEBUG
     qDebug() << "Device type" << (int)deviceType;
 #endif
@@ -833,7 +773,7 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
         sleepModeCommand.append("\1");
-        if (sendAtCommand(sleepModeCommand, true,3000) > 0)
+        if (sendAtCommand(&sleepModeCommand, tcpSocket, row, true,3000) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout setting remote node sleep mode";
@@ -849,7 +789,8 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     firmwareCommand.append(char(row));
     firmwareCommand.append("P1");
     firmwareCommand.append(4);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 1;
 /* Clear the DIO12 port on the XBee (AVR Reset) */
     firmwareCommand.clear();
@@ -857,7 +798,8 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     firmwareCommand.append(char(row));
     firmwareCommand.append("P2");
     firmwareCommand.append(4);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 2;
     millisleep(500);                 // Wait a bit for reset to complete
 /* Set the DIO12 port on the XBee (AVR Reset) */
@@ -866,7 +808,8 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
     firmwareCommand.append(char(row));
     firmwareCommand.append("P2");
     firmwareCommand.append(5);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 3;
 /* Setup the progress bar */
     XbeeControlFormUi.uploadProgressBar->setVisible(true);
@@ -879,7 +822,8 @@ int XbeeControlTool::loadHexGUI(QFile* file, int row)
 /* Clear all FLASH */
     response = 0;
     firmwareCommand.append('X');
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 4;
 /* Ask for a confirmation or error code, loop until something received
 or abort if nothing comes back in a reasonable time. */
@@ -896,7 +840,8 @@ or abort if nothing comes back in a reasonable time. */
         firmwareCommand.clear();
         firmwareCommand.append('s');
         firmwareCommand.append(char(row));
-        errorCode = sendCommand(firmwareCommand);
+        comCommand = firmwareCommand.at(0);
+        errorCode = sendCommand(&firmwareCommand,tcpSocket);
     }
     if (failPoint == 0)
     {
@@ -925,7 +870,8 @@ or abort if nothing comes back in a reasonable time. */
                     firmwareCommand.append('S');
                     firmwareCommand.append(char(row));
                     firmwareCommand.append(line);
-                    errorCode = sendCommand(firmwareCommand);
+                    comCommand = firmwareCommand.at(0);
+                    errorCode = sendCommand(&firmwareCommand,tcpSocket);
                     if (errorCode > 0)
                     {
                         failPoint = 6;
@@ -940,7 +886,8 @@ or abort if nothing comes back in a reasonable time. */
                         firmwareCommand.clear();
                         firmwareCommand.append('s');
                         firmwareCommand.append(char(row));
-                        errorCode = sendCommand(firmwareCommand);
+                        comCommand = firmwareCommand.at(0);
+                        errorCode = sendCommand(&firmwareCommand,tcpSocket);
                     }
                     timeout = (count > 4);
 #ifdef DEBUG
@@ -966,7 +913,8 @@ or abort if nothing comes back in a reasonable time. */
     firmwareCommand.append(char(row));
     firmwareCommand.append("P1");
     firmwareCommand.append(5);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 6;
 /* Clear the DIO12 port on the XBee (AVR Reset) */
     firmwareCommand.clear();
@@ -974,7 +922,8 @@ or abort if nothing comes back in a reasonable time. */
     firmwareCommand.append(char(row));
     firmwareCommand.append("P2");
     firmwareCommand.append(4);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 7;
     millisleep(500);                 // Wait a bit for reset to complete
 /* Set the DIO12 port on the XBee (AVR Reset) */
@@ -983,7 +932,8 @@ or abort if nothing comes back in a reasonable time. */
     firmwareCommand.append(char(row));
     firmwareCommand.append("P2");
     firmwareCommand.append(5);
-    errorCode = sendCommand(firmwareCommand);
+    comCommand = firmwareCommand.at(0);
+    errorCode = sendCommand(&firmwareCommand,tcpSocket);
     if (errorCode > 0) failPoint = 8;
 /* Turn off progress bar when ended */
     XbeeControlFormUi.uploadProgressBar->setValue(file->size());
@@ -993,7 +943,7 @@ or abort if nothing comes back in a reasonable time. */
                          << errorCode << "Failure Point" << failPoint;
 #endif
     if ((errorCode > 0) || (failPoint > 0))
-        popup(QString("Upload Failure: error code %1").arg(failPoint));
+        QMessageBox::warning(this,"",QString("Upload Failure: error code %1").arg(failPoint));
 // Set the sleep mode back to original for end device only
     if (deviceType == 2)
     {
@@ -1001,7 +951,7 @@ or abort if nothing comes back in a reasonable time. */
         sleepModeCommand.clear();
         sleepModeCommand.append("SM");
         sleepModeCommand.append(oldSleepMode);
-        if (sendAtCommand(sleepModeCommand, true,3000) > 0)
+        if (sendAtCommand(&sleepModeCommand, tcpSocket, row, true,3000) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout reloading remote node sleep mode";

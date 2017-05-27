@@ -61,6 +61,7 @@ private slots:
     void on_queryNodeButton_clicked();
     int on_firmwareButton_clicked();
     void readXbeeProcess();
+    void displayError(QAbstractSocket::SocketError socketError);
     void on_configButton_clicked();
 private:
 // User Interface object instance
@@ -69,23 +70,19 @@ private:
     void configDialogDone(int row);
     bool findNode();
     bool setNodeAwake();
-    int sendCommand(QByteArray command);
     bool validTcpSocket();
-    void displayError(QAbstractSocket::SocketError socketError);
-    int sendAtCommand(QByteArray atCommand, bool remote, int countMax);
     void closeEvent(QCloseEvent*);
-    void ssleep(int seconds);
-    void popup(QString message);
+    int sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
+                      int row, bool remote, int countMax);
     int loadHexGUI(QFile* file, int row);
 // Variables
     QTcpSocket *tcpSocket;
     QString errorMessage;
+    QByteArray replyBuffer;
     quint16 blockSize;
     char deviceType;
     int row;
     int timeout;
-// The commStatus is used to signal when data has arrived and what happened
-    enum {comIdle, comSent, comReceived, comError, comXbeeError} comStatus;
     char comCommand;
 // Variables for the remote process
     int tableLength;

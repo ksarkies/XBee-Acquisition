@@ -13,6 +13,7 @@ QT              += network
 
 # Input
 FORMS           += xbee-control.ui xbee-dialog.ui
-HEADERS         += xbee-control.h xbee-dialog.h
-SOURCES         += xbee-control-main.cpp xbee-control.cpp xbee-dialog.cpp
+HEADERS         += xbee-control.h xbee-dialog.h xbee-gui-libs.h
+SOURCES         += xbee-control-main.cpp xbee-control.cpp
+SOURCES         += xbee-dialog.cpp xbee-gui-libs.cpp
 
