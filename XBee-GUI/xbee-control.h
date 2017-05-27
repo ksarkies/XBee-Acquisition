@@ -55,7 +55,7 @@ public:
     bool success();
     QString error();
 private slots:
-    void on_connectButton_clicked();
+    void on_tcpConnectButton_clicked();
     bool on_refreshListButton_clicked();
     void on_removeNodeButton_clicked();
     void on_queryNodeButton_clicked();

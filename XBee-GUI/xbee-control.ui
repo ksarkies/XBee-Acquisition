@@ -108,7 +108,7 @@
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address of the remote XBee. Must be 16 bit hexadecimal or an ASCII node name.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
-  <widget class="QLabel" name="connectAddressLabel">
+  <widget class="QLabel" name="tcpConnectAddressLabel">
    <property name="geometry">
     <rect>
      <x>166</x>
@@ -126,7 +126,7 @@
     <string>Base Station Network Address</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="connectButton">
+  <widget class="QPushButton" name="tcpConnectButton">
    <property name="geometry">
     <rect>
      <x>36</x>
@@ -235,7 +235,7 @@
     <string>XBEE Acquisition Network Control and Display</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="connectAddress">
+  <widget class="QLineEdit" name="tcpConnectAddress">
    <property name="geometry">
     <rect>
      <x>156</x>
@@ -268,7 +268,7 @@
    <property name="geometry">
     <rect>
      <x>315</x>
-     <y>120</y>
+     <y>115</y>
      <width>86</width>
      <height>17</height>
     </rect>
@@ -292,7 +292,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QSpinBox" name="connectPort">
+  <widget class="QSpinBox" name="tcpConnectPort">
    <property name="geometry">
     <rect>
      <x>265</x>

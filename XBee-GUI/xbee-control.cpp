@@ -78,8 +78,8 @@ XbeeControlTool::XbeeControlTool(QString tcpAddress, uint tcpPort,
     XbeeControlFormUi.nodeTable->resizeColumnToContents(6);
 // Additional widget settings
     XbeeControlFormUi.remoteConfigButton->setEnabled(false);
-    XbeeControlFormUi.connectAddress->setText(tcpAddress);
-    XbeeControlFormUi.connectPort->setValue(tcpPort);
+    XbeeControlFormUi.tcpConnectAddress->setText(tcpAddress);
+    XbeeControlFormUi.tcpConnectPort->setValue(tcpPort);
     XbeeControlFormUi.uploadProgressBar->setVisible(false);
     tcpSocket = NULL;
 // Set timeout to indefinite.
@@ -100,7 +100,7 @@ a remote coordinator process listening on another machine or the same machine
 (address 127.0.0.1). This remote process manages the XBee network.
 */
 
-void XbeeControlTool::on_connectButton_clicked()
+void XbeeControlTool::on_tcpConnectButton_clicked()
 {
     if (tcpSocket != NULL) delete tcpSocket;
 // Create the TCP socket to the internet process
@@ -119,8 +119,8 @@ void XbeeControlTool::on_connectButton_clicked()
     {
         ssleep(1);
         tcpSocket->abort();
-        tcpSocket->connectToHost(XbeeControlFormUi.connectAddress->text(), 
-                                 XbeeControlFormUi.connectPort->value());
+        tcpSocket->connectToHost(XbeeControlFormUi.tcpConnectAddress->text(), 
+                                 XbeeControlFormUi.tcpConnectPort->value());
         if (tcpSocket->waitForConnected(1000)) break;
     }
     qDebug() << count;
@@ -489,12 +489,14 @@ configure.
 
 void XbeeControlTool::on_configButton_clicked()
 {
-    if (! findNode()) return;
+    findNode();
     bool remote = (row < tableLength);
-/* If nothing is selected, go to the coordinator XBee. Row has no meaning in
-this case. */
-    QString address = XbeeControlFormUi.connectAddress->text();
-    XBeeConfigWidget* XBeeConfigWidgetForm = new XBeeConfigWidget(address,row,remote,0);
+/* If nothing is selected, will go to the coordinator XBee. Row has no meaning
+in this case. */
+    QString tcpAddress = XbeeControlFormUi.tcpConnectAddress->text();
+    uint tcpPort = XbeeControlFormUi.tcpConnectPort->value();
+    XBeeConfigWidget* XBeeConfigWidgetForm =
+                new XBeeConfigWidget(tcpAddress,tcpPort,row,remote,timeout,0);
     connect(XBeeConfigWidgetForm, SIGNAL(terminated(int)),this,SLOT(configDialogDone(int)));
     XBeeConfigWidgetForm->show();
     if (remote)
@@ -562,14 +564,13 @@ Note that the row used is a global and is accessed by the sendAtCommand function
     stayAwakeCommand.append("DW");
     if (sendAtCommand(stayAwakeCommand,true,timeout) > 0)
     {
-        msgBox.close();
 #ifdef DEBUG
         qDebug() << "setNodeAwake: Timeout accessing remote node.";
 #endif
         popup("Timeout accessing remote node.");
         return false;
     }
-    else msgBox.close();
+    msgBox.close();
     return true;
 }
 

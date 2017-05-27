@@ -49,7 +49,8 @@ or remote XBee through reading and writing parameters via the XBee API.
 */
 
 XBeeConfigWidget::XBeeConfigWidget(QString tcpAddress, uint tcpPort,
-                               int nodeRow, bool remoteNode, QWidget* parent)
+                                   int nodeRow, bool remoteNode, int timeout,
+                                   QWidget* parent)
                     : QWidget(parent), row(nodeRow), remote(remoteNode)
 {
 // Create the TCP socket to the internet process
@@ -64,45 +65,31 @@ XBeeConfigWidget::XBeeConfigWidget(QString tcpAddress, uint tcpPort,
     tcpSocket->connectToHost(tcpAddress, tcpPort);
 // Pull in all the information table
     if (! tcpSocket->waitForConnected(10000)) exit(1);
-// Ask for information about the remote node.
+// Ask for information about the remote node as stored in the base station.
     QByteArray rowGetCommand;
     rowGetCommand.append('I');
     rowGetCommand.append(char(row));
     sendCommand(rowGetCommand);
 
-/* Remote End Device nodes must be kept awake. One general way to do this
-is to read the sleep time settings, then set them to the maximum. */
+/* Remote End Device nodes must be kept awake. Send an instruction to the AVR
+to keep the XBee awake. */
     if (deviceType == 2)
     {
-/* First recover the actual setting. This may require an extra long delay
-so we setup a message box to warn of this. */
-        QByteArray sleepSettingCommand;
-        sleepSettingCommand.clear();
-        sleepSettingCommand.append("SM");
-        if (sendAtCommand(sleepSettingCommand, remote, 3000) > 0)
+        QMessageBox msgBox;
+        msgBox.open();
+        msgBox.setText("Node being contacted. Please wait.");
+        qApp->processEvents();
+        QByteArray stayAwakeCommand;
+        stayAwakeCommand.clear();
+        stayAwakeCommand.append("RDW");
+        if (sendAtCommand(stayAwakeCommand, remote, timeout) > 0)
         {
 #ifdef DEBUG
             qDebug() << "Timeout accessing remote node sleep mode";
 #endif
+            return;
         }
-        else
-        {
-// Keep old value.
-            oldSleepMode = replyBuffer[0];
-#ifdef DEBUG
-            qDebug() << "Original sleep mode" << (int)oldSleepMode << "changing to pin sleep";
-#endif
-// Set the sleep mode to 1 for the duration
-            sleepSettingCommand.clear();
-            sleepSettingCommand.append("SM");
-            sleepSettingCommand.append("\1");
-            if (sendAtCommand(sleepSettingCommand, remote,3000) > 0)
-            {
-#ifdef DEBUG
-                qDebug() << "Timeout setting remote node sleep mode";
-#endif
-            }
-        }
+        msgBox.close();
     }
 // Build the User Interface display from the Ui class
     XBeeConfigWidgetFormUi.setupUi(this);

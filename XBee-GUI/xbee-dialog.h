@@ -48,7 +48,7 @@ class XBeeConfigWidget : public QWidget
     Q_OBJECT
 public:
     XBeeConfigWidget(QString address, uint tcpPort, int row, bool remote,
-                     QWidget* parent = 0);
+                     int timeout, QWidget* parent = 0);
     ~XBeeConfigWidget();
 private slots:
     void readXbeeProcess();
