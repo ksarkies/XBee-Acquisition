@@ -36,8 +36,8 @@ enum comStatus {comIdle, comSent, comReceived, comError, comXbeeError};
 
 /* Prototypes */
 
-int sendCommand(QByteArray *command, QTcpSocket *tcpSocket);
-void ssleep(int seconds);
+int sendCommand(const QByteArray *xbeeCommand, QTcpSocket *tcpSocket);
 comStatus getComStatus();
-void setComStatus(comStatus status);
+void setComStatus(const comStatus status);
+void ssleep(const int seconds);
 

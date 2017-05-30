@@ -63,17 +63,17 @@ private slots:
     void readXbeeProcess();
     void displayError(QAbstractSocket::SocketError socketError);
     void on_configButton_clicked();
+    void configDialogDone(int row);
 private:
 // User Interface object instance
     Ui::XBeeControlWidget XbeeControlFormUi;
 // Methods
-    void configDialogDone(int row);
     bool findNode();
     bool setNodeAwake();
     bool validTcpSocket();
     void closeEvent(QCloseEvent*);
-    int sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
-                      int row, bool remote, int countMax);
+    int sendAtCommand(const QByteArray *atCommand, QTcpSocket *tcpSocket,
+                      const int row, const bool remote, const int timeout);
     int loadHexGUI(QFile* file, int row);
 // Variables
     QTcpSocket *tcpSocket;

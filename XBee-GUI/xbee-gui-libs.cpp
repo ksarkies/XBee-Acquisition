@@ -37,6 +37,13 @@ This will compute and fill the length, set the sync bytes, send the command and
 wait for a reply up to 5s. If no reply it will return an error code. The return
 is delayed while the communications status has not been changed to receive.
 
+As the command byte array is modified, a deep copy is made.
+
+A 7 second timeout is used to avoid hangs in the event of a system failure.
+The base station response may take up to 5 seconds before timing out
+in the event of querying a sleeping node. Such timeouts are ignored as they are
+normal.
+
 Globals: comStatus, comSent
 
 @parameter  QByteArray *command: An array to send with length, command and any
@@ -44,31 +51,33 @@ Globals: comStatus, comSent
             QTcpSocket *tcpSocket: TCP socket for base station.
 @returns    0 if no error occurred.
             1 Invalid TCP socket.
-            3 timeout waiting for response.
+            2 timeout waiting for response.
 */
 
-int sendCommand(QByteArray *command, QTcpSocket *tcpSocket)
+int sendCommand(const QByteArray *xbeeCommand, QTcpSocket *tcpSocket)
 {
-    if (tcpSocket == 0) return 1;
+    QByteArray command = *xbeeCommand;
     int errorCode = 0;
-    command->prepend(command->size()+1);
-    setComStatus(comSent);
-    QChar tcpCommand = command->at(1);
-#ifdef DEBUG
-    if ((tcpCommand != 'r') && (tcpCommand != 'l') && (tcpCommand != 's'))
-        qDebug() << "sendCommand command sent:" << tcpCommand
-                 << "Row" << (int)command->at(2)
-                 << "string" << command->right(command->size()-3);
-#endif
-    command->append('\0');                  // Do this to terminate the string
-    tcpSocket->write(*command);
-// Wait up to 5s for a response. Should pass over to receiver function.
-    if (! tcpSocket->waitForReadyRead(5000)) errorCode = 3;
+    if (tcpSocket == 0) errorCode = 1;
     else
     {
+        command.prepend(command.size()+1);
+        setComStatus(comSent);
+        QChar tcpCommand = command.at(1);
+#ifdef DEBUG
+        if ((tcpCommand != 'r') && (tcpCommand != 'l') && (tcpCommand != 's'))
+            qDebug() << "sendCommand command sent:" << tcpCommand
+                     << "Row" << (int)command.at(2)
+                     << "string" << command.right(command.size()-3);
+#endif
+        command.append('\0');                  // Do this to terminate the string
+        tcpSocket->write(command);
 // The receiver function should pick up and change away from sent status
 // We need this to synchronize across the network and to avoid overload.
-        while (getComStatus() == comSent);
+// This will wait for 7 seconds before timing out.
+        int timeout = 0;
+        while ((getComStatus() == comSent) && (timeout++ < 70)) ssleep(1);
+        if (timeout >= 70) errorCode = 2;
     }
     return errorCode;
 }
@@ -92,7 +101,7 @@ The status indicates whether the last operation was a transmit or receive.
 This allows the GUI to wait for a response after a command was sent.
 */
 
-void setComStatus(comStatus status)
+void setComStatus(const comStatus status)
 {
     communicationStatus = status;
 }
@@ -102,7 +111,7 @@ void setComStatus(comStatus status)
 
 */
 
-void ssleep(int centiseconds)
+void ssleep(const int centiseconds)
 {
     for (int i=0; i<centiseconds*10; i++)
     {

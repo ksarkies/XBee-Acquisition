@@ -200,8 +200,8 @@ void XbeeControlTool::on_removeNodeButton_clicked()
 //-----------------------------------------------------------------------------
 /** @brief Attempt to reconnect with a remote node.
 
-If a node is selected, reset the connections and query with a CB command
-to trigger a commissioning pushbutton simulated event.
+If a node is selected, reset the connections and send an SM command to check
+that the device is present.
 If no node selected, build an address from the edit box and try to connect.
 If successful, add a new entry to the table.
 */
@@ -247,9 +247,8 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         {
             nodeAddress = addressParm;
         }
-// Now we seem to have a valid node address, send a CB command
-// to simulate a commissioning pushbutton single press. This will
-// cause the end device to send out a node identification.
+// Now we seem to have a valid node address. Send an E command to add it to the
+// node table.
         bool ok;
         QByteArray newNodeCommand;
         newNodeCommand.append('E');
@@ -279,7 +278,7 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         if (sendAtCommand(&comPbCommand, tcpSocket, row, true, timeout) > 0)
         {
 #ifdef DEBUG
-            qDebug() << "Timeout accessing remote node sleep mode";
+            qDebug() << "Timeout accessing remote node while requesting number of nodes";
 #endif
         }
         else
@@ -300,14 +299,15 @@ void XbeeControlTool::on_queryNodeButton_clicked()
         int error = sendAtCommand(&sleepModeCommand, tcpSocket, row, true, timeout);
         if (error > 0)
         {
-            QMessageBox::warning(this,"","Timeout accessing remote node while querying sleep mode.");
+            QMessageBox::warning(this,"","Error accessing remote node while querying sleep mode.");
 #ifdef DEBUG
-            qDebug() << "Timeout accessing remote node sleep mode";
+            qDebug() << "Error accessing remote node while querying sleep mode";
 #endif
         }
         else
         {
-            table->item(row,6)->setText("");
+            table->item(row,6)->setCheckState(Qt::Unchecked);
+            XbeeControlFormUi.nodeAddress->setText(table->item(row,4)->text());
         }
     }
 }
@@ -400,11 +400,11 @@ void XbeeControlTool::readXbeeProcess()
     {
         qDebug() << "Main sendCommand response received: length" << length
                  << "Command" << command << "Status" << status;
-        if (reply.size() > 3) qDebug() << reply.right(reply.size()-3).toHex();
+        if (reply.size() > 3) qDebug() << "Contents" << reply.right(reply.size()-3).toHex();
     }
 #endif
-// The command sent should match the received echo.
-    if (command != comCommand)
+// The command sent should match the received echo unless it is a query response.
+    if ((command != 'r') && (command != 'l') && (command != 's') && (command != comCommand))
     {
         setComStatus(comError);
         return;
@@ -672,56 +672,64 @@ QString convertNum(const QByteArray response, const uchar startIndex,
 //-----------------------------------------------------------------------------
 /** @brief Send an AT command over TCP connection and wait for response.
 
-The command must be formatted as for the XBee AT commands. When a response is
-checked, the result is returned in "response" with more detail provided in
-"replyBuffer".
+The command must be formatted as for the XBee AT commands. A response is
+expected from the addressed base station and this is awaited with a
+timeout (which may be indefinite).
+
+When a response is checked, the result is returned in "response" with more
+detail provided in "replyBuffer".
 
 Globals: row, response, replyBuffer
 
-@parameter  atCommand-> The AT command string as a QByteArray to send
-@parameter  remote. True if the node is a remote node
-@parameter  countMax. Number of 100ms delays in the wait loop.
+@parameter[in]  atCommand. The AT command string as a QByteArray to send.
+@parameter[in]  remote. True if the node is a remote node
+@parameter[in]  timeout. Number of 100ms delays in the wait loop, or 0 for indefinite.
 @return 0 no error
-        1 socket error sending command (usually timeout)
-        2 timeout waiting for response
-        3 socket error sending response (usually timeout)
+        1 Invalid TCP socket.
+        2 timeout error sending command
+        3 timeout waiting for response from sending the initial command.
+        4 timeout waiting for response from sending the response request command.
 */
 
-int XbeeControlTool::sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
-                                   int row, bool remote, int countMax)
+int XbeeControlTool::sendAtCommand(const QByteArray *xbeeCommand, QTcpSocket *tcpSocket,
+                                   const int row, const bool remote, const int timeout)
 {
-    int errorCode = 0;
+    QByteArray atCommand = *xbeeCommand;
     if (remote)
     {
-        atCommand->prepend(row);     // row
-        atCommand->prepend('R');
+        atCommand.prepend(row);     // row
+        atCommand.prepend('R');
     }
     else
     {
-        atCommand->prepend('\0');     // Dummy "row" value
-        atCommand->prepend('L');
+        atCommand.prepend('\0');     // Dummy "row" value
+        atCommand.prepend('L');
     }
-    comCommand = atCommand->at(0);
-    if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 1;
-    else
+    comCommand = atCommand.at(0);
+    int errorCode = sendCommand(&atCommand,tcpSocket);
+    if (errorCode == 0)
     {
 /* Ask for a confirmation or error code */
         replyBuffer.clear();
-        atCommand->clear();
+        atCommand.clear();
         if (remote)
-            atCommand->append('r');
+        {
+            atCommand.append('r');
+            atCommand.append(row);
+        }
         else
-            atCommand->append('l');
-        atCommand->append('\0');         // Dummy "row" value
+        {
+            atCommand.append('l');
+            atCommand.append("\0");
+        }
         int count = 0;
         response = 0;
 /* Query node every 100ms until response is received or an error occurs. */
         while((response == 0) && (errorCode == 0))
         {
-            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
-            comCommand = atCommand->at(0);
-            if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 3;
-            if (remote) ssleep(1);
+            errorCode = sendCommand(&atCommand,tcpSocket);
+            if ((timeout > 0) && (count++ > timeout)) errorCode = 4;  //Timeout
+            else if (remote) ssleep(1);
         }
     }
     return errorCode;

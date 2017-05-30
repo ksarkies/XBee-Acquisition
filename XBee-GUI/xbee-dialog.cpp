@@ -966,17 +966,17 @@ Globals: row, response, replyBuffer
 
 @parameter  atCommand-> The AT command string as a QByteArray to send
 @parameter  remote. True if the node is a remote node
-@parameter  countMax. Number of 100ms delays in the wait loop.
+@parameter  timeout. Number of 100ms delays in the wait loop.
 @return 0 no error
-        1 socket error sending command (usually timeout)
-        2 timeout waiting for response
-        3 socket error sending response (usually timeout)
+        1 Invalid TCP socket.
+        2 timeout error sending command
+        3 timeout waiting for response from sending the initial command.
+        4 timeout waiting for response from sending the response request command.
 */
 
 int XBeeConfigWidget::sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
-                                    int row, bool remote, int countMax)
+                                    int row, bool remote, int timeout)
 {
-    int errorCode = 0;
     if (remote)
     {
         atCommand->prepend(row);     // row
@@ -988,31 +988,31 @@ int XBeeConfigWidget::sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket
         atCommand->prepend('L');
     }
     comCommand = atCommand->at(0);
-    if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 1;
-    else
+    int errorCode = sendCommand(atCommand,tcpSocket);
+    if (errorCode == 0)
     {
 /* Ask for a confirmation or error code */
         replyBuffer.clear();
-        atCommand->clear();
-        if (remote)
-            atCommand->append('r');
-        else
-            atCommand->append('l');
-        atCommand->append('\0');         // Dummy "row" value
         int count = 0;
         response = 0;
 /* Query node every 100ms until response is received or an error occurs. */
-        QMessageBox msgBox;
-        msgBox.open();
-        msgBox.setText("Node being contacted. Please wait.");
         while((response == 0) && (errorCode == 0))
         {
-            if ((countMax > 0) && (count++ > countMax)) errorCode = 2;  //Timeout
-            comCommand = atCommand->at(0);
-            if (sendCommand(atCommand,tcpSocket) > 0) errorCode = 3;
-            if (remote) ssleep(1);
+            atCommand->clear();
+            if (remote)
+            {
+                atCommand->append('r');
+                atCommand->append(row);
+            }
+            else
+            {
+                atCommand->append('l');
+                atCommand->append("\0");
+            }
+            errorCode = sendCommand(atCommand,tcpSocket);
+            if ((timeout > 0) && (count++ > timeout)) errorCode = 4;  //Timeout
+            else if (remote) ssleep(1);
         }
-        msgBox.close();
     }
     return errorCode;
 }

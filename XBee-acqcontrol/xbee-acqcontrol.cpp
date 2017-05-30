@@ -356,8 +356,8 @@ s check for a response to a previously sent node AVR command.
 N return the number of rows in the node table.
 I return the information held about the node in the row.
 X restart the XBee instance (not recommended).
-Q reconstruct the three libxbee connections.
-D delete a row from the table and compress it.
+Q reconstruct the three libxbee connections for a given row.
+D delete a row from the table and compress the table.
 E Create a new entry with a given 64 bit address.
 V Change validity of a node to invalid (zero) or valid (nonzero)
 
@@ -391,16 +391,27 @@ bool command_handler(const int listener, unsigned char *buf)
 #ifdef DEBUG
     if ((command != 'r') && (command != 'l') && (command != 's') && debug)
     {
-        printf("Command from GUI: length %d", commandLength);
+        printf("Command from GUI: length %d command %c", commandLength, command);
         if ((command == 'L') || (command == 'R'))
         {
-            printf(" command %c %c%c" , command, buf[3], buf[4]);
-            for (uint i=3; i<5; i++) printf("%d", buf[i]);
-            for (uint i=5; i<commandLength; i++) printf("%d", buf[i]);
-            printf("\n");
+            if (command == 'R') printf(" row %d", buf[2]);
+            else printf(" local");
+            printf(" Xbee command %c%c", buf[3], buf[4]);
+            for (uint i=5; i<commandLength; i++) printf(" %d", buf[i]);
         }
-        else
-            printf(" command %02X row %d\n", command, row);
+        else if (command == 'S')
+        {
+            printf(" row %d string ", buf[2]);
+            for (uint i=3; i<commandLength; i++) printf("%c", buf[i]);
+        }
+        else if (command == 'E')
+        {
+            printf(" serial number ");
+            for (uint i=3; i<commandLength; i++) printf("%02X", buf[i]);
+        }
+        else if ((command == 'I') ||(command == 'Q') ||(command == 'D') ||(command == 'V'))
+                printf(" row %d", row);
+        printf("\n");
     }
 #endif
     unsigned char str[100];
@@ -412,26 +423,26 @@ Use the libxbee connTx command as there may be zeros which would be
 misinterpreted as end of string. */
         case 'L':
             for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
+            replyLength = 3;
+            ret = xbee_connTx(localATCon, NULL, str, commandLength-3);
+            reply[2] = ret;
 #ifdef DEBUG
             if (debug)
             {
                 printf("Local AT Command sent: ");
                 for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
-                printf("\n");
+                printf(" status returned %d\n", xbee_errorToStr(ret));
             }
 #endif
-            replyLength = 3;
-            ret = xbee_connTx(localATCon, NULL, str, commandLength-3);
-            reply[3] = ret;
             break;
 
 /* Check for a response to a previously sent local AT command.
 An 'A' is sent before the parameters.
 If no response was received, a short message is sent back without data.*/
         case 'l':
+            replyLength = 3;
             if (localATResponseRcvd)
             {
-                replyLength = 3;
                 reply[2] = 'A';
                 localATResponseRcvd = false;
                 for (;replyLength < localATLength+3; replyLength++)
@@ -439,7 +450,6 @@ If no response was received, a short message is sent back without data.*/
             }
             else
             {
-                replyLength = 3;
                 reply[2] = 0;
             }
             break;
@@ -449,26 +459,26 @@ Use the libxbee connTx command as there may be zeros which would be
 misinterpreted as end of string. */
         case 'R':
             for (j=0; j<commandLength-3; j++) str[j] = buf[j+3];
+            replyLength = 3;
+            ret = xbee_connTx(nodeInfo[row].atCon, NULL, str, commandLength-3);
+            reply[2] = ret;
 #ifdef DEBUG
             if (debug)
             {
                 printf("Remote AT Command sent: %c%c ", str[0], str[1]);
-                for (j=2; j<commandLength-3; j++) printf("%02X ",str[j]);
-                printf("\n");
+                for (j=2; j<commandLength-3; j++) printf("%02X",str[j]);
+                printf(" status returned %d\n", xbee_errorToStr(ret));
             }
 #endif
-            replyLength = 3;
-            ret = xbee_connTx(nodeInfo[row].atCon, NULL, str, commandLength-3);
-            reply[3] = ret;
             break;
 
 /* Check for a response to a previously sent remote AT command.
 An 'R' is sent before the parameters.
 If no response was received, a short message is sent back without data.*/
         case 'r':
+            replyLength = 3;
             if (remoteATResponseRcvd)
             {
-                replyLength = 3;
                 reply[2] = 'R';
                 nodeInfo[row].remoteResponse = remoteATResponseData[0];
                 remoteATResponseRcvd = false;
@@ -477,7 +487,6 @@ If no response was received, a short message is sent back without data.*/
             }
             else
             {
-                replyLength = 3;
                 reply[2] = 0;
             }
             break;
@@ -493,16 +502,17 @@ to send to the AVR. */
                 str[strLength] = buf[strLength+3];
                 strLength++;
             }
+            replyLength = 3;
+            ret = xbee_connTx(nodeInfo[row].dataCon, NULL, str, strLength);
+            reply[2] = ret;
 #ifdef DEBUG
             if (debug)
             {
                 printf("Data String sent: ");
                 for (j=0; j<strLength; j++) printf("%c",str[j]);
-                printf("\n");
+                printf(" status returned %d\n", xbee_errorToStr(ret));
             }
 #endif
-            replyLength = 3;
-            reply[2] = xbee_connTx(nodeInfo[row].dataCon, NULL, str, strLength);
             break;
 
 /* Check for a response to a previously sent data command to the node AVR.
@@ -580,11 +590,11 @@ connections. This may be needed after an Xbee network or software reset. */
             openRemoteConnection(row);
             break;
 
-/* Change the validity of the node */
-        case 'V':
+/* Delete the selected entry and compress the table. */
+        case 'D':
             replyLength = 3;
-            reply[2] = '\0';
-            nodeInfo[row].valid = buf[3];
+            reply[2] = 'D';
+            deleteNodeTableRow(row);
             break;
 
 /* Setup a new entry with a serial number ready for use. */
@@ -617,20 +627,20 @@ connections. This may be needed after an Xbee network or software reset. */
             numberNodes++;
             break;
 
-/* Delete the selected entry and compress the table. */
-        case 'D':
+/* Change the validity of the node */
+        case 'V':
             replyLength = 3;
-            reply[2] = 'D';
-            deleteNodeTableRow(row);
+            reply[2] = '\0';
+            nodeInfo[row].valid = buf[3];
             break;
     }
     reply[0] = replyLength;
     reply[1] = command;
 #ifdef DEBUG
-    if ((command != 'r') && (reply[2] != 0) && debug)
+    if ((command != 'r') && (command != 'l') && debug)
     {
-        printf("Reply sent to GUI %02X %c ", reply[0], reply[1]);
-        for (int i=2; i<replyLength; i++) printf("%02X ", reply[i]);
+        printf("Reply sent to GUI length %02X command %c ", reply[0], reply[1]);
+        for (int i=2; i<replyLength; i++) printf("%02X", reply[i]);
         printf("\n");
     }
 #endif
