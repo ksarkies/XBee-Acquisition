@@ -146,8 +146,9 @@ int main(void)
 /* Initialise process counter */
     counter = 0;
 
-/*  Initialise hardware */
-    hardwareInit();
+/* Initialise hardware. */
+/* This has a GOTO label to allow internal soft reset without losing count. */
+RES:hardwareInit();
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
@@ -308,14 +309,12 @@ until the transmission has been completed or abandoned. */
                             retryCount = 0;
                             cycleComplete = true;
                         }
-/* Too many retries means that we can now complete the cycle ungracefully. */
+/* Too many retries means that we should now complete the cycle ungracefully. */
                         else if (retryCount > 3)
                         {
                             sendMessage("X");
                             _delay_ms(100);     /* Give time for message to go */
-                            resetXBee();        /* Reset the XBee */
-                            retryCount = 0;
-                            cycleComplete = true;
+                            goto RES;           /* Soft reset the Node */
                         }
 /* Otherwise decide how to respond with a retransmission. */
                         else
