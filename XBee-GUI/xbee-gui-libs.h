@@ -40,4 +40,6 @@ int sendCommand(const QByteArray *xbeeCommand, QTcpSocket *tcpSocket);
 comStatus getComStatus();
 void setComStatus(const comStatus status);
 void ssleep(const int seconds);
+QString convertNum(const QByteArray response, const uchar startIndex,
+                   const uchar length, const int base);
 

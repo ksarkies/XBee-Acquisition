@@ -82,8 +82,9 @@ static bool stayAwake;              /* Keep XBee awake until further notice */
 /****************************************************************************/
 /* Local Prototypes */
 
+static packet_error interpretMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage);
 static void interpretCommand(rxFrameType* inMessage);
-static packet_error getIncomingMessage(uint16_t timeoutDelay, rxFrameType* inMessage);
+static packet_error getIncomingMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage);
 static void hardwareInit(void);
 static void wdtInit(const uint8_t waketime, bool wdeSet);
 static void sendDataCommand(const uint8_t command, const uint32_t datum);
@@ -215,10 +216,18 @@ Counter is a global and is changed in the ISR. */
         {
             lastCount = counter;
 
+/* Check for and deal with any extra messages that have arrived while the XBee
+was awake or between transmissions. */
+            if (! transmitMessage)
+            {
+                rxFrameType inMessage;              /* Received data frame */
+                packet_error packetError = interpretMessage(2000, false, &inMessage);
+            }
 /* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
 8 seconds will be too short to do anything useful, so go back to sleep again
-until enough such events have occurred. */
-            if (transmitMessage)
+until enough such events have occurred. The WDT ISR will set transmitMessage
+when the conditions are satisfied. */
+            else
             {
                 transmitMessage = false;
 #ifdef TEST_PORT_DIR
@@ -288,7 +297,7 @@ until the transmission has been completed or abandoned. */
                             {
                                 #ifdef VBATCON_PIN
 /* Turn on battery measurement */
-                                sbi(VBATCON_PORT,VBATCON_PIN);
+                                sbi(VBATCON_PORT_DIR,VBATCON_PIN);
                                 #endif
                                 sendATFrame(2,"IS");    /* Force Sample Read */
                                 retryCount++;
@@ -338,7 +347,7 @@ until the transmission has been completed or abandoned. */
                                     parameter = delivery;
                                     txCommand = 'S';
                                 }
-/* Data filed has count 16 bits, voltage 10 bits, status 6 bits */
+/* Data word has count 16 bits, voltage 10 bits, status 6 bits */
                                 sendDataCommand(txCommand,
                                     lastCount+((batteryVoltage & 0x3FF)<<16)+
                                     ((parameter & 0x3F)<<26));
@@ -350,12 +359,13 @@ until the transmission has been completed or abandoned. */
                     }
 
 /* Wait for incoming messages. */
-                    packetError = getIncomingMessage(timeoutDelay, &inMessage);
+                    packetError = interpretMessage(timeoutDelay, true, &inMessage);
                     if (packetError == no_error)
                     {
 /* Interpret messages and gather information returned */
                         switch (inMessage.frameType)
                         {
+/* These are messages coming back from an XBee AT command. */
                         case AT_COMMAND_RESPONSE:
                             if (inMessage.message.atResponse.status != 0)
                                 packetError = frame_error;
@@ -380,19 +390,6 @@ until the transmission has been completed or abandoned. */
                                 }
                             }
                             break;
-/* Irrelevant message types that can be ignored. */
-                        case MODEM_STATUS:
-                            packetError = modem_status;
-                            retryEnable = false;
-                            break;
-                        case NODE_IDENT:
-                            packetError = node_ident;
-                            retryEnable = false;
-                            break;
-                        case IO_DATA_SAMPLE:
-                            packetError = io_data_sample;
-                            retryEnable = false;
-                            break;
 /* Status of previous transmission attempt. */
                         case TX_STATUS:
                             delivery = inMessage.message.txStatus.deliveryStatus;
@@ -415,14 +412,6 @@ protocol in other stages. */
                                     else packetError = command_error;
                                 }
                                 else  retryEnable = false;
-/* Got a special command plus possible parameters from the coordinator for action.
-This must be allowed to occur at any stage. */
-                                if (rxCommand == 'D')
-                                {
-                                    interpretCommand(&inMessage);
-                                    packetError = no_error;
-                                    retryEnable = false;
-                                }
                             }
                             break;
                         }
@@ -456,10 +445,58 @@ Count period is typically less than 10ms. */
 }
 
 /****************************************************************************/
+/** @brief Interpret a Received Message.
+
+Checks for a message received and interprets it to deal with certain cases
+needing action independently of the transmit cycle, or ignoring.
+
+@param[in] rxFrameType* inMessage: The received frame with the message.
+@returns packet_error packetError: Error code.
+*/
+
+packet_error interpretMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage)
+{
+    packet_error packetError = getIncomingMessage(timeoutDelay, wait, inMessage);
+    if (packetError == no_error)
+    {
+        switch (inMessage->frameType)
+        {
+/* Irrelevant message types that can be ignored. */
+        case MODEM_STATUS:
+            packetError = modem_status;
+            break;
+        case NODE_IDENT:
+            packetError = node_ident;
+            break;
+        case IO_DATA_SAMPLE:
+            packetError = io_data_sample;
+            break;
+/* Receive Packet. This can be of a variety of types.
+We deal only with the commands to the node. */
+        case RX_PACKET:
+            {
+/* Got a special command plus possible parameters from the coordinator for
+action. */
+                uint8_t rxCommand = inMessage->message.rxPacket.data[0];
+                if (rxCommand == 'D')
+                {
+                    interpretCommand(inMessage);
+                    packetError = no_error;
+                }
+            }
+        }
+    }
+    return packetError;
+}
+
+/****************************************************************************/
 /** @brief Interpret a Command Message from the Base Station.
 
 Deal with commands, parameters and data intended for the attached processor
 system. Anything not recognised is ignored.
+
+The first character in the data field is the D command used to direct the
+program to here. The second character is the instruction to the node.
 
 Globals: all changeable parameters: stayAwake.
 
@@ -468,23 +505,32 @@ Globals: all changeable parameters: stayAwake.
 
 void interpretCommand(rxFrameType* inMessage)
 {
-/* The first character in the data field is a command. Do not use A or N as
-commands as they will be confused with late ACK/NAK messages. */
-    uint8_t rxCommand = inMessage->message.rxPacket.data[0];
+/* Blink debug port to indicated ready */
+#ifdef DEBUG_PORT_DIR
+    sbi(DEBUG_PORT,DEBUG_PIN);          /* Blink debug LED */
+    _delay_ms(100);
+    cbi(DEBUG_PORT,DEBUG_PIN);
+#endif
+    uint8_t nodeCommand = inMessage->message.rxPacket.data[1];
 /* Interpret a 'Parameter Change' command. */
-    if (rxCommand == 'P')
+    if (nodeCommand == 'P')
     {
     }
 /* Keep XBee awake until further notice for possible reconfiguration. */
-    else if (rxCommand == 'W')
+    else if (nodeCommand == 'W')
     {
         stayAwake = true;
     }
 /* Send XBee to sleep. */
-    else if (rxCommand == 'S')
+    else if (nodeCommand == 'S')
     {
         stayAwake = false;
     }
+/* Return a response to indicate reception */
+    char response[10];
+    response[0] = 'P';
+    response[1] = 0;
+    sendMessage(response);
 }
 
 /****************************************************************************/
@@ -499,17 +545,24 @@ error or a timeout occurs.
 @returns bool: packet_error. no_error, timeout, checksum_error, frame_error, unknown_error.
 */
 
-packet_error getIncomingMessage(uint16_t timeoutDelay, rxFrameType* inMessage)
+packet_error getIncomingMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage)
 {
     uint16_t timeResponse = 0;
     packet_error packetError = no_error;
     uint8_t messageState = 0;
+/* Wait for first character */
+    uint8_t messageStatus = receiveMessage(inMessage, &messageState);
+    if (messageStatus == XBEE_NO_CHARACTER)
+    {
+        if (! wait) return no_character;
+    }
 /* Loop until the message is received or an error occurs. */
     while (true)
     {
 
 /* Read in part of an incoming frame. */
         uint8_t messageStatus = receiveMessage(inMessage, &messageState);
+        if (messageStatus == XBEE_NO_CHARACTER) messageStatus = XBEE_INCOMPLETE;
         if (messageStatus != XBEE_INCOMPLETE)
         {
 /* If message status is not a frame complete without error, then this means

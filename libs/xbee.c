@@ -163,8 +163,8 @@ changed outside the function until the function returns COMPLETE.
 @param[out] rxFrameType *rxMessage: Message received.
 @param[out] uint8_t *messageState: Message build state, must be set to zero on
                                    the first call.
-@returns uint8_t message completion/error state. Zero means character received
-                                   OK but not yet finished.
+@returns uint8_t message completion/error state. XBEE_STATE_MACHINE,
+            XBEE_CHECKSUM, XBEE_INCOMPLETE, XBEE_COMPLETE, XBEE_NO_CHARACTER
 */
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
@@ -222,6 +222,7 @@ uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
         }
         *messageState = state;
     }
+    else messageError = XBEE_NO_CHARACTER;
     return messageError;
 }
 

@@ -40,13 +40,10 @@ acquisition network.
 #include <cstdlib>
 #include <iostream>
 #include <unistd.h>
+#include "node-config.h"
 #include "xbee-control.h"
 #include "xbee-dialog.h"
 #include "xbee-gui-libs.h"
-
-// Local Prototypes
-QString convertNum(const QByteArray response, const uchar startIndex,
-                   const uchar length, const int base);
 
 // Global data
 QByteArray dataReplyMessage;
@@ -513,6 +510,33 @@ void XbeeControlTool::displayError(QAbstractSocket::SocketError socketError)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Open a dialogue box for configuring an Node.
+
+Open a dialogue to allow commands to be passed to a remote node. This activates
+a command interface built into the node MCU. If no node is selected, ignore.
+*/
+
+void XbeeControlTool::on_nodeConfigButton_clicked()
+{
+    findNode();
+    if (row >= tableLength) return;
+    QString tcpAddress = XbeeControlFormUi.tcpConnectAddress->text();
+    uint tcpPort = XbeeControlFormUi.tcpConnectPort->value();
+    NodeConfigWidget* NodeConfigWidgetForm =
+                new NodeConfigWidget(tcpAddress,tcpPort,row,timeout,0);
+    NodeConfigWidgetForm->show();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Launch an Application.
+
+*/
+
+void XbeeControlTool::on_applicationButton_clicked()
+{
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Open a dialogue box for configuring an XBee.
 
 If the remote checkbox is selected, find a selected row and use the
@@ -652,21 +676,6 @@ This may not be necessary as QT may implement it implicitly.
 void XbeeControlTool::closeEvent(QCloseEvent *event)
 {
     event->accept();
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Convert section of byte string to QString number
-
-*/
-
-QString convertNum(const QByteArray response, const uchar startIndex,
-                   const uchar length, const int base)
-{
-    QString commandData = "";
-    for (uchar i = startIndex; i < length+startIndex; i++)
-        commandData += QString("%1").arg(QString::number(response[i],base)
-                                .toUpper().right(2),2,'0');
-    return commandData;
 }
 
 //-----------------------------------------------------------------------------

@@ -23,11 +23,12 @@
 @{*/
 /* From the XBee receiver process: */
 #define XBEE_STATE_MACHINE      0x10    /* Trying to read beyond the message length */
-#define XBEE_CHECKSUM           0x11
+#define XBEE_CHECKSUM           0x11    /* Message checksum error */
 #define XBEE_ACK                0x12
 #define XBEE_NAK                0x13
-#define XBEE_INCOMPLETE         0x14    /* Probably due to communications failure */
-#define XBEE_COMPLETE           0x15
+#define XBEE_INCOMPLETE         0x14    /* More characters to come */
+#define XBEE_COMPLETE           0x15    /* Message completed OK */
+#define XBEE_NO_CHARACTER       0x16    /* No character present */
 /*@}*/
 
 /* Xbee parameters */
@@ -116,7 +117,7 @@ typedef struct
 typedef enum {associationCheck, batteryCheck, transmit} txStage;
 typedef enum {no_error, timeout, unknown_frame_type, checksum_error, frame_error,
               modem_status, node_ident, io_data_sample,
-              protocol_error, command_error, unknown_error} packet_error;
+              protocol_error, command_error, unknown_error, no_character} packet_error;
 
 /*----------------------------------------------------------------------*/
 /* Prototypes */

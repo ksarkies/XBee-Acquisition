@@ -82,7 +82,7 @@ int numberNodes;
 nodeEntry nodeInfo[MAXNODES];   /* Allows up to 25 nodes */
 char remoteData[SIZE][MAXNODES];/* Temporary Data store. */
 unsigned long int dataField = 0;/* Temporary store for processed data word. */
-bool dataResponseRcvd;          /* Signal response to an AVR command received */
+bool dataResponseRcvd;          /* Signal response to an MCU command received */
 char dataResponseData[SIZE];    /* The data record received with a response */
 bool remoteATResponseRcvd;      /* Signal response to a remote AT command received */
 uint8_t remoteATLength;
@@ -352,7 +352,7 @@ R send a remote AT command to the selected node. The command follows in the
    data field.
 r check for a response to a previously sent remote AT command.
 S send an ASCII string to a remote node on the established data connection.
-s check for a response to a previously sent node AVR command.
+s check for a response to a previously sent node MCU command.
 N return the number of rows in the node table.
 I return the information held about the node in the row.
 X restart the XBee instance (not recommended).
@@ -493,10 +493,8 @@ If no response was received, a short message is sent back without data.*/
 
 /* Send an ASCII string to a remote node on its established data connection.
 This will be the basic command interface between the Internet client and the
-AVR. The string contains the Parameter Change command P followed by the string
-to send to the AVR. */
+MCU. */
         case 'S':
-            str[strLength++] = 'P';
             while (buf[strLength+2] > 0)
             {
                 str[strLength] = buf[strLength+3];
@@ -510,12 +508,12 @@ to send to the AVR. */
             {
                 printf("Data String sent: ");
                 for (j=0; j<strLength; j++) printf("%c",str[j]);
-                printf(" status returned %d\n", xbee_errorToStr(ret));
+                printf(" status returned %s\n", xbee_errorToStr(ret));
             }
 #endif
             break;
 
-/* Check for a response to a previously sent data command to the node AVR.
+/* Check for a response to a previously sent data command to the node MCU.
 If no response was received, a short message is sent back without data.*/
         case 's':
             if (dataResponseRcvd)
@@ -637,7 +635,7 @@ connections. This may be needed after an Xbee network or software reset. */
     reply[0] = replyLength;
     reply[1] = command;
 #ifdef DEBUG
-    if ((command != 'r') && (command != 'l') && debug)
+    if ((command != 'r') && (command != 'l') && (command != 's') && debug)
     {
         printf("Reply sent to GUI length %02X command %c ", reply[0], reply[1]);
         for (int i=2; i<replyLength; i++) printf("%02X", reply[i]);
@@ -1465,9 +1463,9 @@ This is a callback required by libxbee. It interprets incoming packets on the
 remote node data connection. Application data is passed on to an external
 file.
 
-Other packets are responses to commands to the node AVR sent over the same
+Other packets are responses to commands to the node MCU sent over the same
 connection. The response is stored in a global array. This should be read
-before any other node AVR command is sent to any node.
+before any other node MCU command is sent to any node.
 
 - 'C' xx xx aa aa … (11 bytes) Original message with application data.
 - 'E' xx xx aa aa … (11 bytes) Repeat message in response to reception errors.

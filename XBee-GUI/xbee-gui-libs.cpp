@@ -120,3 +120,18 @@ void ssleep(const int centiseconds)
     }
 }
 
+//-----------------------------------------------------------------------------
+/** @brief Convert section of byte string to QString number
+
+*/
+
+QString convertNum(const QByteArray response, const uchar startIndex,
+                   const uchar length, const int base)
+{
+    QString commandData = "";
+    for (uchar i = startIndex; i < length+startIndex; i++)
+        commandData += QString("%1").arg(QString::number(response[i],base)
+                                .toUpper().right(2),2,'0');
+    return commandData;
+}
+

@@ -46,6 +46,8 @@ Setting baudrate, Rx/Tx enables, and flow controls.
 The buffer pointer and size are reset.
 
 The UART has already been initialised in the emulator code.
+
+Globals: bufferSize, bufferPointer.
 */
 void uartInit(void)
 {
@@ -70,6 +72,8 @@ void sendch(unsigned char c)
 This uses the POSIX read system call to access all data in the buffer. One
 character is returned at a time.
 
+Globals: bufferSize, bufferPointer, inBuf.
+
 returns: unsigned int. Upper byte is zero or NO_DATA if no character present.
 */
 
@@ -79,7 +83,7 @@ unsigned int getch(void)
     {
         int numRead = read(port, inBuf, BUFFER_SIZE);
         if (numRead == 0) return (NO_DATA << 8);
-        if (numRead < 0) return (FRAME_ERROR<<8);
+        if (numRead < 0) return (FRAME_ERROR << 8);
         bufferSize += numRead;
         bufferPointer = 0;      /* Restart reading at the beginning of buffer */
     }

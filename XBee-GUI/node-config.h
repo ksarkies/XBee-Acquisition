@@ -1,7 +1,10 @@
-/*
-Title:    XBee Control and Display GUI Tool
-*/
+/*       Node Configuration Dialogue GUI Tool
 
+This provides a GUI interface to an XBee coordinator process running on the
+local or remote Internet connected PC or Linux based controller for the XBee
+acquisition network. This file manages the configuration of the remote node
+through the inbuilt command interface in the node MCU.
+*/
 /****************************************************************************
  *   Copyright (C) 2013 by Ken Sarkies ksarkies@internode.on.net            *
  *                                                                          *
@@ -20,19 +23,13 @@ Title:    XBee Control and Display GUI Tool
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#ifndef XBEE_CONTROL_TOOL_H
-#define XBEE_CONTROL_TOOL_H
+#ifndef NODE_CONFIG_H
+#define NODE_CONFIG_H
 
-#define DEBUG   1
-
-#include "ui_xbee-control.h"
+#include "ui/ui_node-config.h"
 #include <QTcpSocket>
-#include <QString>
-#include <QStandardItemModel>
-#include <QFile>
-
-#define DEFAULT_TCP_PORT    58532        // port for the external command I/F
-#define DEFAULT_TCP_ADDRESS "127.0.0.1"
+#include <QDialog>
+#include <QCloseEvent>
 
 #ifdef WIN32
 #include <Windows.h>
@@ -42,53 +39,48 @@ Title:    XBee Control and Display GUI Tool
 #endif
 
 //-----------------------------------------------------------------------------
-/** @brief XBee Control Window.
+/** @brief Local XBee configuration dialogue
 
+This class provides a dialogue window
 */
 
-class XbeeControlTool : public QWidget
+class NodeConfigWidget : public QWidget
 {
     Q_OBJECT
 public:
-    XbeeControlTool(QString tcpAddress, uint tcpPort, QWidget* parent = 0);
-    ~XbeeControlTool();
-    bool success();
-    QString error();
+    NodeConfigWidget(QString address, uint tcpPort, int row,
+                     int timeout, QWidget* parent = 0);
+    ~NodeConfigWidget();
 private slots:
-    void on_tcpConnectButton_clicked();
-    bool on_refreshListButton_clicked();
-    void on_removeNodeButton_clicked();
-    void on_queryNodeButton_clicked();
-    int on_firmwareButton_clicked();
+    void on_closeButton_clicked();
+    void closeEvent(QCloseEvent *event);
+    void accept();
+    void on_wakeButton_clicked();
+    void on_commandButton_clicked();
+    void on_sleepButton_clicked();
     void readXbeeProcess();
     void displayError(QAbstractSocket::SocketError socketError);
-    void on_nodeConfigButton_clicked();
-    void on_applicationButton_clicked();
-    void on_configButton_clicked();
-    void configDialogDone(int row);
+signals:
+    void terminated(int row);
 private:
-// User Interface object instance
-    Ui::XBeeControlWidget XbeeControlFormUi;
 // Methods
-    bool findNode();
-    bool setNodeAwake();
-    bool validTcpSocket();
-    void closeEvent(QCloseEvent*);
-    int sendAtCommand(const QByteArray *atCommand, QTcpSocket *tcpSocket,
-                      const int row, const bool remote, const int timeout);
-    int loadHexGUI(QFile* file, int row);
+    Ui::NodeConfigWidget NodeConfigFormUi;
+    int sendAtCommand(QByteArray *atCommand, QTcpSocket *tcpSocket,
+                      int row, bool remote, int countMax);
+    int sendString(QByteArray *command, QTcpSocket *tcpSocket,
+                      int row, int timeout);
 // Variables
     QTcpSocket *tcpSocket;
-    QString errorMessage;
-    QByteArray replyBuffer;
-    quint16 blockSize;
-    char deviceType;
     int row;
     int timeout;
+    QString deviceTypeString;
+    QString snL;
+    QString snH;
+    QString nodeID;
+    char oldSleepMode;
+    char deviceType;
     char comCommand;
-// Variables for the remote process
-    int tableLength;
-    QStandardItemModel *table;
+    QByteArray replyBuffer;
     char response;
 };
 
