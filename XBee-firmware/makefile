@@ -26,8 +26,12 @@
 MCU ?= attiny841
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
-ifeq ($(MCU),atmega168)
+ifeq ($(MCU),atmega368)
+MCU_TYPE = 368
+else ifeq ($(MCU),atmega168)
 MCU_TYPE = 168
+else ifeq ($(MCU),atmega88)
+MCU_TYPE = 88
 else ifeq ($(MCU),atmega48)
 MCU_TYPE = 48
 else ifeq ($(MCU),attiny4313)
@@ -61,7 +65,7 @@ OPT = 1
 TARGET = xbee-firmware
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c ../libs/serial.c ../libs/xbee.c
+SRC = $(TARGET).c ../libs/serial.c ../libs/xbee.c ../libs/buffer.c
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s

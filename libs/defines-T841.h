@@ -36,6 +36,12 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 /* Choose whether to use hardware flow control for serial comms. */
 //#define USE_HARDWARE_FLOW
 
+#if ((MCU_TYPE==841) && (defined USE_HARDWARE_FLOW))
+#warning "Cannot use hardware flow control for this particular project \
+due to lack of outputs."
+#undef USE_HARDWARE_FLOW
+#endif
+
 /* These are the defines for the selected device and bootloader system */
 #define F_CPU               8000000
 #define BAUD                9600
@@ -55,13 +61,20 @@ include as setbaud.h sets a default value. */
 #define	UART_CONTROL_REG	    UCSR0B
 #define	UART_FORMAT_REG	        UCSR0C
 #define	UART_STATUS_REG	        UCSR0A
+#define	UART_DATA_REG	        UDR0
+#define DOUBLE_RATE             U2X0
 #define FRAME_SIZE              UCSZ00
 #define	ENABLE_TRANSMITTER_BIT	TXEN0
 #define	ENABLE_RECEIVER_BIT	    RXEN0
 #define	TRANSMIT_COMPLETE_BIT	TXC0
 #define	RECEIVE_COMPLETE_BIT	RXC0
-#define	UART_DATA_REG	        UDR0
-#define DOUBLE_RATE             U2X0
+#define TRANSMIT_COMPLETE_IE    TXCIE0
+#define RECEIVE_COMPLETE_IE     RXCIE0
+#define DATA_REGISTER_EMPTY_IE  UDRIE0
+
+/* ISR definitions */
+#define UART1_TRANSMIT_ISR      USART0_UDRE_vect
+#define UART1_RECEIVE_ISR       USART0_RX_vect
 
 /* definitions for peripheral power control */
 #define PRR_USART0              PRUSART0

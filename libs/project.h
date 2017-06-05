@@ -24,12 +24,17 @@ Needed for the bootloader as the upload is extensive. */
 //#define USE_HARDWARE_FLOW
 
 /* Choose whether to use buffering for serial communications. */
-//#define USE_RECEIVE_BUFFER
-//#define USE_SEND_BUFFER
+#define USE_RECEIVE_BUFFER
+#define USE_TRANSMIT_BUFFER
 
 /* Interrupts will normally be needed with serial buffering */
-#if defined USE_RECEIVE_BUFFER || defined USE_SEND_BUFFER
-#define USE_INTERRUPTS
+#ifdef USE_TRANSMIT_BUFFER
+#define TRANSMIT_BUFFER_SIZE 32
+#define USE_TRANSMIT_INTERRUPTS
+#endif
+#ifdef USE_RECEIVE_BUFFER
+#define RECEIVE_BUFFER_SIZE 32
+#define USE_RECEIVE_INTERRUPTS
 #endif
 
 /* Use the defined output pin to force the XBee to stay awake while in the

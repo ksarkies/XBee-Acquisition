@@ -33,9 +33,9 @@
 /* Prototypes */
 
 void uartInit(void);
-void sendch(unsigned char c);
-unsigned char getchb(void);
-unsigned int getch(void);
+void sendch(uint8_t c);
+uint8_t getchb(void);
+uint16_t getch(void);
 
 #endif
 

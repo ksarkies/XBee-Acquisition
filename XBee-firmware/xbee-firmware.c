@@ -209,19 +209,20 @@ unless the MCU has lost its way. */
         sei();
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
-This will avoid rapid wake/sleep cycles when counts are changing.
-Counter is a global and is changed in the ISR. */
+This will avoid rapid wake/sleep cycles when counts are changing. */
         uint32_t lastCount;
+        uint8_t sleepDelay = 0;
         do
         {
-            lastCount = counter;
+            lastCount = counter;    /* Counter is global, changed in the ISR. */
+            if (sleepDelay > 10) sleepDelay = 0;
 
-/* Check for and deal with any extra messages that have arrived while the XBee
+/* Check for and deal with any extra messages that have arrived while the node
 was awake or between transmissions. */
             if (! transmitMessage)
             {
                 rxFrameType inMessage;              /* Received data frame */
-                packet_error packetError = interpretMessage(2000, false, &inMessage);
+                interpretMessage(2000, false, &inMessage);
             }
 /* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
 8 seconds will be too short to do anything useful, so go back to sleep again
@@ -421,9 +422,9 @@ protocol in other stages. */
             }
 /* Delay here to prevent sleep mode from occurring until counts have settled.
 Count period is typically less than 10ms. */
-            _delay_ms(10);
+            _delay_ms(1);
         }
-        while (counter != lastCount);
+        while ((sleepDelay++ < 10) || (counter != lastCount));
 
         #ifdef TEST_PORT_DIR
         cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */

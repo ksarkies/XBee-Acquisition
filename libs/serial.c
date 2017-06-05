@@ -22,6 +22,20 @@ files.
 
 #include "defines.h"
 #include "serial.h"
+#if defined USE_RECEIVE_BUFFER || defined USE_TRANSMIT_BUFFER
+#include "buffer.h"
+#endif
+
+#ifdef USE_TRANSMIT_BUFFER
+static uint8_t transmitBuffer[TRANSMIT_BUFFER_SIZE];
+#endif
+#ifdef USE_RECEIVE_BUFFER
+static uint8_t receiveBuffer[RECEIVE_BUFFER_SIZE];
+#endif
+
+/* Local Prototypes */
+static void sendchDirect(uint8_t c);
+static uint8_t getchDirect(void);
 
 /*-----------------------------------------------------------------------------*/
 /* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
@@ -51,8 +65,14 @@ void uartInit(void)
     UART_CONTROL_REG |= _BV(RECEIVE_COMPLETE_IE);
 #endif
 #ifdef USE_TRANSMIT_INTERRUPTS
-/* Enable USART receive complete interrupt */
-    UART_CONTROL_REG |= _BV(TRANSMIT_COMPLETE_IE);
+/* Enable USART transmitter data register empty interrupt */
+    UART_CONTROL_REG |= _BV(DATA_REGISTER_EMPTY_IE);
+#endif
+#ifdef USE_RECEIVE_BUFFER
+    buffer_init(receiveBuffer,RECEIVE_BUFFER_SIZE);
+#endif
+#ifdef USE_TRANSMIT_BUFFER
+    buffer_init(transmitBuffer,TRANSMIT_BUFFER_SIZE);
 #endif
 }
 
@@ -63,14 +83,17 @@ The function waits until CTS is asserted low then waits until the UART indicates
 that the character has been sent.
 */
 
-void sendch(unsigned char c)
+void sendch(uint8_t c)
 {
-#ifdef USE_HARDWARE_FLOW
-        while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     /* wait for clear to send */
+#ifdef USE_TRANSMIT_BUFFER
+    buffer_put(transmitBuffer,c);
+#ifdef USE_TRANSMIT_INTERRUPTS
+/* Enable transmit interrupt to trigger a transmission. */
+    UART_CONTROL_REG |= _BV(DATA_REGISTER_EMPTY_IE);
 #endif
-        UART_DATA_REG = c;                                  /* send */
-        while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    /* wait till gone */
-        sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         /* force reset TXCflag */
+#else
+    sendchDirect(c);
+#endif
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -80,21 +103,16 @@ The function asserts RTS low then waits for the receive complete bit to be set.
 RTS is then cleared high. The character is then retrieved. If no character is
 present, the function blocks.
 
-returns: unsigned char. The received character.
+returns: uint8_t. The received character.
 */
 
-unsigned char getchb(void)
+uint8_t getchb(void)
 {
-#ifdef USE_HARDWARE_FLOW
-    cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
-#endif
-#ifndef USE_INTERRUPTS
-    while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
-#endif
-#ifdef USE_HARDWARE_FLOW
-    sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
-#endif
-    return UART_DATA_REG;
+    unsigned int ch;
+    do
+        ch = getch();
+    while (ch == 0x0100);
+    return (uint8_t) (ch & 0xFF);
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -107,18 +125,97 @@ present, otherwise the character is retrieved and RTS is cleared.
 returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
 */
 
-unsigned int getch(void)
+uint16_t getch(void)
+{
+#ifdef USE_RECEIVE_BUFFER
+    uint16_t ch = buffer_get(receiveBuffer);
+    if (ch == 0x0100) ch = NO_DATA;
+#else
+    uint16_t ch;
+    ch = getchDirect();
+#endif
+    return ch;
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Send a character directly
+
+The function waits until CTS is asserted low then waits until the UART indicates
+that the character has been sent.
+*/
+
+void sendchDirect(uint8_t c)
+{
+#ifdef USE_HARDWARE_FLOW
+    while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     /* wait for clear to send */
+#endif
+    UART_DATA_REG = c;                                  /* send */
+    while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    /* wait till gone */
+    sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         /* force reset TXCflag */
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Get a character directly
+
+The function asserts RTS low then waits for the receive complete bit to be set.
+RTS is then cleared high. The character is then retrieved. If no character is
+present, the function blocks.
+
+returns: uint8_t. The received character.
+*/
+
+uint8_t getchDirect(void)
 {
 #ifdef USE_HARDWARE_FLOW
     cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
 #endif
-#ifndef USE_INTERRUPTS
-    if (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)))
-        return (NO_DATA << 8);
+#ifndef USE_TRANSMIT_INTERRUPTS
+    while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
 #endif
 #ifdef USE_HARDWARE_FLOW
     sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
 #endif
     return UART_DATA_REG;
 }
+
+#ifdef USE_RECEIVE_INTERRUPTS
+/*-----------------------------------------------------------------------------*/
+/* Serial Receiver ISR
+
+Pulls in the character from the serial receive interface and places it in the
+buffer. No error checking is done so buffer full conditions result in lost
+characters.
+*/
+
+ISR(UART1_RECEIVE_ISR)
+{
+    buffer_put(receiveBuffer,getchDirect());  
+}
+#endif
+
+#ifdef USE_TRANSMIT_INTERRUPTS
+/*-----------------------------------------------------------------------------*/
+/* Serial Transmitter ISR
+
+Retrieves a character from the transmit buffer and sends it to the serial
+transmit interface. If no character is present in the buffer this simply
+returns. The transmitter empty interrupt must be enabled when a character is
+placed in the transmit buffer.
+*/
+
+ISR(UART1_TRANSMIT_ISR)
+{
+    uint16_t c = buffer_get(transmitBuffer);
+
+    if (c != 0x0100)
+    {
+        sendchDirect((char) (c & 0xFF));
+    }
+    else
+    {
+/* tx buffer empty, disable UDRE interrupt */
+        UART_CONTROL_REG &= ~_BV(DATA_REGISTER_EMPTY_IE);
+    }
+}
+#endif
 
