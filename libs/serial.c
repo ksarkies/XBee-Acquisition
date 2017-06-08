@@ -64,15 +64,11 @@ void uartInit(void)
 /* Enable USART receive complete interrupt */
     UART_CONTROL_REG |= _BV(RECEIVE_COMPLETE_IE);
 #endif
-#ifdef USE_TRANSMIT_INTERRUPTS
-/* Enable USART transmitter data register empty interrupt */
-    UART_CONTROL_REG |= _BV(DATA_REGISTER_EMPTY_IE);
-#endif
 #ifdef USE_RECEIVE_BUFFER
-    buffer_init(receiveBuffer,RECEIVE_BUFFER_SIZE);
+    buffer_init(receiveBuffer,RECEIVE_BUFFER_SIZE-3);
 #endif
 #ifdef USE_TRANSMIT_BUFFER
-    buffer_init(transmitBuffer,TRANSMIT_BUFFER_SIZE);
+    buffer_init(transmitBuffer,TRANSMIT_BUFFER_SIZE-3);
 #endif
 }
 
@@ -85,6 +81,9 @@ that the character has been sent.
 
 void sendch(uint8_t c)
 {
+#ifdef USE_HARDWARE_FLOW
+    while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     /* wait for clear-to-send */
+#endif
 #ifdef USE_TRANSMIT_BUFFER
     buffer_put(transmitBuffer,c);
 #ifdef USE_TRANSMIT_INTERRUPTS
@@ -108,10 +107,16 @@ returns: uint8_t. The received character.
 
 uint8_t getchb(void)
 {
-    unsigned int ch;
+#ifdef USE_HARDWARE_FLOW
+    cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
+#endif
+    uint16_t ch;
     do
         ch = getch();
     while (ch == 0x0100);
+#ifdef USE_HARDWARE_FLOW
+    sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
+#endif
     return (uint8_t) (ch & 0xFF);
 }
 
@@ -122,33 +127,31 @@ The function asserts RTS low then waits for the receive complete bit to be set.
 RTS is then cleared high. The function returns with RTS high if no character is
 present, otherwise the character is retrieved and RTS is cleared.
 
-returns: unsigned int. The upper byte is zero or NO_DATA if no character present.
+@returns: unsigned int. The upper byte is zero or NO_DATA (0x0100) if no
+character is present.
 */
 
 uint16_t getch(void)
 {
 #ifdef USE_RECEIVE_BUFFER
-    uint16_t ch = buffer_get(receiveBuffer);
-    if (ch == 0x0100) ch = NO_DATA;
+    return buffer_get(receiveBuffer);
 #else
-    uint16_t ch;
-    ch = getchDirect();
+#ifndef USE_RECEIVE_INTERRUPTS
+    if ((UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)) == 0)
+        return 0x0100;
 #endif
-    return ch;
+    return getchDirect();
+#endif
 }
 
 /*-----------------------------------------------------------------------------*/
 /* Send a character directly
 
-The function waits until CTS is asserted low then waits until the UART indicates
-that the character has been sent.
+@param[in] uint8_t c: character to send.
 */
 
 void sendchDirect(uint8_t c)
 {
-#ifdef USE_HARDWARE_FLOW
-    while (inb(UART_CTS_PORT) & _BV(UART_CTS_PIN));     /* wait for clear to send */
-#endif
     UART_DATA_REG = c;                                  /* send */
     while (!(UART_STATUS_REG & _BV(TRANSMIT_COMPLETE_BIT)));    /* wait till gone */
     sbi(UART_STATUS_REG,TRANSMIT_COMPLETE_BIT);         /* force reset TXCflag */
@@ -157,24 +160,11 @@ void sendchDirect(uint8_t c)
 /*-----------------------------------------------------------------------------*/
 /* Get a character directly
 
-The function asserts RTS low then waits for the receive complete bit to be set.
-RTS is then cleared high. The character is then retrieved. If no character is
-present, the function blocks.
-
-returns: uint8_t. The received character.
+@returns: uint8_t. The received character.
 */
 
 uint8_t getchDirect(void)
 {
-#ifdef USE_HARDWARE_FLOW
-    cbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Enable RTS */
-#endif
-#ifndef USE_TRANSMIT_INTERRUPTS
-    while (!(UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)));
-#endif
-#ifdef USE_HARDWARE_FLOW
-    sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
-#endif
     return UART_DATA_REG;
 }
 
@@ -207,14 +197,14 @@ ISR(UART1_TRANSMIT_ISR)
 {
     uint16_t c = buffer_get(transmitBuffer);
 
-    if (c != 0x0100)
-    {
-        sendchDirect((char) (c & 0xFF));
-    }
-    else
+    if (c == 0x0100)
     {
 /* tx buffer empty, disable UDRE interrupt */
         UART_CONTROL_REG &= ~_BV(DATA_REGISTER_EMPTY_IE);
+    }
+    else
+    {
+        sendchDirect((uint8_t) (c & 0xFF));
     }
 }
 #endif

@@ -38,7 +38,7 @@ Tested:   ATMega48, ATMega168 at 8MHz internal clock.
 #include	<avr/io.h>
 #include    "project.h"
 
-/* These are the defines for the selected device and bootloader system */
+/* These are the defines for the selected device */
 #define F_CPU                   8000000
 #define BAUD                    9600
 

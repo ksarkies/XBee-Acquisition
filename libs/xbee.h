@@ -122,7 +122,6 @@ typedef enum {no_error, timeout, unknown_frame_type, checksum_error, frame_error
 /*----------------------------------------------------------------------*/
 /* Prototypes */
 
-void initBuffers(void);
 void sendTxRequestFrame(const uint8_t sourceAddress64[],
                         const uint8_t sourceAddress16[],
                         const uint8_t radius, const uint8_t dataLength,
@@ -134,8 +133,6 @@ bool checkAssociated(void);
 bool resetXBeeSoft(void);
 int8_t readXBeeIO(uint8_t* data);
 uint16_t getXBeeADC(uint8_t* data, uint8_t adcPort);
-uint16_t getTransmitBuffer(void);
-void put_receive_buffer(uint8_t data);
 
 #endif
 

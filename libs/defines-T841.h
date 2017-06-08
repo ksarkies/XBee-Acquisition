@@ -33,9 +33,6 @@ Tested:   ATTiny4313 at 1MHz internal clock.
 #include	<avr/io.h>
 #include    "project.h"
 
-/* Choose whether to use hardware flow control for serial comms. */
-//#define USE_HARDWARE_FLOW
-
 #if ((MCU_TYPE==841) && (defined USE_HARDWARE_FLOW))
 #warning "Cannot use hardware flow control for this particular project \
 due to lack of outputs."

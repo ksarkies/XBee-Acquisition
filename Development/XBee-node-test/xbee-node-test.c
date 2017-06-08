@@ -58,7 +58,6 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 #include <string.h>
 #include <avr/sfr_defs.h>
 #include <avr/wdt.h>
-#include <avr/sleep.h>
 #include "../../libs/defines.h"
 #include "../../libs/buffer.h"
 #include "../../libs/serial.h"
@@ -88,8 +87,6 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 The 32 bit time can also be accessed as four bytes. Time scale is defined in
 the information block.
 */
-
-#define BUFFER_SIZE 60
 
 /* timeCount measures off timer interrupt ticks to provide an extended time
 between transmissions */
@@ -122,7 +119,6 @@ int main(void)
     wdt_disable();                  /* Stop watchdog timer */
     hardwareInit();                 /* Initialize the processor specific hardware */
     uartInit();
-    initBuffers();                  /* Set up communications buffers if used */
     timer0Init(0,RTC_SCALE);        /* Configure the timer */
     timeValue = 0;                  /* Reset timer */
 /* Initialise process counter */
@@ -356,19 +352,5 @@ ISR(TIMER0_OVF_vect)
     if (timeCount == 0)
         transmitMessage = true;
 }
-
-/****************************************************************************/
-/** @brief USART ISR.
-
-This ISR triggers when the Rx Complete flag is set, and grabs the incoming byte
-and passes it to a buffer via a callback in the xbee library.
-*/
-
-#ifdef USE_RECEIVE_BUFFER
-ISR(USART_RX_vect)
-{
-    put_receive_buffer(low(getch()));
-}
-#endif
 
 /****************************************************************************/

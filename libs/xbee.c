@@ -32,31 +32,6 @@ The transmit buffer may not be needed and can be disabled to save space.
 #include <util/delay.h>
 
 /* Global Variables */
-/* Serial communications buffers. */
-#ifdef USE_SEND_BUFFER
-static uint8_t send_buffer[BUFFER_SIZE+3];
-#endif
-#ifdef USE_RECEIVE_BUFFER
-static uint8_t receive_buffer[BUFFER_SIZE+3];
-#endif
-
-/****************************************************************************/
-/** @brief Initialise the Communications Buffers
-
-The receive and transmit buffers are confined to this module.
-
-Globals: USE_SEND_BUFFER, receive_buffer
-*/
-
-void initBuffers(void)
-{
-#ifdef USE_SEND_BUFFER
-    buffer_init(send_buffer,BUFFER_SIZE);
-#endif
-#ifdef USE_RECEIVE_BUFFER
-    buffer_init(receive_buffer,BUFFER_SIZE);
-#endif
-}
 
 /****************************************************************************/
 /** @brief Build and transmit a Tx Request frame
@@ -144,11 +119,7 @@ void sendBaseFrame(const txFrameType txMessage)
         sendch(txData);
         checksum += txData;
     }
-#ifdef USE_SEND_BUFFER
-    buffer_put(send_buffer, 0xFF-checksum);
-#else
     sendch(0xFF-checksum);
-#endif
 }
 
 /****************************************************************************/
@@ -169,11 +140,7 @@ changed outside the function until the function returns COMPLETE.
 uint8_t receiveMessage(rxFrameType *rxMessage, uint8_t *messageState)
 {
 /* Wait for data to appear */
-#ifdef USE_RECEIVE_BUFFER
-    uint16_t inputChar = buffer_get(receive_buffer);
-#else
     uint16_t inputChar = getch();
-#endif
     uint16_t messageError = XBEE_INCOMPLETE;
     if (high(inputChar) != NO_DATA)
     {
@@ -401,38 +368,4 @@ uint16_t getXBeeADC(uint8_t* data, uint8_t adcPort)
     }
     return value;
 }
-
-/****************************************************************************/
-/** @brief Get Byte from Transmit buffer
-
-This is a callback from an ISR somewhere that transmits characters from a
-serial port. The character is retrieved from the transmit buffer.
-
-Globals: receive_buffer
-*/
-
-#ifdef USE_SEND_BUFFER
-uint16_t getTransmitBuffer(void)
-{
-	return buffer_get(send_buffer);
-}
-#endif
-
-/****************************************************************************/
-/** @brief Put Byte to Receive buffer
-
-This is a callback from an ISR somewhere that receives characters from a
-serial port. The character is placed in the receive buffer.
-
-Globals: receive_buffer
-*/
-
-#ifdef USE_RECEIVE_BUFFER
-void put_receive_buffer(uint8_t data)
-{
-	buffer_put(receive_buffer,data);
-}
-#endif
-
-/****************************************************************************/
 
