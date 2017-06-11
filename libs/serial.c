@@ -22,8 +22,16 @@ files.
 
 #include "defines.h"
 #include "serial.h"
-#if defined USE_RECEIVE_BUFFER || defined USE_TRANSMIT_BUFFER
 #include "buffer.h"
+#ifdef USE_RECEIVE_BUFFER
+#if (RECEIVE_BUFFER_SIZE < 4)
+#error "Serial receive buffer size too small"
+#endif
+#endif
+#ifdef USE_TRANSMIT_BUFFER
+#if (TRANSMIT_BUFFER_SIZE < 4)
+#error "Serial transmit buffer size too small"
+#endif
 #endif
 
 #ifdef USE_TRANSMIT_BUFFER
@@ -113,11 +121,11 @@ uint8_t getchb(void)
     uint16_t ch;
     do
         ch = getch();
-    while (ch == 0x0100);
+    while (high(ch) == NO_DATA);
 #ifdef USE_HARDWARE_FLOW
     sbi(UART_RTS_PORT,UART_RTS_PIN);                        /* Disable RTS */
 #endif
-    return (uint8_t) (ch & 0xFF);
+    return low(ch);
 }
 
 /*-----------------------------------------------------------------------------*/
@@ -177,7 +185,7 @@ buffer. No error checking is done so buffer full conditions result in lost
 characters.
 */
 
-ISR(UART1_RECEIVE_ISR)
+ISR(UART_RECEIVE_ISR)
 {
     buffer_put(receiveBuffer,getchDirect());  
 }
@@ -193,18 +201,18 @@ returns. The transmitter empty interrupt must be enabled when a character is
 placed in the transmit buffer.
 */
 
-ISR(UART1_TRANSMIT_ISR)
+ISR(UART_TRANSMIT_ISR)
 {
-    uint16_t c = buffer_get(transmitBuffer);
+    uint16_t ch = buffer_get(transmitBuffer);
 
-    if (c == 0x0100)
+    if (high(ch) == NO_DATA)
     {
 /* tx buffer empty, disable UDRE interrupt */
         UART_CONTROL_REG &= ~_BV(DATA_REGISTER_EMPTY_IE);
     }
     else
     {
-        sendchDirect((uint8_t) (c & 0xFF));
+        sendchDirect(low(ch));
     }
 }
 #endif

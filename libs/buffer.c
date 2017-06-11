@@ -28,7 +28,6 @@ Buffer tail points to the place behind the next item to be taken.
  * limitations under the License.                                           *
  ***************************************************************************/
 
-#include "defines.h"
 #include "buffer.h"
 
 //-----------------------------------------------------------------------------

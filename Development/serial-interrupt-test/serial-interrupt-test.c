@@ -41,20 +41,6 @@ Tested:   ATMega48 series, ATTiny841 at 8MHz internal clock.
 #include <util/delay.h>
 #include "serial-interrupt-test.h"
 
-/** Convenience macros (we don't use them all) */
-
-#define  _BV(bit) (1 << (bit))
-#define inb(sfr) _SFR_BYTE(sfr)
-#define inw(sfr) _SFR_WORD(sfr)
-#define outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#define inbit(sfr, bit) (_SFR_BYTE(sfr) & _BV(bit))
-#define toggle(sfr, bit) (_SFR_BYTE(sfr) ^= _BV(bit))
-#define high(x) ((uint8_t) (x >> 8) & 0xFF)
-#define low(x) ((uint8_t) (x & 0xFF))
-
 /*---------------------------------------------------------------------------*/
 /* Global Variables */
 
@@ -73,8 +59,9 @@ int main(void)
     sei();
     for (;;)
     {
-        uint16_t ch = getch();
-        if (ch != 0X0100) sendch((uint8_t) (ch & 0xFF));
+        uint16_t ch = getchb();
+        sendch((uint8_t) (ch & 0xFF));
+        sendch('-');
     }   
 }
 

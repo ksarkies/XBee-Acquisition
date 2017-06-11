@@ -69,8 +69,8 @@ include as setbaud.h sets a default value. */
 #define DATA_REGISTER_EMPTY_IE  UDRIE0
 
 /* ISR definitions */
-#define UART1_TRANSMIT_ISR      USART_UDRE_vect
-#define UART1_RECEIVE_ISR       USART_RX_vect
+#define UART_TRANSMIT_ISR       USART_UDRE_vect
+#define UART_RECEIVE_ISR        USART_RX_vect
 
 /* UART Flow control ports */
 #define UART_CTS_PORT           PIND
