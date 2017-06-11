@@ -32,7 +32,7 @@ version     1.0
 #define WDT_TIME                0x09
 
 //#define ACTION_COUNT    (ACTION_MINUTES*60)/8
-#define ACTION_COUNT            1       /* Temporary test value */
+#define ACTION_COUNT            1       /* WDT ticks to wakeup */
 
 /* Time in ms XBee waits before sleeping */
 #define PIN_WAKE_PERIOD         1

@@ -75,9 +75,11 @@ uint8_t coordinatorAddress16[2];
 uint8_t rxOptions;
 
 static uint32_t counter;            /* Event Counter */
-static uint8_t wdtCounter;          /* Data Transmission Timer */
+static uint16_t wdtCounter;         /* Data Transmission Timer */
 static bool transmitMessage;        /* Permission to send a message */
 static bool stayAwake;              /* Keep XBee awake until further notice */
+static uint16_t wakeInterval;       /* number of ticks between wakeups */
+static uint8_t wdtTick;             /* timer tick setting (see manual) */
 
 /****************************************************************************/
 /* Local Prototypes */
@@ -94,6 +96,7 @@ static void sleepXBee(void);
 static void wakeXBee(void);
 static void powerDown(void);
 static void powerUp(void);
+static uint16_t stringToHex(uint8_t length, uint8_t* string);
 
 /****************************************************************************/
 /** @brief      Main Program
@@ -153,7 +156,9 @@ RES:hardwareInit();
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    wdtInit(WDT_TIME, true);            /* Set up watchdog timer */
+    wakeInterval = ACTION_COUNT;
+    wdtTick = WDT_TIME;
+    wdtInit(wdtTick, true);            /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
 address avoids knowing the actual address, but may cause an address discovery
@@ -513,9 +518,34 @@ void interpretCommand(rxFrameType* inMessage)
     cbi(DEBUG_PORT,DEBUG_PIN);
 #endif
     uint8_t nodeCommand = inMessage->message.rxPacket.data[1];
-/* Interpret a 'Parameter Change' command. */
+    uint8_t parameter = inMessage->message.rxPacket.data[2];
+/* Interpret a 'Parameter Read/Change' command. */
     if (nodeCommand == 'P')
     {
+/* Wakeup time interval. Send back value and/or change.  */
+        if (parameter == 'T')
+        {
+            uint16_t newWakeInterval = stringToHex(inMessage->length-15,
+                                            inMessage->message.rxPacket.data+3);
+            if (newWakeInterval > 0)
+            {
+                wakeInterval = newWakeInterval;
+            }
+            char buffer[13];
+            char checksum = -(wakeInterval + (wakeInterval >> 8));
+            uint32_t value = wakeInterval;
+            uint8_t i;
+            for (i = 0; i < 10; i++)
+            {
+                if (i == 8) value = checksum;
+                buffer[11-i] = "0123456789ABCDEF"[value & 0x0F];
+                value >>= 4;
+            }
+            buffer[12] = 0;             /* String terminator */
+            buffer[0] = nodeCommand;
+            buffer[1] = parameter;
+            sendMessage(buffer);
+        }
     }
 /* Keep XBee awake until further notice for possible reconfiguration. */
     else if (nodeCommand == 'W')
@@ -906,10 +936,50 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
-    if (wdtCounter > ACTION_COUNT)
+    if (wdtCounter > wakeInterval)
     {
         transmitMessage = true;
         wdtCounter = 0;
     }
+}
+
+/****************************************************************************/
+/** @brief Convert Hex ASCII String to Integer.
+
+The string is interpreted as hexadecimal characters until an invalid character,
+zero terminator or the end of string is encountered. If an invalid character
+is detected or the string length is not positive definite, a zero is returned.
+
+@param[in] uint8_t length: length of string.
+@param[in] uint8_t* string.
+@returns uint16_t: hex digit.
+*/
+
+uint16_t stringToHex(uint8_t length, uint8_t* string)
+{
+    uint16_t count = 0;
+    if (length > 0)
+    {
+        int i=0;
+        for (i=0; i<length; i++)
+        {
+            unsigned int digit=0;
+            char hex = string[i];
+            if (hex == 0) break;
+            if ((hex >= '0') && (hex <= '9'))
+                digit = hex - '0';
+            else
+            {
+                if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
+                else
+                {
+                    count = 0;
+                    break;
+                }
+            }
+            count = (count << 4) + digit;
+        }
+    }
+    return count;
 }
 
