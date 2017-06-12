@@ -89,14 +89,15 @@ static void interpretCommand(rxFrameType* inMessage);
 static packet_error getIncomingMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage);
 static void hardwareInit(void);
 static void wdtInit(const uint8_t waketime, bool wdeSet);
-static void sendDataCommand(const uint8_t command, const uint32_t datum);
+static void sendDataCommand(const uint8_t command, const uint8_t parameter, const uint32_t datum);
 static void sendMessage(const char* data);
 static void resetXBee(void);
 static void sleepXBee(void);
 static void wakeXBee(void);
 static void powerDown(void);
 static void powerUp(void);
-static uint16_t stringToHex(uint8_t length, uint8_t* string);
+static uint16_t stringToHex(const uint8_t length, const uint8_t* string);
+static void hexToString(const uint32_t value, char* string, const uint8_t length);
 
 /****************************************************************************/
 /** @brief      Main Program
@@ -149,6 +150,8 @@ int main(void)
 
 /* Initialise process counter */
     counter = 0;
+    wakeInterval = ACTION_COUNT;
+    wdtTick = WDT_TIME;
 
 /* Initialise hardware. */
 /* This has a GOTO label to allow internal soft reset without losing count. */
@@ -156,8 +159,6 @@ RES:hardwareInit();
 /** Initialize the UART library, pass the baudrate and avr cpu clock 
 (uses the macro UART_BAUD_SELECT()). Set the baudrate to a predefined value. */
     uartInit();
-    wakeInterval = ACTION_COUNT;
-    wdtTick = WDT_TIME;
     wdtInit(wdtTick, true);            /* Set up watchdog timer */
 
 /* Set the coordinator addresses. All zero 64 bit address with "unknown" 16 bit
@@ -354,7 +355,7 @@ until the transmission has been completed or abandoned. */
                                     txCommand = 'S';
                                 }
 /* Data word has count 16 bits, voltage 10 bits, status 6 bits */
-                                sendDataCommand(txCommand,
+                                sendDataCommand(txCommand, 0,
                                     lastCount+((batteryVoltage & 0x3FF)<<16)+
                                     ((parameter & 0x3F)<<26));
                                 retryCount++;
@@ -501,16 +502,24 @@ action. */
 Deal with commands, parameters and data intended for the attached processor
 system. Anything not recognised is ignored.
 
-The first character in the data field is the D command used to direct the
-program to here. The second character is the instruction to the node.
+This is called when a data message is received and the first character in the
+data field is the D character. The second character is the type of command and
+the third is a parameter. This is followed by further parameters.
 
-Globals: all changeable parameters: stayAwake.
+Type 'P' parameter change/report
+- 'W' wake time followed by the time in hexadecimal.
+Type 'X' action
+- 'W' stay awake.
+- 'S' sleep.
+
+Globals: all changeable parameters: stayAwake, wakeInterval.
 
 @param[in] rxFrameType* inMessage: The received frame with the message.
 */
 
 void interpretCommand(rxFrameType* inMessage)
 {
+    char response[13];
 /* Blink debug port to indicated ready */
 #ifdef DEBUG_PORT_DIR
     sbi(DEBUG_PORT,DEBUG_PIN);          /* Blink debug LED */
@@ -523,7 +532,7 @@ void interpretCommand(rxFrameType* inMessage)
     if (nodeCommand == 'P')
     {
 /* Wakeup time interval. Send back value and/or change.  */
-        if (parameter == 'T')
+        if (parameter == 'W')
         {
             uint16_t newWakeInterval = stringToHex(inMessage->length-15,
                                             inMessage->message.rxPacket.data+3);
@@ -531,37 +540,26 @@ void interpretCommand(rxFrameType* inMessage)
             {
                 wakeInterval = newWakeInterval;
             }
-            char buffer[13];
-            char checksum = -(wakeInterval + (wakeInterval >> 8));
-            uint32_t value = wakeInterval;
-            uint8_t i;
-            for (i = 0; i < 10; i++)
-            {
-                if (i == 8) value = checksum;
-                buffer[11-i] = "0123456789ABCDEF"[value & 0x0F];
-                value >>= 4;
-            }
-            buffer[12] = 0;             /* String terminator */
-            buffer[0] = nodeCommand;
-            buffer[1] = parameter;
-            sendMessage(buffer);
+            sendDataCommand(nodeCommand, parameter, wakeInterval);
         }
     }
 /* Keep XBee awake until further notice for possible reconfiguration. */
-    else if (nodeCommand == 'W')
+    else if (nodeCommand == 'X')
     {
-        stayAwake = true;
-    }
+        if (parameter == 'W')
+        {
+            stayAwake = true;
+        }
 /* Send XBee to sleep. */
-    else if (nodeCommand == 'S')
-    {
-        stayAwake = false;
-    }
+        else if (parameter == 'S')
+        {
+            stayAwake = false;
+        }
 /* Return a response to indicate reception */
-    char response[10];
-    response[0] = 'P';
-    response[1] = 0;
-    sendMessage(response);
+        response[0] = 'A';
+        response[1] = 0;
+        sendMessage(response);
+    }
 }
 
 /****************************************************************************/
@@ -629,23 +627,20 @@ for transmission. This is sent at the beginning of the string. Allowance is made
 for 9 characters: one for the command and 8 for the 32 bit integer.
 
 @param[in] int8_t command: ASCII command character to prepend to message.
+@param[in] int8_t parameter: ASCII parameter character to prepend to message.
+                            If parameter is zero this character will be omitted.
 @param[in] int32_t datum: integer value to be sent.
 */
 
-void sendDataCommand(const uint8_t command, const uint32_t datum)
+void sendDataCommand(const uint8_t command, const uint8_t parameter, const uint32_t datum)
 {
-    char buffer[12];
-    uint8_t i;
-    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
-    uint32_t value = datum;
-    for (i = 0; i < 10; i++)
-    {
-        if (i == 8) value = checksum;
-        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-        value >>= 4;
-    }
-    buffer[11] = 0;             /* String terminator */
+    char buffer[13];
     buffer[0] = command;
+    buffer[1] = parameter;
+    uint8_t offset = 1;
+    if (parameter == 0) offset = 0;
+    hexToString(datum, buffer+offset, 10);
+    buffer[11+offset] = 0;             /* String terminator */
     sendMessage(buffer);
 }
 
@@ -936,7 +931,7 @@ ISR(WDT_vect)
 #endif
 {
     wdtCounter++;
-    if (wdtCounter > wakeInterval)
+    if (wdtCounter >= wakeInterval)
     {
         transmitMessage = true;
         wdtCounter = 0;
@@ -955,7 +950,7 @@ is detected or the string length is not positive definite, a zero is returned.
 @returns uint16_t: hex digit.
 */
 
-uint16_t stringToHex(uint8_t length, uint8_t* string)
+uint16_t stringToHex(const uint8_t length, const uint8_t* string)
 {
     uint16_t count = 0;
     if (length > 0)
@@ -981,5 +976,27 @@ uint16_t stringToHex(uint8_t length, uint8_t* string)
         }
     }
     return count;
+}
+
+/****************************************************************************/
+/** @brief Convert Integer to Hex ASCII String.
+
+@param[in] uint32_t num.
+@param[out] uint8_t* string.
+@param[in] uint8_t length: length of string to produce. Longer strings will be
+                           truncated.
+*/
+
+void hexToString(const uint32_t num, char* string, const uint8_t length)
+{
+    uint32_t value = num;
+    char checksum = -(value + (value >> 8) + (value >> 16) + (value >> 24));
+    uint8_t i;
+    for (i = 0; i < length; i++)
+    {
+        if (i == length-2) value = checksum;
+        string[length-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
+    }
 }
 

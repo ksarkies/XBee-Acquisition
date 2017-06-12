@@ -146,12 +146,12 @@ void NodeConfigWidget::on_wakeButton_clicked()
 to keep the XBee awake. */
     if (deviceType == 2)
     {
-qDebug() << "W Sent.";
+qDebug() << "XW Sent.";
         QByteArray stayAwakeCommand;
         stayAwakeCommand.clear();
-        stayAwakeCommand.append("DW");
+        stayAwakeCommand.append("DXW");
         int error = sendString(&stayAwakeCommand, tcpSocket, row, timeout);
-qDebug() << "W OK.";
+qDebug() << "XW OK.";
         if (error > 0)
         {
             QMessageBox::warning(this,"","Error accessing remote node.");
@@ -175,12 +175,12 @@ void NodeConfigWidget::on_sleepButton_clicked()
 {
     if (deviceType == 2)
     {
-qDebug() << "S Sent.";
+qDebug() << "XS Sent.";
         QByteArray sleepCommand;
         sleepCommand.clear();
-        sleepCommand.append("DS");
+        sleepCommand.append("DXS");
         int error = sendString(&sleepCommand, tcpSocket, row, timeout);
-qDebug() << "S OK.";
+qDebug() << "XS OK.";
         if (error > 0)
         {
             QMessageBox::warning(this,"","Error accessing remote node.");

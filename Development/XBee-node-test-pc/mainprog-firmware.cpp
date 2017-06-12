@@ -97,6 +97,8 @@ static uint32_t counter;            /* Event Counter */
 static uint8_t wdtCounter;          /* Data Transmission Timer */
 static bool transmitMessage;        /* Permission to send a message */
 static bool stayAwake;              /* Keep XBee awake until further notice */
+static uint16_t wakeInterval;       /* number of ticks between wakeups */
+static uint8_t wdtTick;             /* timer tick setting (see manual) */
 
 /** @name UART variables */
 /*@{*/
@@ -111,6 +113,8 @@ static volatile uint8_t checkSum;     /**< Checksum on message contents */
 static packet_error interpretMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage);
 static void interpretCommand(rxFrameType* inMessage);
 static packet_error getIncomingMessage(uint16_t timeoutDelay, bool wait, rxFrameType* inMessage);
+static uint16_t stringToHex(const uint8_t length, const uint8_t* string);
+static void hexToString(const uint32_t value, char* string, const uint8_t length);
 
 /*---------------------------------------------------------------------------*/
 /* The initialization part is that which is run before the main loop. */
@@ -316,7 +320,7 @@ printData(7,0);
                                     txCommand = 'S';
                                 }
 /* Data field has count 16 bits, voltage 10 bits, status 6 bits */
-                                sendDataCommand(txCommand,
+                                sendDataCommand(txCommand, 0,
                                     lastCount+((batteryVoltage & 0x3FF)<<16)+
                                     ((parameter & 0x3F)<<26));
                                 retryCount++;
@@ -457,31 +461,45 @@ Globals: all changeable parameters: stayAwake.
 
 void interpretCommand(rxFrameType* inMessage)
 {
+    char response[13];
 /* The first character in the data field is a command. Do not use A or N as
 commands as they will be confused with late ACK/NAK messages. */
-    uint8_t rxCommand = inMessage->message.rxPacket.data[1];
-printData(11,rxCommand);
-/* Interpret a 'Parameter Change' command. */
-    if (rxCommand == 'P')
+    uint8_t nodeCommand = inMessage->message.rxPacket.data[1];
+printData(11,nodeCommand);
+    uint8_t parameter = inMessage->message.rxPacket.data[2];
+printData(11,parameter);
+/* Interpret a 'Parameter Read/Change' command. */
+    if (nodeCommand == 'P')
     {
+/* Wakeup time interval. Send back value and/or change.  */
+        if (parameter == 'W')
+        {
+            uint16_t newWakeInterval = stringToHex(inMessage->length-15,
+                                            inMessage->message.rxPacket.data+3);
+            if (newWakeInterval > 0)
+            {
+                wakeInterval = newWakeInterval;
+            }
+            sendDataCommand(nodeCommand, parameter, wakeInterval);
+        }
     }
 /* Keep XBee awake until further notice for possible reconfiguration. */
-    else if (rxCommand == 'W')
+    else if (nodeCommand == 'A')
     {
-        stayAwake = true;
-printf("Woke Up\n");
-    }
+        if (parameter == 'W')
+        {
+            stayAwake = true;
+        }
 /* Send XBee to sleep. */
-    else if (rxCommand == 'S')
-    {
-        stayAwake = false;
-printf("Sleep\n");
-    }
+        else if (parameter == 'S')
+        {
+            stayAwake = false;
+        }
 /* Return a response to indicate reception */
-    char response[10];
-    response[0] = 'P';
-    response[1] = 0;
-    sendMessage(response);
+        response[0] = 'A';
+        response[1] = 0;
+        sendMessage(response);
+    }
 }
 
 /****************************************************************************/
@@ -553,20 +571,15 @@ for transmission. This is sent at the beginning of the string.
 @param[in] int32_t datum: integer value to be sent.
 */
 
-void sendDataCommand(const uint8_t command, const uint32_t datum)
+void sendDataCommand(const uint8_t command, const uint8_t parameter, const uint32_t datum)
 {
-    char buffer[12];
-    uint8_t i;
-    char checksum = -(datum + (datum >> 8) + (datum >> 16) + (datum >> 24));
-    uint32_t value = datum;
-    for (i = 0; i < 10; i++)
-    {
-        if (i == 8) value = checksum;
-        buffer[10-i] = "0123456789ABCDEF"[value & 0x0F];
-        value >>= 4;
-    }
-    buffer[11] = 0;             /* String terminator */
+    char buffer[13];
     buffer[0] = command;
+    buffer[1] = parameter;
+    uint8_t offset = 1;
+    if (parameter == 0) offset = 0;
+    hexToString(datum, buffer+offset, 10);
+    buffer[11+offset] = 0;             /* String terminator */
     sendMessage(buffer);
 }
 
@@ -894,5 +907,67 @@ void dumpPacket(rxFrameType* inMessage)
     }
     printf(" time %s\n",timeString);
     fprintf(fp," time %s\n",timeString);
+}
+
+/****************************************************************************/
+/** @brief Convert Hex ASCII String to Integer.
+
+The string is interpreted as hexadecimal characters until an invalid character,
+zero terminator or the end of string is encountered. If an invalid character
+is detected or the string length is not positive definite, a zero is returned.
+
+@param[in] uint8_t length: length of string.
+@param[in] uint8_t* string.
+@returns uint16_t: hex digit.
+*/
+
+uint16_t stringToHex(const uint8_t length, const uint8_t* string)
+{
+    uint16_t count = 0;
+    if (length > 0)
+    {
+        int i=0;
+        for (i=0; i<length; i++)
+        {
+            unsigned int digit=0;
+            char hex = string[i];
+            if (hex == 0) break;
+            if ((hex >= '0') && (hex <= '9'))
+                digit = hex - '0';
+            else
+            {
+                if ((hex >= 'A') && (hex <= 'F')) digit = hex + 10 - 'A';
+                else
+                {
+                    count = 0;
+                    break;
+                }
+            }
+            count = (count << 4) + digit;
+        }
+    }
+    return count;
+}
+
+/****************************************************************************/
+/** @brief Convert Integer to Hex ASCII String.
+
+@param[in] uint32_t num.
+@param[out] uint8_t* string.
+@param[in] uint8_t length: length of string to produce. Longer strings will be
+                           truncated.
+*/
+
+void hexToString(const uint32_t num, char* string, const uint8_t length)
+{
+    uint32_t value = num;
+    char checksum = -(value + (value >> 8) + (value >> 16) + (value >> 24));
+    uint8_t i;
+    for (i = 0; i < length; i++)
+    {
+        if (i == length-2) value = checksum;
+        string[length-i] = "0123456789ABCDEF"[value & 0x0F];
+        value >>= 4;
+    }
 }
 
