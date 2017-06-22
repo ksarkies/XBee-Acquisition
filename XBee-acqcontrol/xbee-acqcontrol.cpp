@@ -431,7 +431,7 @@ misinterpreted as end of string. */
             {
                 printf("Local AT Command sent: ");
                 for (j=0; j<commandLength-3; j++) printf("%02X ",str[j]);
-                printf(" status returned %d\n", xbee_errorToStr(ret));
+                printf(" status returned %s\n", xbee_errorToStr(ret));
             }
 #endif
             break;
@@ -467,7 +467,7 @@ misinterpreted as end of string. */
             {
                 printf("Remote AT Command sent: %c%c ", str[0], str[1]);
                 for (j=2; j<commandLength-3; j++) printf("%02X",str[j]);
-                printf(" status returned %d\n", xbee_errorToStr(ret));
+                printf(" status returned %s\n", xbee_errorToStr(ret));
             }
 #endif
             break;
@@ -1492,6 +1492,16 @@ other data types.
 void dataCallback(struct xbee *xbee, struct xbee_con *con,
                   struct xbee_pkt **pkt, void **data)
 {
+/* Query the local coordinator XBee for the last received signal strength.
+This may not be a good idea and could upset the flow of the program especially
+when many nodes are present. But it is the only way to get RSS. Use sparingly
+by setting "-e 3". RSS will be printed out in the local AT callback. */
+#ifdef DEBUG
+    {
+        if ((debug > 2) && localATCon) xbee_conTx(localATCon, NULL, "DB");
+    }
+#endif
+
     int row = findRowBy64BitAddress((*pkt)->address.addr64);
     char timeString[20];
     time_t now;

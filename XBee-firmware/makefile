@@ -26,8 +26,8 @@
 MCU ?= attiny841
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
-ifeq ($(MCU),atmega368)
-MCU_TYPE = 368
+ifeq ($(MCU),atmega328)
+MCU_TYPE = 328
 else ifeq ($(MCU),atmega168)
 MCU_TYPE = 168
 else ifeq ($(MCU),atmega88)
@@ -58,7 +58,7 @@ FORMAT = ihex
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
-OPT = 1
+OPT = s
 
 
 # Target file name (without extension).
