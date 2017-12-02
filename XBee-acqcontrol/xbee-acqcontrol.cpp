@@ -138,7 +138,8 @@ void printModemStatus(struct xbee_pkt **pkt);
 int main(int argc,char ** argv)
 {
     debug = 0;                  /* no debug printout by default */
-    xbeeLogging = false;
+    xbeeLogging = false;        /* No logging by default */
+    xbeeLogLevel = 0;
 /*--------------------------------------------------------------------------*/
 /* Parse the command line arguments.
 P - serial port to use, (default /dev/ttyUSB0)
@@ -168,6 +169,7 @@ d - basic debug mode 1.
             break;
         case 'P':
             strcpy(inPort,optarg);
+            break;
         case 'L':
             xbeeLogging = true;
             xbeeLogLevel = atoi(optarg);
@@ -237,6 +239,7 @@ log file */
             xbee_logRxSet(xbee,true);
             xbee_logTxSet(xbee,true);
         }
+    }
 #endif
 
 /*--------------------------------------------------------------------------*/
@@ -257,7 +260,6 @@ log file */
     if (debug)
         printf("XBee Instance Started\n");
 #endif
-    }
 /*--------------------------------------------------------------------------*/
 /* Initialise the node file and fill the node table. */
 

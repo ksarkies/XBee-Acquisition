@@ -27,6 +27,8 @@ this can be overriden by a command line option. Debug information is written to
 
 -e enhanced debug mode: level 0=none, 1=basic, 2=enhanced.
 
+-L starts logging and sets the logging level as used in libxbee (see relevant documents).
+
 More information is available on [Jiggerjuice](http://www.jiggerjuice.info/electronics/projects/XBee-network/xbee-data-acquisition.html)
 
 K. Sarkies
