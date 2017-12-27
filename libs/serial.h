@@ -36,6 +36,8 @@ void uartInit(void);
 void sendch(unsigned char c);
 unsigned char getchb(void);
 unsigned int getch(void);
+void sendchDirect(unsigned char c);
+unsigned int getchDirect(void);
 
 #endif
 

@@ -23,6 +23,7 @@ files.
 #include "defines.h"
 #include "serial.h"
 #include "buffer.h"
+
 #ifdef USE_RECEIVE_BUFFER
 #if (RECEIVE_BUFFER_SIZE < 4)
 #error "Serial receive buffer size too small"
@@ -42,8 +43,6 @@ static unsigned char receiveBuffer[RECEIVE_BUFFER_SIZE];
 #endif
 
 /* Local Prototypes */
-static void sendchDirect(unsigned char c);
-static unsigned char getchDirect(void);
 
 /*-----------------------------------------------------------------------------*/
 /* Initialise the UART, setting baudrate, Rx/Tx enables, and flow controls
@@ -144,16 +143,14 @@ unsigned int getch(void)
 #ifdef USE_RECEIVE_BUFFER
     return buffer_get(receiveBuffer);
 #else
-#ifndef USE_RECEIVE_INTERRUPTS
-    if ((UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)) == 0)
-        return 0x0100;
-#endif
     return getchDirect();
 #endif
 }
 
 /*-----------------------------------------------------------------------------*/
 /* Send a character directly
+
+Programming must ensure that no other characters are waiting to be sent.
 
 @param[in] unsigned char c: character to send.
 */
@@ -168,11 +165,15 @@ void sendchDirect(unsigned char c)
 /*-----------------------------------------------------------------------------*/
 /* Get a character directly
 
-@returns: unsigned char. The received character.
+Checks for presence of a character and returns 0x100 if none.
+
+@returns: unsigned char. The received character or 0x100.
 */
 
-unsigned char getchDirect(void)
+unsigned int getchDirect(void)
 {
+    if ((UART_STATUS_REG & _BV(RECEIVE_COMPLETE_BIT)) == 0)
+        return 0x0100;
     return UART_DATA_REG;
 }
 
@@ -187,7 +188,7 @@ characters.
 
 ISR(UART_RECEIVE_ISR)
 {
-    buffer_put(receiveBuffer,getchDirect());  
+    buffer_put(receiveBuffer,low(getchDirect()));  
 }
 #endif
 

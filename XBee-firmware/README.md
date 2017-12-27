@@ -33,10 +33,10 @@ supports ATMega168, ATTiny4313 and ATTiny841, the latter being the one selected
 for the watermeter.
 
 Open source versions of avr-libc earlier than release 2.0.0 did not support the
-ATTiny841 series. To get around this, either the latest version of avr-libc must
-be compiled and installed. or the latest Atmel toolchain needs to be placed into
-a directory somewhere where it can be referenced in the Makefile. Change the
-DIRAVR environment variable in Makefile to suit the location chosen.
+ATTiny841 series. To get around this, either compile and install the latest
+version of avr-libc, or place the latest Atmel toolchain into a directory
+somewhere where it can be referenced in the Makefile. Change the DIRAVR
+environment variable in Makefile to suit the location chosen.
 
 The XBee does not use hardware flow control, although RTS may be
 possible. This is due to a lack of ports on the AVR package intended for use
@@ -68,7 +68,7 @@ pin 20 Commissioning output.
 The AVR is set to 1MHz for low power, and a baud rate of 9600, aimed at
 giving sufficient time for processing messages.
 
-The MCU variable defaults to the atmega168 but other versions can be passed to
+The MCU variable defaults to the attiny841 but other versions can be passed to
 the makefile:
 
 make MCU=xxx

@@ -26,8 +26,12 @@
 MCU ?= attiny841
 
 # Set MCU_TYPE as numerical variable to pass to source codes.
-ifeq ($(MCU),atmega168)
+ifeq ($(MCU),atmega328)
+MCU_TYPE = 328
+else ifeq ($(MCU),atmega168)
 MCU_TYPE = 168
+else ifeq ($(MCU),atmega88)
+MCU_TYPE = 88
 else ifeq ($(MCU),atmega48)
 MCU_TYPE = 48
 else ifeq ($(MCU),attiny4313)
@@ -46,7 +50,7 @@ endif
 # This is the Atmel version of gcc-avr. Earlier open-source version lacks some
 # devices, notably the ATTiny441/841.
 #ifeq ($(MCU),attiny841)
-# DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
+DIRAVR = ../../auxiliary/avr8-gnu-toolchain-linux_x86_64/
 #endif
 
 # Output format. (can be srec, ihex, binary)
@@ -61,7 +65,7 @@ OPT = 1
 TARGET = watermeter-count-test
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c ../../libs/serial.c
+SRC = $(TARGET).c ../../libs/buffer.c ../../libs/serial.c
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s

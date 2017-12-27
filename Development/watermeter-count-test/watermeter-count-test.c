@@ -52,24 +52,10 @@ Tested:   ATTiny841 at 1MHz internal clock.
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-
 #include "../../libs/defines.h"
 #include "../../libs/serial.h"
 #include <util/delay.h>
 #include "watermeter-count-test.h"
-
-#define TRUE 1
-#define FALSE 0
-/* Convenience macros (we don't use them all) */
-#define  _BV(bit) (1 << (bit))
-#define  inb(sfr) _SFR_BYTE(sfr)
-#define  inw(sfr) _SFR_WORD(sfr)
-#define  outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define  outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define  cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define  sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#define  high(x) ((uint8_t) (x >> 8) & 0xFF)
-#define  low(x) ((uint8_t) (x & 0xFF))
 
 /* Global variables */
 
@@ -200,9 +186,9 @@ Set input ports to pullups and disable digital input buffers on AIN inputs. */
     sbi(TEST_PORT_DIR,TEST_PIN);
     cbi(TEST_PORT,TEST_PIN);            /* Test port */
 #endif
-#ifdef VBAT_PIN
-    sbi(VBAT_PORT_DIR,VBAT_PIN);        /* Battery Measure Request */
-    cbi(VBAT_PORT,VBAT_PIN);
+#ifdef VBATCON_PIN
+    sbi(VBATCON_PORT_DIR,VBATCON_PIN);  /* Battery Measure Request */
+    cbi(VBATCON_PORT,VBATCON_PIN);
 #endif
 #ifdef SLEEP_RQ_PIN
     sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */

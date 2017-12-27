@@ -8,6 +8,8 @@
 This simply echoes characters back from the watermeter AVR to test the operation
 of the serial port.
 
+The testboard must be used to pass serial signals. The XBee must not be present.
+
 @note
 Software: AVR-GCC 4.8.2
 @note
@@ -39,25 +41,10 @@ Tested:   ATTiny841 at 8MHz internal clock.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
-#include "../../libs/defines.h"
 #include <util/delay.h>
 #include "../../libs/serial.h"
-#include "../../libs/timer.h"
+#include "../../libs/defines.h"
 #include "watermeter-echo-test.h"
-
-/** Convenience macros (we don't use them all) */
-#define TRUE 1
-#define FALSE 0
-
-#define  _BV(bit) (1 << (bit))
-#define inb(sfr) _SFR_BYTE(sfr)
-#define inw(sfr) _SFR_WORD(sfr)
-#define outb(sfr, val) (_SFR_BYTE(sfr) = (val))
-#define outw(sfr, val) (_SFR_WORD(sfr) = (val))
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#define high(x) ((uint8_t) (x >> 8) & 0xFF)
-#define low(x) ((uint8_t) (x & 0xFF))
 
 /*****************************************************************************/
 /* Global Variables */
@@ -71,20 +58,20 @@ static void inline hardwareInit(void);
 
 int main(void)
 {
-    wdt_disable();                  /* Stop watchdog timer */
-    hardwareInit();                 /* Initialize the processor specific hardware */
-    uartInit();
+    wdt_disable();          /* Stop watchdog timer */
+    hardwareInit();         /* Initialize the processor specific hardware */
+    uartInit();             /* Baud rate is given in defines.h */
 
 /* Main loop */
     for(;;)
     {
 
 /* Wait for data to appear */
-        uint16_t inputChar = getch();
+        uint16_t inputChar = getchDirect();
         uint8_t messageError = high(inputChar);
         if (messageError != NO_DATA)
         {
-            sendch(low(inputChar));
+            sendchDirect(low(inputChar));
         }
     }
 }
@@ -95,26 +82,9 @@ int main(void)
 */
 void hardwareInit(void)
 {
-/* PB3 is XBee sleep request output. */
-#ifdef SLEEP_RQ_PIN
-    sbi(SLEEP_RQ_PORT_DIR,SLEEP_RQ_PIN);/* XBee Sleep Request */
-    cbi(SLEEP_RQ_PORT,SLEEP_RQ_PIN);    /* Set to keep XBee on */
-#endif
-/* PB4 is XBee on/sleep input. High is XBee on, low is asleep. */
-#ifdef ON_SLEEP_PIN
-    cbi(ON_SLEEP_PORT_DIR,ON_SLEEP_PIN);/* XBee On/Sleep Status input pin */
-#endif
-/* PB5 is XBee reset output. Pulse low to reset. */
-#ifdef XBEE_RESET_PIN
-    sbi(XBEE_RESET_PORT_DIR,XBEE_RESET_PIN);/* XBee Reset */
-    sbi(XBEE_RESET_PORT,XBEE_RESET_PIN);    /* Set to keep XBee on */
-#endif
-/* PC0 is the board analogue input. */
-/* PC1 is the battery monitor analogue input. */
-/* PC5 is the battery monitor control output. Hold low for lower power drain. */
-    cbi(VBAT_PORT_DIR,VBAT_PIN);
-    cbi(VBAT_PORT,VBAT_PIN);            /* Unset pullup */
-/* PD5 is the counter input. */
+/* Hold battery monitor control low for lower power drain. */
+    cbi(VBATCON_PORT_DIR,VBATCON_PIN);
+    cbi(VBATCON_PORT,VBATCON_PIN);      /* Unset pullup */
 #ifdef COUNT_PIN
     cbi(COUNT_PORT_DIR,COUNT_PIN);      /* XBee counter input pin */
     sbi(COUNT_PORT,COUNT_PIN);          /* Set pullup */
