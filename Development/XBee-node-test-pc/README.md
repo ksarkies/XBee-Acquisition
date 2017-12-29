@@ -1,11 +1,11 @@
 XBee Data Acquisition Remote Test Code
 --------------------------------------
 
-This is a POSIX system based test code for a XBee remote unit. Written in C but
+This is a POSIX system based test code for an XBee remote unit. Written in C but
 embedded in a wrapper that emulates the environment for the test code.
-It can be run with any adapter interface board that contains a USB-serial
-converter, or with a board having a serial interface plus an external USB-serial
-converter.
+It can be run with any XBee adapter interface board that contains a USB-serial
+converter, or with an XBee carrier board having a serial interface along with an
+external USB-serial converter.
 
 Both a QT5 based emulator and an emulator based on libc are provided, the latter
 being command-line only, of course. It is intended for small headless machines
@@ -18,15 +18,19 @@ it provides a means to run the Xbee firmware core on a PC for debugging.
 
 NOTE: gcc is required to allow function override for timerISR.
 
-The program runs from the command line. A debug mode is available for extended
-printout.
+The program runs from the command line and is located in the emulator-c/ or
+emulator-qt5/ directory. A debug mode is available for extended printout.
 
-$ xbee-node-test -d -P /dev/ttyUSB0 -b 38400
+$ ./xbee-node-test -d -P /dev/ttyUSB0 -b 38400
+
+Where the number at the end is the baud rate of the XBee serial interface.
+Change this as needed.
 
 In command line mode, the program can only be stopped by ctl-C or process kill.
 
-The following main program modules allow different tests to be run. Change the
-Makefile to compile the different tests.
+The following main program modules allow different tests to be run. Follow the
+instructions in the emulator directory README documentation to compile the
+different tests.
 
 ***mainprog-test***
 -------------------

@@ -140,7 +140,7 @@ event. */
 
     resetXBee();
     wakeXBee();
-/* Startup delay to give time to associate, and check association. */
+/* Startup delay 12 seconds to give time to associate. */
     
     for (i=0; i < 12; i++)
     {
@@ -170,26 +170,24 @@ int mainprog()
 //    {
 
 //        if (! stayAwake) sleepXBee();
-/* Power down the AVR to deep sleep until an interrupt occurs */
-//        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-//        sleep_enable();
-//        sleep_cpu();
 
 /* On waking, note the count, wait a bit, and check if it has advanced. If
 not, return to sleep. Otherwise keep awake until the counts have settled.
 This will avoid rapid wake/sleep cycles when counts are changing.
 Counter is a global and is changed in the ISR. */
         uint32_t lastCount;
+        uint8_t sleepDelay = 0;
 RES:    do
         {
             lastCount = counter;
+            if (sleepDelay > 10) sleepDelay = 0;
 
 /* Check for and deal with any extra messages that have arrived while the XBee
 was awake or between transmissions. */
             if (! transmitMessage)
             {
                 rxFrameType inMessage;              /* Received data frame */
-                packet_error packetError = interpretMessage(500, false, &inMessage);
+                interpretMessage(500, false, &inMessage);
             }
 /* Any interrupt will wake the AVR. If it is a WDT timer overflow event,
 8 seconds will be too short to do anything useful, so go back to sleep again
@@ -242,15 +240,16 @@ printData(3,retryCount);
                         }
                         retryEnable = true;
                     }
-/* Read the battery voltage from the XBee. If not successful, just give up and go on. */
+/* Set up to read the battery voltage via the XBee. If not successful, just
+give up and go on. */
                     if (stage == batteryCheck)
                     {
                         if (batteryCheckOK || (retryCount > 3))
                         {
 /* Turn off battery measurement */
-                            #ifdef VBATCON_PIN
-                            cbi(VBATCON_PORT,VBATCON_PIN);
-                            #endif
+//                            #ifdef VBATCON_PIN
+//                            cbi(VBATCON_PORT,VBATCON_PIN);
+//                            #endif
                             retryCount = 0;
                             packetError = no_error;
                             nak = false;
@@ -263,10 +262,10 @@ printData(4,0);
                             timeoutDelay = 200;
                             if (retryEnable)
                             {
-                                #ifdef VBATCON_PIN
+//                                #ifdef VBATCON_PIN
 /* Turn on battery measurement */
-                                sbi(VBATCON_PORT_DIR,VBATCON_PIN);
-                                #endif
+//                                sbi(VBATCON_PORT_DIR,VBATCON_PIN);
+//                                #endif
                                 sendATFrame(2,"IS");    /* Force Sample Read */
                                 retryCount++;
                             }
@@ -362,6 +361,7 @@ dumpPacket(&inMessage);
                                     if (inMessage.length > 5)
                                         batteryVoltage = 
                                             getXBeeADC(inMessage.message.atResponse.data,1);
+printData(16,batteryVoltage);
                                 }
                             }
                             break;
@@ -394,9 +394,24 @@ protocol in other stages. */
                     }
 else printData(9,packetError);
                 }
+/* Cycle Complete */
             }
+/* Delay here to prevent sleep mode from occurring until counts have settled.
+Count period is typically less than 10ms. */
+//            _delay_ms(1);
         }
-        while (counter != lastCount);
+        while (/*(sleepDelay++ < 10) || */ (counter != lastCount));
+
+//        #ifdef TEST_PORT_DIR
+//        cbi(TEST_PORT,TEST_PIN);    /* Set test pin off */
+//        #endif
+/* Power down the AVR to deep sleep until an interrupt occurs */
+//        sei();
+//        if (! stayAwake) sleepXBee();
+//        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+//        sleep_enable();
+//        sleep_cpu();
+
 //    }
     return true;
 }
@@ -824,6 +839,10 @@ void printData(uint8_t item, uint16_t data)
         printf("Received Nothing %d time %s\n", data, timeString);
         fprintf(fp,"Received Nothing %d time %s\n", data, timeString);
         break;
+    case 16:
+        printf("Battery Voltage %d\n", data);
+        fprintf(fp,"Battery Voltage %d\n", data);
+        break;
     }
 }
 
@@ -839,6 +858,7 @@ void dumpPacket(rxFrameType* inMessage)
     timeinfo = localtime(&rawtime);
     strftime(timeString, sizeof(timeString),"%FT%H:%M:%S",timeinfo);
     uint8_t i = 0;
+    bool txDelivered = (inMessage->message.txStatus.deliveryStatus == 0);
     switch (inMessage->frameType)
     {
     case AT_COMMAND_RESPONSE:
@@ -878,7 +898,6 @@ void dumpPacket(rxFrameType* inMessage)
     case TX_STATUS:
         printf("Transmit Status: data contents");
         for (i=0; i<inMessage->length-1; i++) printf(" %x", inMessage->message.array[i]);
-        bool txDelivered = (inMessage->message.txStatus.deliveryStatus == 0);
         printf(" Delivery Status? %d", txDelivered);
         if (! txDelivered) printf(" not");
         printf(" delivered");
